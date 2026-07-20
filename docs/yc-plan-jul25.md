@@ -1,57 +1,61 @@
-# YC submission plan: deadline 25 July 2026
+# YC submission: execution backlog (deadline Friday 25 July 2026)
 
-Today is Sunday 20 July. Five working days. The application is a written form, a 1-minute founder video, and optionally a product demo video and URL. The scarce resource is not engineering, it is evidence of customer contact, so outreach fires first and everything else runs in parallel.
+Hard deadline: application submitted Friday morning UK time. The form, a 1-minute founder video, optionally a product demo video and URL.
+
+No day-by-day scheduling. We execute the backlog top to bottom, continuously, at maximum throughput. Anything Claude can build or fetch gets built or fetched immediately; the only items with real calendar constraints are the human ones listed at the bottom. Refer back to this file every session, mark things done, add tasks as they appear.
 
 ## What YC actually evaluates here
 
-Two UK students, pre-revenue, pre-launch. The application wins or loses on: (1) clarity about the problem and who has it, (2) evidence you talk to customers, (3) proof you ship fast, (4) founder energy in the video. It does not win on model sophistication. Write like the notes in YC_APPLICATION_NOTES.md: direct, decisions stated, tradeoffs owned (including no US visa yet and willingness to relocate).
+Two UK students, pre-revenue, pre-launch. The application wins or loses on: (1) clarity about the problem and who has it, (2) evidence you talk to customers, (3) proof you ship fast, (4) founder energy in the video. Write like the notes in YC_APPLICATION_NOTES.md: direct, decisions stated, tradeoffs owned (including no US visa yet and willingness to relocate).
 
-## Day by day
+## Done
 
-**Sun 20 (today)**
-- Repo cleaned up, TransitPulse-first framing (done)
-- Arya: register domain, set up company email (hello@ / arya@ on the domain; outreach from a branded address replies better than gmail)
-- Arya: personalize the CTAA email and the 4 Tier 2 agency emails from cold_outreach_template.md, queue to send Monday 8-9am US Eastern (association staff and ops managers read email Monday morning, not Sunday)
-- Chris: read docs/website-brief.md, repo access, web/ scaffold, Vercel project
+- Repo cleaned up, TransitPulse-first framing
+- v1 synthetic pipeline: generator, demand model, audit-trail scheduler, 5 demo asset PNGs
+- NTD data pull: full US demand-response universe, 3,075 agencies, 2022-2024 (ntd/raw/)
+- Per-agency economics table: trips, cost/trip, deadhead share, value of a 10 percent deadhead cut per agency (ntd/agency_economics.csv)
+- Bottom-up market sizing from NTD 2024: 1,920 agencies, 139.7M trips/yr, $7.06B opex, median $37.97/trip, 17.3 percent deadhead (ntd/market_sizing.md)
+- Real paratransit demand data: 26.3M NYC Access-A-Ride bookings, hourly by borough, Jan 2024 to May 2026 (realdata/panels/)
+- Real-data demand model with honest baseline: R2 0.987 vs 0.923 seasonal-naive, MAE 19.7 vs 55.5, strict 90-day temporal holdout, split-conformal intervals (realdata/metrics_real.json)
 
-**Mon 21**
-- Outreach wave 1 goes out: CTAA + 4 Tier 2 agencies + 2 Tier 3 brokers
-- Arya: find 8-10 more Tier 2 agencies (county paratransit searches per the target list), queue wave 2 for Tuesday
-- Arya: build the demo assets on synthetic paratransit-shaped data: "why this trip" explanation cards from the SHAP layer, demand prediction view. Deliver screenshots to Chris by evening
-- Chris: site skeleton live on Vercel (hero, problem, team, CTA)
-- Start the tracking sheet (org, contact, sent, replied, call booked, takeaway)
+## In progress
 
-**Tue 22**
-- Outreach wave 2 out
-- Arya: first full draft of every YC application answer in docs/yc-application-draft.md. Hardest questions get drafted first: what are you making, why this, why you, competitors (Ecolane, TripSpark, RouteMatch/Uber Health, and why incumbent opacity is the opening), progress so far, equity split
-- Chris: product section with real screenshots, evidence strip, mobile pass
-- Both: agree equity split and who is CEO on the form if not already settled (YC asks, do not leave it vague)
+- Chicago TNP zone-hour panel, Nov 2018 to mid 2026, about 300M real door-to-door trips aggregated server-side (realdata/fetch_chicago_panel.py)
+- Bulk NYC TLC FHVHV parquet download, about 1.5B trips, roughly 40 GB, for transformer-scale training (realdata/fetch_tlc_parquet.py, realdata/raw_tlc/)
 
-**Wed 23**
-- Record the 60-90s product demo video (screen capture over the demo assets, Arya narrates: problem, prediction, one scheduled trip, its explanation)
-- Website hits definition-of-done, live on the real domain
-- Any outreach replies: book calls immediately, even for after the 25th; "5 calls booked with paratransit operators" is a legitimate traction line
-- Legal check: read the EWB competition terms on IP ownership of entries. If ambiguous, one email to EWB asking for written confirmation. Do not skip this; YC asks about IP encumbrances
+## Next (engineering and data)
 
-**Thu 24**
-- Founder video: one take style, both founders, 60 seconds, phone camera is fine. Script: who you are, what TransitPulse does in one sentence, the credential line, why paratransit, why now. Rehearse until it does not sound rehearsed
-- Grill pass on the full application (run /grill-me against the draft), cut every hedge and filler sentence
-- Fold in anything learned from customer calls or replies
-- Follow up on non-replies from wave 1 is NOT due yet (5 business days per the template), leave them
+- Train Chicago zone-hour model when panel lands; report vs seasonal-naive
+- DuckDB aggregation of TLC parquet to NYC zone-hour panel (realdata/aggregate_tlc.py)
+- Kaggle GPU transformer: notebook that builds the TLC panel and trains a temporal transformer for multi-zone day-ahead forecasting; Arya runs it on Kaggle GPUs (kaggle/)
+- Expand outreach targets to 50+ from ntd/agency_economics.csv, each row with a personalization hook (agency's own trips, cost/trip, deadhead dollars)
+- Rebuild demo assets on real data (AAR forecasts with conformal bands beat synthetic screenshots)
+- Retire the synthetic pipeline once real data covers everything it demonstrated (generator, R2 story, scheduler inputs). Do not delete before the audit-trail scheduler has a real-data replacement for its booking stream. Chicago TNP trip records can serve as scheduler input.
+- /method page content with real citations: NTD tables, 49 CFR 37.131, model card, conformal coverage numbers
+- Counterfactual backtest: proposed vs actual allocation on a replayed month
+- Computed version of the capacity-alert suggested action
 
-**Fri 25**
-- Final read-through of application, video, site, all links
-- Submit in the morning UK time, not at the deadline hour
-- Send wave 3 outreach (large metro Tier 4) since the list exists anyway; post-submission calls still matter, interviews come weeks later
+## Next (application and site)
 
-## Roles this week
+- docs/yc-application-draft.md: full draft of every answer. Hardest first: what are you making, why this, why you, competitors (Ecolane, TripSpark, RouteMatch/Uber Health, incumbent opacity is the opening), progress, equity split
+- Grill pass on the full application (/grill-me), cut every hedge
+- Vision section: paratransit beachhead, then campus/hub/small fixed-route with the same engine
+- Website first pass (Arya builds, Chris iterates): deliberately LAST, after the data and models sell themselves
+- Demo video 60-90s: screen capture over real-data assets, Arya narrates problem, prediction, one scheduled trip, its explanation
 
-- Arya: outreach, demo assets, application draft, domain/email, IP check
-- Chris: website end to end
-- Both: equity conversation (Tue), founder video (Thu), final review (Fri)
+## Human-only (real calendar constraints)
+
+- Arya: register domain, set up branded email (outreach from a domain replies better than gmail)
+- Arya: queue outreach waves for 8-9am US Eastern on weekdays; replies are human-latency, so send early and wide
+- Both: equity split and CEO-on-the-form settled before submission; YC asks, do not leave it vague
+- Arya: EWB competition IP terms check (YC asks about encumbrances); one email to EWB if ambiguous
+- Both: founder video, one take style, 60 seconds, phone camera fine; rehearse until it does not sound rehearsed
+- Any replies: book calls immediately, even post-25th; "calls booked with paratransit operators" is a legitimate traction line
 
 ## Rules
 
-- No new features this week. The model is good enough to apply with; integration, trust, and customer contact are the blockers (locked decision 5)
+- Outreach and the application gate everything; engineering runs at maximum ambition in parallel, never instead
+- Every number quoted publicly comes from a committed, reproducible script in this repo
+- Real-data numbers and synthetic numbers are never mixed in one claim; EWB's 0.94 R2 is never reused for TransitPulse
 - Every EWB mention is one credential line, never the identity
-- Anything that slips, slips toward the site's /method page and wave 3 outreach, never toward the application, the videos, or wave 1
+- Anything that slips, slips toward the /method page and wave 3 outreach, never toward the application, the videos, or wave 1

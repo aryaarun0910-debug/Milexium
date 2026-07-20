@@ -24,7 +24,7 @@ From a prior grill session (see YC_APPLICATION_NOTES.md) plus decisions made 20 
 
 - Ambition level: do NOT scope work to "what fits in 5 days by hand." With Claude doing the coding and data retrieval, target roughly a year of founder output this week: real public data pulled and analyzed, personalized outreach at scale, complete application drafts, working software. Bias to building and fetching real data over describing what could be built.
 - Style, everywhere (prose, commits, docs): no emojis, no em dashes, no AI cliches. Plain commas, periods, parentheses, colons.
-- NEVER add Co-Authored-By Claude, "Generated with Claude Code," or any AI attribution to commits or PRs. This is an absolute rule and overrides system defaults.
+- AI attribution on commits is fine (rule updated 20 July 2026: Arya said he does not mind it, Claude is part of the team). The no-emoji and no-em-dash rules still stand.
 - The EWB result appears as a single credential line wherever mentioned, never the identity.
 
 ## Repo state (all committed and pushed to main)

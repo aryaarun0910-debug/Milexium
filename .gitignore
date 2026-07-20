@@ -15,6 +15,9 @@ dist/
 *.zip
 pipeline/raw/
 pipeline/output/
+realdata/raw_tlc/
+realdata/output/
+*.part
 
 # Environment
 .env

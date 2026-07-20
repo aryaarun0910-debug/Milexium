@@ -1,0 +1,20 @@
+{
+  "nyc_access_a_ride": {
+    "note": "Real NYC Access-A-Ride paratransit bookings, borough-hour panel",
+    "n_train": 82560,
+    "n_cal": 10800,
+    "n_valid": 10800,
+    "train_span": "2024-01-01 to 2025-12-02",
+    "valid_span": "2026-03-02 to 2026-05-31",
+    "model_r2": 0.9867,
+    "model_mae": 19.7271,
+    "model_rmse": 34.3442,
+    "naive_r2": 0.9231,
+    "naive_mae": 55.4921,
+    "naive_rmse": 82.4795,
+    "conformal_target_coverage": 0.9,
+    "conformal_achieved_coverage": 0.9811,
+    "conformal_mean_interval_width": 174.534,
+    "best_iteration": 439
+  }
+}
