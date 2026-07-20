@@ -1,24 +1,28 @@
 # TransitPulse
 
-Demand-predictive route analysis for small US transit operators: campus shuttles, airport landside shuttles, hospital district circulators, and small city agencies.
+Explainable scheduling and demand prediction for US paratransit and NEMT operators.
 
-Pick your agency in the browser, see predicted hourly rider demand painted over your actual stops, get a mismatch score showing where scheduled capacity disagrees with predicted demand, and see one optimized counterproposal with an annual dollar figure attached. No hardware, no integration: predictions come from open data alone (GTFS, weather, calendars, census, land use).
+Paratransit is a statutory duty (ADA complementary paratransit, Medicaid NEMT) run on opaque legacy dispatch software. Operators cannot see why the system scheduled a trip the way it did, which makes compliance reporting painful and makes bad routing impossible to challenge. TransitPulse predicts demand and schedules trips with a full audit trail: every routing decision comes with a human-readable explanation of why.
 
-## Status
+## Why us
 
-Pre-launch. First pass of the website is in progress (see [docs/website-brief.md](docs/website-brief.md)).
+We built a demand-predictive routing system on real transit data (0.94 R2 demand model with temporal validation, 1.16% mean routing optimality gap, SHAP-based explainability, benchmarked against ARIMA and deep learning baselines) that reached the Grand Final of a 13,000-student international engineering competition. The explainability layer was built first, not bolted on.
 
-## Team
+## Founders
 
-- Arya Arun: ML, demand modeling, data pipeline, API
-- Chris Legge: website, frontend
-- Jack Booth: simulation
+- Arya Arun: ML, demand modeling, optimization, backend
+- Chris Legge: product, frontend, embedded systems
 
-Origin: Team LatencyZero, Engineers Without Borders UK Engineering for People Design Challenge 2025-26 (demand-predictive bus routing for Ladywood, Birmingham).
+## Structure
 
-## Planned structure
+- `web/` marketing and demo site (React + TypeScript + Vite)
+- `api/` FastAPI backend
+- `pipeline/` data ingestion, feature engineering, model training
+- `docs/` briefs, plans, decisions
 
-- `web/` frontend (React 19 + TypeScript + Vite + MapLibre)
-- `api/` FastAPI backend serving the demand model and mismatch scores
-- `pipeline/` GTFS ingestion, feature engineering, model training
-- `docs/` briefs, methodology, decisions
+## Working docs
+
+- [docs/yc-plan-jul25.md](docs/yc-plan-jul25.md) — submission plan for the 25 July YC deadline
+- [docs/website-brief.md](docs/website-brief.md) — website first-pass brief for Chris
+- [YC_APPLICATION_NOTES.md](YC_APPLICATION_NOTES.md) — locked strategy decisions
+- [outreach_target_list.md](outreach_target_list.md) + [cold_outreach_template.md](cold_outreach_template.md) — customer discovery
