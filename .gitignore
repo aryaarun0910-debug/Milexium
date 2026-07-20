@@ -14,6 +14,7 @@ dist/
 *.pkl
 *.zip
 pipeline/raw/
+pipeline/output/
 
 # Environment
 .env
