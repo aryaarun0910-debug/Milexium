@@ -41,6 +41,14 @@ def months_from(start: str):
         y, m = (y + 1, 1) if m == 12 else (y, m + 1)
 
 
+class RateLimited(Exception):
+    """CloudFront 403 = throttled after too many rapid requests. This is
+    NOT the same as 404 (file genuinely not published). Earlier this bug
+    made the fetcher treat a 403 as 'not-published' and permanently give
+    up on green taxi + yellow 2024+ after 155 rapid yellow downloads
+    tripped the throttle. 403 must back off and retry, only 404 means stop."""
+
+
 def download(prefix: str, month: str) -> str:
     name = f"{prefix}_{month}.parquet"
     dest = RAW / name
@@ -48,8 +56,10 @@ def download(prefix: str, month: str) -> str:
         return "exists"
     url = f"{CDN}/{name}"
     with requests.get(url, stream=True, timeout=300) as r:
-        if r.status_code in (403, 404):
+        if r.status_code == 404:
             return "not-published"
+        if r.status_code == 403:
+            raise RateLimited(f"403 throttled on {name}")
         r.raise_for_status()
         tmp = dest.with_suffix(".part")
         with open(tmp, "wb") as f:
@@ -64,10 +74,17 @@ if __name__ == "__main__":
         start = max(START, feed_start)
         missing_streak = 0
         for month in months_from(start):
-            for attempt in range(3):
+            # Up to 6 attempts with escalating backoff: a 403 throttle can
+            # take a couple of minutes to clear, so back off longer on 403.
+            for attempt in range(6):
                 try:
                     status = download(prefix, month)
                     break
+                except RateLimited as e:
+                    wait = min(120, 20 * (attempt + 1))
+                    print(f"{prefix} {month}: {e}, backing off {wait}s",
+                          flush=True)
+                    time.sleep(wait)
                 except Exception as e:
                     print(f"{prefix} {month}: retry {attempt + 1} ({e})",
                           flush=True)
@@ -82,6 +99,8 @@ if __name__ == "__main__":
                     break
             else:
                 missing_streak = 0
+            # polite pacing between downloads to avoid tripping the throttle
+            time.sleep(1.5)
     total = sum(f.stat().st_size for f in RAW.glob("*.parquet"))
     print(f"total on disk: {total / 1e9:.1f} GB, "
           f"{len(list(RAW.glob('*.parquet')))} files", flush=True)
