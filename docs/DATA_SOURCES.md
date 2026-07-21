@@ -9,10 +9,13 @@ Every dataset TransitPulse uses, where it comes from, what it's for, and where i
 | NYC Access-A-Ride | Real paratransit bookings, hourly by borough and provider type. Our exact product target variable. | 26.3M trips | 2024-01 to 2026-05 | Open Data NY, public domain | realdata/panels/aar_hourly_borough.csv.gz | realdata/fetch_nyc_aar.py |
 | NYC Access-A-Ride (daily) | Daily scheduled-trip totals, longer history. | 1,776 days | 2020-03 to 2025-01 | Open Data NY | realdata/panels/aar_daily.csv | realdata/fetch_nyc_aar.py |
 | NYC TLC FHVHV | Every Uber/Lyft/Via trip in NYC. Transformer-scale pretraining corpus and door-to-door demand proof point. | ~1.7B raw trips, 39.8 GB parquet | 2019-02 to 2026-05 | NYC TLC, public | realdata/raw_tlc/ (gitignored) -> aggregated via aggregate_tlc.py | realdata/fetch_tlc_parquet.py |
+| NYC TLC Yellow + Green taxi | The two classic street-hail taxi modalities, reaching back to 2011 (yellow) and 2014 (green). Deeper history than FHVHV and a different demand regime (street-hail vs app-dispatch); widens the pretraining corpus across 15+ years and 3 NYC modalities. | ~1B+ raw trips (yellow), monthly parquet | 2011-01 to present | NYC TLC, public | realdata/raw_tlc_taxi/ (gitignored) | realdata/fetch_tlc_yellow_green.py |
+| NTD Monthly nationwide (demand-response) | Every US transit agency's MONTHLY demand-response ridership (UPT), revenue hours/miles, peak vehicles, back to 2002. Nationwide monthly paratransit DEMAND panel: breadth (637 agencies x 20+ yrs) complementing AAR's single-agency hourly depth. Distinct from ntd/ annual economics. | 152k rows, 637 agencies, 2.18B trips | 2002-01 to 2026-05 | FTA / data.transportation.gov (8bui-9xvu), public | realdata/panels/ntd_monthly_dr.csv.gz | realdata/fetch_ntd_monthly.py |
 | Chicago TNP trips | Every rideshare trip in Chicago under the city's reporting ordinance. Aggregated server-side to community-area-hour. | ~300M raw trips | 2018-11 to present | City of Chicago Data Portal, public | realdata/panels/chicago_tnp_zone_hour.csv.gz | realdata/fetch_chicago_panel.py |
 | MTA bus hourly ridership | Real AFC (automated fare collection: OMNY/MetroCard tap) ridership by route and hour. NOT onboard-sensor APC data — a legitimate real ridership proxy, but sourced from fare payment, not physical boarding counts; do not market it as APC-scale proof without this qualification. Phase-2 (fixed-route) evidence. | 447M+ raw rows, aggregated to route-hour | 2020-01 to present | Open Data NY, public | realdata/panels/mta_bus_route_hour.csv.gz | realdata/fetch_mta_apc.py |
 | MTA subway hourly ridership | Real AFC-sourced subway ridership (turnstile/tap) by station and hour. | 121M+ raw rows, aggregated to station-hour | 2020-01 to present | Open Data NY, public | realdata/panels/mta_subway_station_hour.csv.gz | realdata/fetch_mta_apc.py |
-| Open-Meteo weather | Daily temperature, precipitation, snowfall history for Chicago and NYC. Exogenous feature for every real-data model. | 2,819 days x 2 cities | 2018-11 to present | Open-Meteo, free/keyless | realdata/panels/weather_daily.csv | realdata/fetch_weather.py |
+| Open-Meteo weather (daily) | Daily temperature, precipitation, snowfall history for Chicago and NYC. Exogenous feature for the current real-data models. | 2,819 days x 2 cities | 2018-11 to present | Open-Meteo, free/keyless | realdata/panels/weather_daily.csv | realdata/fetch_weather.py |
+| NOAA NCEI weather (HOURLY) | Hourly temperature, dew point, precipitation, wind, humidity for NYC (LaGuardia) and Chicago (O'Hare). Upgrades the daily weather feature to hourly, matching the zone-hour modeling granularity. CDO token saved in .env; the bulk LCD CSVs used here need no token. | ~2 stations x hourly, 2018-present | 2018 to present | NOAA NCEI LCD, public | realdata/panels/weather_hourly.csv.gz | realdata/fetch_weather_hourly.py |
 
 ## Government economics data (market sizing and outreach)
 
@@ -22,11 +25,11 @@ Every dataset TransitPulse uses, where it comes from, what it's for, and where i
 
 Derived products: ntd/build_outreach_targets.py (80 tiered outreach targets with per-agency hooks), ntd/savings_calculator.py (self-serve "your agency's own numbers" calculator, backend for the future website widget).
 
-## Synthetic data (v1 pipeline, being retired)
+## Synthetic data (v1 pipeline, partially retired)
 
-| What | Why it existed | Retirement condition |
+| What | Why it existed | Status |
 |---|---|---|
-| pipeline/generate_trips.py output | Bootstrapped the demo before real data was pulled; anchored to NTD demand-response norms. | Retire once real-data demo assets replace docs/demo-assets/*.png AND the audit-trail scheduler has a real booking stream (Chicago TNP trip records are the candidate). |
+| pipeline/generate_trips.py output | Bootstrapped the demo before real data was pulled; anchored to NTD demand-response norms. | Partially retired 2026-07-22: the two demand-FORECASTING demo assets (why_this_forecast, demand_curve) now have real-data replacements (realdata/make_real_demo_assets.py -> docs/demo-assets/*_real.png), built from the real AAR model's SHAP output and validation predictions. The three scheduling assets (why_this_trip, capacity_alert, fleet_timeline) still require the synthetic pipeline: they depend on individual-trip-level dispatch decisions, and no public paratransit dataset provides trip-level records. Full retirement is gated on real pilot data access, not more model work — see pipeline/README.md honesty note 5. |
 
 ## Latent demand and real-geography features (differentiators, not event data)
 

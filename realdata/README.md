@@ -26,6 +26,7 @@ py -3 realdata/fetch_tlc_parquet.py     # bulk FHVHV parquet (resumable)
 py -3 realdata/aggregate_tlc.py         # DuckDB: parquet -> zone-hour panel
 py -3 realdata/train_real_models.py     # models + conformal + metrics_real.json
 py -3 realdata/backtest_and_explain.py  # walk-forward backtest + SHAP explainability
+py -3 realdata/make_real_demo_assets.py # real-data "why this forecast" + demand curve PNGs
 ```
 
 ## Modeling protocol (same as the synthetic pipeline, deliberately)

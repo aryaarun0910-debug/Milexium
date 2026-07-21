@@ -1,14 +1,18 @@
 """Train and validate demand models on REAL data, with conformal intervals.
 
-Two models, same protocol as the synthetic pipeline (strict temporal
+Four models, same protocol as the synthetic pipeline (strict temporal
 holdout, seasonal-naive baseline, count:poisson XGBoost):
 
 1. NYC Access-A-Ride, borough-hour: actual paratransit bookings from the
    largest US paratransit operation, Jan 2024 to May 2026. This is the
    product's exact target variable on real data.
 2. Chicago TNP, community-area-hour: 7+ years of real door-to-door trip
-   demand (about 300M trips). Structurally the same forecasting problem at
+   demand (about 550M trips). Structurally the same forecasting problem at
    77-zone scale; proves the recipe holds on big real data.
+3. MTA bus, route-hour: real AFC (fare-payment) ridership, 438 routes,
+   2020-present. Phase-2 (fixed-route) evidence.
+4. MTA subway, station-hour: real AFC ridership, 428 stations,
+   2020-present. Same phase-2 evidence at a different zone granularity.
 
 Split per model, four non-overlapping 90-day-or-longer blocks so the
 conformal calibration set is never touched by model fitting (using it for
@@ -175,7 +179,7 @@ def run(name, panel, zone_col, weather_city, extra_note):
     model = xgb.XGBRegressor(
         n_estimators=600, max_depth=8, learning_rate=0.06,
         subsample=0.9, colsample_bytree=0.8, objective="count:poisson",
-        random_state=42, n_jobs=-1, tree_method="hist",
+        random_state=42, tree_method="hist", device="cuda",
         enable_categorical=True, early_stopping_rounds=30,
         eval_metric="poisson-nloglik")
     model.fit(train[features], train.y,
@@ -271,6 +275,35 @@ def load_chicago():
     return grid
 
 
+def _load_dense_grid(path, zone_col, value_col):
+    """Shared loader for the MTA panels: same full-grid-with-zero-cells
+    treatment as AAR/Chicago, just parameterized by column names since
+    both feeds already share the (date, hour, zone, riders) shape."""
+    df = pd.read_csv(path)
+    df = df.rename(columns={value_col: "y"})
+    df[zone_col] = df[zone_col].astype(str)
+    days = pd.date_range(df.date.min(), df.date.max(), freq="D")
+    zones = sorted(df[zone_col].unique())
+    grid = pd.MultiIndex.from_product(
+        [days, range(24), zones], names=["date", "hour", zone_col]
+    ).to_frame(index=False)
+    grid["date"] = grid.date.dt.strftime("%Y-%m-%d")
+    df["date"] = pd.to_datetime(df.date).dt.strftime("%Y-%m-%d")
+    grid = grid.merge(df[["date", "hour", zone_col, "y"]], how="left",
+                      on=["date", "hour", zone_col])
+    grid["y"] = grid.y.fillna(0)
+    return grid
+
+
+def load_mta_bus():
+    return _load_dense_grid(PANELS / "mta_bus_route_hour.csv.gz", "route", "riders")
+
+
+def load_mta_subway():
+    return _load_dense_grid(PANELS / "mta_subway_station_hour.csv.gz",
+                            "station_id", "riders")
+
+
 if __name__ == "__main__":
     results = {}
 
@@ -287,6 +320,24 @@ if __name__ == "__main__":
         print(json.dumps(results["chicago_tnp"], indent=2))
     else:
         print("chicago panel not downloaded yet, skipping")
+
+    bus_path = PANELS / "mta_bus_route_hour.csv.gz"
+    if bus_path.exists():
+        results["mta_bus"] = run(
+            "mta_bus", load_mta_bus(), "route", "nyc",
+            "Real MTA bus AFC (fare-payment) ridership, route-hour panel")
+        print(json.dumps(results["mta_bus"], indent=2))
+    else:
+        print("MTA bus panel not downloaded yet, skipping")
+
+    subway_path = PANELS / "mta_subway_station_hour.csv.gz"
+    if subway_path.exists():
+        results["mta_subway"] = run(
+            "mta_subway", load_mta_subway(), "station_id", "nyc",
+            "Real MTA subway AFC (fare-payment) ridership, station-hour panel")
+        print(json.dumps(results["mta_subway"], indent=2))
+    else:
+        print("MTA subway panel not downloaded yet, skipping")
 
     (HERE / "metrics_real.json").write_text(json.dumps(results, indent=2))
     print("saved realdata/metrics_real.json")

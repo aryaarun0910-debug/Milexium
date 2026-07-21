@@ -37,3 +37,9 @@ Current numbers (seed 42):
    still runs on synthetic trip-level data because no individual-trip
    paratransit dataset is public. Real pilot data access, not more model
    sophistication, is the actual unlock for validating dispatch decisions.
+   Concretely: docs/demo-assets/why_this_forecast_real.png and
+   demand_curve_real.png (realdata/make_real_demo_assets.py) are the real
+   equivalents of two of this pipeline's five demo assets. The other three
+   (why_this_trip, capacity_alert, fleet_timeline) stay synthetic until a
+   real trip-level booking stream exists — they are not fakeable honestly
+   with aggregate data.
