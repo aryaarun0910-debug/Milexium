@@ -19,6 +19,19 @@ realdata/raw_tlc/
 realdata/output/
 *.part
 
+# Large aggregated panels and their per-month checkpoints: regenerate via
+# the fetch scripts in realdata/. AAR (2.9 MB) and weather (small) stay
+# committed as the compact, reproducible evidence; these do not.
+realdata/panels/*_monthly/
+realdata/panels/mta_bus_route_hour.csv.gz
+realdata/panels/mta_subway_station_hour.csv.gz
+realdata/panels/chicago_tnp_zone_hour.csv.gz
+realdata/panels/nyc_fhvhv_zone_hour.parquet
+
+# graphify scratch cache (graph.json/graph.html/GRAPH_REPORT.md stay committed)
+graphify-out/cache/
+graphify-out/.obsidian/
+
 # Environment
 .env
 .env.*

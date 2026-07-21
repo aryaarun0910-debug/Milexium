@@ -83,6 +83,67 @@ def conformal(pred_cal, y_cal, pred, alpha=0.10, n_bins=10):
     return lo, hi
 
 
+def conformal_two_way(pred_cal, y_cal, pred, hour_cal, hour_pred,
+                       alpha=0.10, n_pred_bins=5, n_hour_buckets=4):
+    """Two-way Mondrian split-conformal: bins jointly on hour-of-day bucket
+    (demand is heteroskedastic by time of day beyond what the mean already
+    captures, e.g. rush-hour absolute variance vs overnight) and prediction
+    quintile within that bucket. Falls back to the single prediction-decile
+    calibration for a sparse (hour-bucket, quintile) cell so a thin slice of
+    calibration data never produces an unstable interval."""
+    hour_bucket_cal = (hour_cal // (24 // n_hour_buckets)).astype(int)
+    hour_bucket_pred = (hour_pred // (24 // n_hour_buckets)).astype(int)
+    resid = np.abs(y_cal - pred_cal)
+
+    # global fallback (single-dim decile) for thin cells
+    g_edges = np.quantile(pred_cal, np.linspace(0, 1, n_pred_bins + 1))
+    g_edges[0], g_edges[-1] = -np.inf, np.inf
+    g_bin_cal = np.digitize(pred_cal, g_edges[1:-1])
+    g_q = np.empty(n_pred_bins)
+    for b in range(n_pred_bins):
+        r = resid[g_bin_cal == b]
+        k = min(len(r), int(np.ceil((len(r) + 1) * (1 - alpha))))
+        g_q[b] = np.sort(r)[k - 1] if len(r) else np.nan
+
+    MIN_CELL = 30
+    q_table = {}
+    edges_by_hb = {}
+    for hb in range(n_hour_buckets):
+        mask = hour_bucket_cal == hb
+        pred_hb = pred_cal[mask]
+        if mask.sum() < MIN_CELL * n_pred_bins:
+            edges_by_hb[hb] = None
+            continue
+        edges = np.quantile(pred_hb, np.linspace(0, 1, n_pred_bins + 1))
+        edges[0], edges[-1] = -np.inf, np.inf
+        edges_by_hb[hb] = edges
+        pbin = np.digitize(pred_hb, edges[1:-1])
+        resid_hb = resid[mask]
+        for b in range(n_pred_bins):
+            r = resid_hb[pbin == b]
+            if len(r) < MIN_CELL:
+                q_table[(hb, b)] = None
+                continue
+            k = min(len(r), int(np.ceil((len(r) + 1) * (1 - alpha))))
+            q_table[(hb, b)] = np.sort(r)[k - 1]
+
+    width = np.empty(len(pred))
+    for i in range(len(pred)):
+        hb = hour_bucket_pred[i]
+        edges = edges_by_hb.get(hb)
+        w = None
+        if edges is not None:
+            pb = int(np.digitize(pred[i], edges[1:-1]))
+            w = q_table.get((hb, pb))
+        if w is None:
+            gb = int(np.digitize(pred[i], g_edges[1:-1]))
+            w = g_q[gb]
+        width[i] = w
+    lo = np.clip(pred - width, 0, None)
+    hi = pred + width
+    return lo, hi
+
+
 def run(name, panel, zone_col, weather_city, extra_note):
     weather = pd.read_csv(PANELS / "weather_daily.csv", parse_dates=["date"])
     weather = weather[weather.city == weather_city].drop(columns=["city"])
@@ -125,6 +186,11 @@ def run(name, panel, zone_col, weather_city, extra_note):
     lo, hi = conformal(pred_cal, cal.y.to_numpy(), pred)
     covered = ((valid.y.to_numpy() >= lo) & (valid.y.to_numpy() <= hi))
 
+    lo2, hi2 = conformal_two_way(
+        pred_cal, cal.y.to_numpy(), pred,
+        cal.hour.to_numpy(), valid.hour.to_numpy())
+    covered2 = ((valid.y.to_numpy() >= lo2) & (valid.y.to_numpy() <= hi2))
+
     m = {
         "note": extra_note,
         "n_train": int(len(train)), "n_cal": int(len(cal)),
@@ -138,14 +204,27 @@ def run(name, panel, zone_col, weather_city, extra_note):
         "naive_mae": round(float(mean_absolute_error(vb.y, vb.naive)), 4),
         "naive_rmse": round(float(np.sqrt(np.mean((vb.y - vb.naive) ** 2))), 4),
         "conformal_target_coverage": 0.90,
-        "conformal_achieved_coverage": round(float(covered.mean()), 4),
-        "conformal_mean_interval_width": round(float((hi - lo).mean()), 3),
+        "conformal_decile_only": {
+            "achieved_coverage": round(float(covered.mean()), 4),
+            "mean_interval_width": round(float((hi - lo).mean()), 3),
+        },
+        "conformal_hour_bucket_x_decile": {
+            "achieved_coverage": round(float(covered2.mean()), 4),
+            "mean_interval_width": round(float((hi2 - lo2).mean()), 3),
+            "note": "Mondrian bins on (hour-of-day bucket, prediction "
+                    "quintile within bucket); falls back to the "
+                    "decile-only calibration for any bin with fewer than "
+                    "30 calibration examples.",
+        },
         "best_iteration": int(model.best_iteration),
     }
 
     model.save_model(OUT / f"{name}_model.json")
     v = valid[["date", "hour", zone_col, "y"]].copy()
-    v["pred"], v["lo"], v["hi"], v["naive"] = pred, lo, hi, vb.naive.to_numpy()
+    v["pred"] = pred
+    v["lo"], v["hi"] = lo, hi
+    v["lo_hourbucket"], v["hi_hourbucket"] = lo2, hi2
+    v["naive"] = vb.naive.to_numpy()
     v.to_csv(OUT / f"{name}_valid.csv.gz", index=False, compression="gzip")
     return m
 

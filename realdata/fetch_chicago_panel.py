@@ -24,6 +24,7 @@ realdata/panels/chicago_tnp_zone_hour.csv.gz
 
 import io
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -56,15 +57,16 @@ def fetch_day(ds: str, day: date) -> pd.DataFrame:
     }
     for attempt in range(5):
         try:
-            r = requests.get(url, params=params, timeout=300)
+            r = requests.get(url, params=params, timeout=90)
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
             df.insert(0, "date", day)
             return df
         except Exception as e:
             print(f"  retry {attempt + 1} for {day} ({e})", flush=True)
-            time.sleep(15 * (attempt + 1))
-    raise RuntimeError(f"gave up on {day}")
+            time.sleep(10 * (attempt + 1))
+    print(f"  gave up on {day}, leaving a gap", flush=True)
+    return pd.DataFrame(columns=["date", "hour", "area", "trips"])
 
 
 def month_days(ds_end: date, m0: date):
@@ -104,8 +106,9 @@ if __name__ == "__main__":
             if dest.exists():
                 continue
             t0 = time.time()
-            days = [fetch_day(ds, d)
-                    for d in month_days(min(end, date.today()), m0)]
+            day_list = list(month_days(min(end, date.today()), m0))
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                days = list(ex.map(lambda d: fetch_day(ds, d), day_list))
             month = pd.concat(days, ignore_index=True)
             month.to_csv(dest, index=False)
             print(f"{ds} {m0:%Y-%m}: {len(month)} rows, "

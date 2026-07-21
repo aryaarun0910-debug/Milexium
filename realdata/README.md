@@ -18,12 +18,14 @@ Everything here is real, public, reproducible. No synthetic rows.
 ## Scripts
 
 ```
-py -3 realdata/fetch_nyc_aar.py        # AAR hourly + daily panels
-py -3 realdata/fetch_weather.py        # Open-Meteo daily, Chicago + NYC
-py -3 realdata/fetch_chicago_panel.py  # Chicago zone-hour panel (slow, months paged)
-py -3 realdata/fetch_tlc_parquet.py    # bulk FHVHV parquet (resumable)
-py -3 realdata/aggregate_tlc.py        # DuckDB: parquet -> zone-hour panel
-py -3 realdata/train_real_models.py    # models + conformal + metrics_real.json
+py -3 realdata/fetch_nyc_aar.py         # AAR hourly + daily panels
+py -3 realdata/fetch_weather.py         # Open-Meteo daily, Chicago + NYC
+py -3 realdata/fetch_chicago_panel.py   # Chicago zone-hour panel (concurrent, day-chunked, resumable)
+py -3 realdata/fetch_mta_apc.py         # MTA bus + subway hourly ridership (real APC/AFC data, resumable)
+py -3 realdata/fetch_tlc_parquet.py     # bulk FHVHV parquet (resumable)
+py -3 realdata/aggregate_tlc.py         # DuckDB: parquet -> zone-hour panel
+py -3 realdata/train_real_models.py     # models + conformal + metrics_real.json
+py -3 realdata/backtest_and_explain.py  # walk-forward backtest + SHAP explainability
 ```
 
 ## Modeling protocol (same as the synthetic pipeline, deliberately)
@@ -48,5 +50,14 @@ Without the demand-history lags, the calendar-plus-weather model ties the
 naive baseline (R2 0.919 vs 0.921). That finding is kept on purpose: it is
 why every TransitPulse number ships with the naive comparison.
 
-raw_tlc/ and output/ are gitignored (40 GB and model artifacts); panels/
-carries the committed, compressed panels.
+Walk-forward backtest (4 rolling 90-day folds, expanding training window,
+see backtest_and_explain.py): model R2 0.972 mean (std 0.023) vs naive
+0.919 mean (std 0.025) — consistent across folds including a harder winter
+fold, not a single lucky holdout window. SHAP explainability on the
+production model: lag7 (same day last week) dominates global feature
+importance; worked "why this forecast" examples in explanations_aar.json.
+
+raw_tlc/, output/, and the large aggregated panels (MTA bus/subway,
+Chicago, and their per-month checkpoint directories) are gitignored —
+regenerate via the fetch scripts above. Only the compact panels (AAR,
+weather) are committed as the reproducible evidence trail.

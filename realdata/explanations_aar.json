@@ -1,0 +1,257 @@
+{
+  "note": "SHAP TreeExplainer on the production aar model, validation window 2026-03-02 to 2026-05-31",
+  "global_feature_importance_mean_abs_shap": {
+    "lag7": 0.6992,
+    "lag14": 0.2829,
+    "roll28": 0.1815,
+    "lag1": 0.0877,
+    "dow": 0.0368,
+    "is_holiday": 0.0152,
+    "hour_cos": 0.0149,
+    "hour": 0.0127,
+    "precip_mm": 0.0116,
+    "is_weekend": 0.008,
+    "tmax_c": 0.0078,
+    "borough": 0.0074,
+    "month": 0.0057,
+    "tmin_c": 0.0057,
+    "hour_sin": 0.0038,
+    "snow_cm": 0.0028
+  },
+  "example_explanations": [
+    {
+      "date": "2026-03-15",
+      "hour": 13,
+      "zone": "Manhattan",
+      "actual_bookings": 449,
+      "predicted_bookings": 457.5,
+      "base_rate": 237.07,
+      "top_factors": [
+        {
+          "feature": "lag7",
+          "label": "same day last week",
+          "value": 473.0,
+          "shap": 0.3276,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag14",
+          "label": "same day two weeks ago",
+          "value": 448.0,
+          "shap": 0.2228,
+          "direction": "raised"
+        },
+        {
+          "feature": "roll28",
+          "label": "28-day average for this slot",
+          "value": 607.68,
+          "shap": 0.1072,
+          "direction": "raised"
+        },
+        {
+          "feature": "dow",
+          "label": "day of week",
+          "value": 6.0,
+          "shap": -0.051,
+          "direction": "lowered"
+        }
+      ],
+      "explanation": "Predicted 457 bookings for Manhattan at 13:00 on 2026-03-15. Baseline rate is 237.1; same day last week raised the estimate; same day two weeks ago raised the estimate; 28-day average for this slot raised the estimate; day of week lowered the estimate."
+    },
+    {
+      "date": "2026-04-01",
+      "hour": 6,
+      "zone": "Queens",
+      "actual_bookings": 503,
+      "predicted_bookings": 484.7,
+      "base_rate": 237.07,
+      "top_factors": [
+        {
+          "feature": "lag7",
+          "label": "same day last week",
+          "value": 512.0,
+          "shap": 0.349,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag14",
+          "label": "same day two weeks ago",
+          "value": 497.0,
+          "shap": 0.2323,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag1",
+          "label": "yesterday's bookings in this slot",
+          "value": 474.0,
+          "shap": 0.0482,
+          "direction": "raised"
+        },
+        {
+          "feature": "roll28",
+          "label": "28-day average for this slot",
+          "value": 344.0,
+          "shap": 0.033,
+          "direction": "raised"
+        }
+      ],
+      "explanation": "Predicted 485 bookings for Queens at 06:00 on 2026-04-01. Baseline rate is 237.1; same day last week raised the estimate; same day two weeks ago raised the estimate; yesterday's bookings in this slot raised the estimate; 28-day average for this slot raised the estimate."
+    },
+    {
+      "date": "2026-03-04",
+      "hour": 14,
+      "zone": "Brooklyn",
+      "actual_bookings": 1107,
+      "predicted_bookings": 958.4,
+      "base_rate": 237.07,
+      "top_factors": [
+        {
+          "feature": "lag7",
+          "label": "same day last week",
+          "value": 803.0,
+          "shap": 0.5797,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag14",
+          "label": "same day two weeks ago",
+          "value": 966.0,
+          "shap": 0.3866,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag1",
+          "label": "yesterday's bookings in this slot",
+          "value": 989.0,
+          "shap": 0.1848,
+          "direction": "raised"
+        },
+        {
+          "feature": "roll28",
+          "label": "28-day average for this slot",
+          "value": 800.79,
+          "shap": 0.1462,
+          "direction": "raised"
+        }
+      ],
+      "explanation": "Predicted 958 bookings for Brooklyn at 14:00 on 2026-03-04. Baseline rate is 237.1; same day last week raised the estimate; same day two weeks ago raised the estimate; yesterday's bookings in this slot raised the estimate; 28-day average for this slot raised the estimate."
+    },
+    {
+      "date": "2026-04-12",
+      "hour": 10,
+      "zone": "Queens",
+      "actual_bookings": 512,
+      "predicted_bookings": 457.1,
+      "base_rate": 237.07,
+      "top_factors": [
+        {
+          "feature": "lag7",
+          "label": "same day last week",
+          "value": 466.0,
+          "shap": 0.3172,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag14",
+          "label": "same day two weeks ago",
+          "value": 464.0,
+          "shap": 0.2359,
+          "direction": "raised"
+        },
+        {
+          "feature": "roll28",
+          "label": "28-day average for this slot",
+          "value": 549.54,
+          "shap": 0.0969,
+          "direction": "raised"
+        },
+        {
+          "feature": "dow",
+          "label": "day of week",
+          "value": 6.0,
+          "shap": -0.0371,
+          "direction": "lowered"
+        }
+      ],
+      "explanation": "Predicted 457 bookings for Queens at 10:00 on 2026-04-12. Baseline rate is 237.1; same day last week raised the estimate; same day two weeks ago raised the estimate; 28-day average for this slot raised the estimate; day of week lowered the estimate."
+    },
+    {
+      "date": "2026-03-23",
+      "hour": 14,
+      "zone": "Brooklyn",
+      "actual_bookings": 878,
+      "predicted_bookings": 844.7,
+      "base_rate": 237.07,
+      "top_factors": [
+        {
+          "feature": "lag7",
+          "label": "same day last week",
+          "value": 856.0,
+          "shap": 0.602,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag14",
+          "label": "same day two weeks ago",
+          "value": 924.0,
+          "shap": 0.3661,
+          "direction": "raised"
+        },
+        {
+          "feature": "roll28",
+          "label": "28-day average for this slot",
+          "value": 859.57,
+          "shap": 0.1515,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag1",
+          "label": "yesterday's bookings in this slot",
+          "value": 824.0,
+          "shap": 0.1199,
+          "direction": "raised"
+        }
+      ],
+      "explanation": "Predicted 845 bookings for Brooklyn at 14:00 on 2026-03-23. Baseline rate is 237.1; same day last week raised the estimate; same day two weeks ago raised the estimate; 28-day average for this slot raised the estimate; yesterday's bookings in this slot raised the estimate."
+    },
+    {
+      "date": "2026-03-16",
+      "hour": 10,
+      "zone": "Bronx",
+      "actual_bookings": 525,
+      "predicted_bookings": 548.1,
+      "base_rate": 237.07,
+      "top_factors": [
+        {
+          "feature": "lag7",
+          "label": "same day last week",
+          "value": 575.0,
+          "shap": 0.4018,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag14",
+          "label": "same day two weeks ago",
+          "value": 561.0,
+          "shap": 0.2499,
+          "direction": "raised"
+        },
+        {
+          "feature": "roll28",
+          "label": "28-day average for this slot",
+          "value": 530.82,
+          "shap": 0.1068,
+          "direction": "raised"
+        },
+        {
+          "feature": "lag1",
+          "label": "yesterday's bookings in this slot",
+          "value": 490.0,
+          "shap": 0.0515,
+          "direction": "raised"
+        }
+      ],
+      "explanation": "Predicted 548 bookings for Bronx at 10:00 on 2026-03-16. Baseline rate is 237.1; same day last week raised the estimate; same day two weeks ago raised the estimate; 28-day average for this slot raised the estimate; yesterday's bookings in this slot raised the estimate."
+    }
+  ]
+}

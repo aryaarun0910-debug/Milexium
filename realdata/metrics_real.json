@@ -13,8 +13,15 @@
     "naive_mae": 55.4921,
     "naive_rmse": 82.4795,
     "conformal_target_coverage": 0.9,
-    "conformal_achieved_coverage": 0.9811,
-    "conformal_mean_interval_width": 174.534,
+    "conformal_decile_only": {
+      "achieved_coverage": 0.9811,
+      "mean_interval_width": 174.534
+    },
+    "conformal_hour_bucket_x_decile": {
+      "achieved_coverage": 0.9778,
+      "mean_interval_width": 174.676,
+      "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
+    },
     "best_iteration": 439
   }
 }

@@ -1,0 +1,49 @@
+{
+  "note": "Rolling-origin backtest, aar, expanding training window, 90-day non-overlapping folds walking back from the most recent data",
+  "folds": [
+    {
+      "fold": 0,
+      "valid_span": "2026-03-02 to 2026-05-31",
+      "n_train": 93360,
+      "n_valid": 10800,
+      "model_r2": 0.9869,
+      "model_mae": 19.5997,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.4921
+    },
+    {
+      "fold": 1,
+      "valid_span": "2025-12-02 to 2026-03-02",
+      "n_train": 82560,
+      "n_valid": 10800,
+      "model_r2": 0.934,
+      "model_mae": 35.0876,
+      "naive_r2": 0.8775,
+      "naive_mae": 54.3033
+    },
+    {
+      "fold": 2,
+      "valid_span": "2025-09-03 to 2025-12-02",
+      "n_train": 71760,
+      "n_valid": 10800,
+      "model_r2": 0.9773,
+      "model_mae": 23.0606,
+      "naive_r2": 0.9292,
+      "naive_mae": 48.8127
+    },
+    {
+      "fold": 3,
+      "valid_span": "2025-06-05 to 2025-09-03",
+      "n_train": 60960,
+      "n_valid": 10800,
+      "model_r2": 0.9907,
+      "model_mae": 16.1058,
+      "naive_r2": 0.9452,
+      "naive_mae": 40.0471
+    }
+  ],
+  "model_r2_mean": 0.9722,
+  "model_r2_std": 0.0226,
+  "naive_r2_mean": 0.9187,
+  "naive_r2_std": 0.0251
+}
