@@ -73,17 +73,22 @@ def short_agency(name: str) -> str:
 
 
 def email_hook(r) -> str:
-    """The exact personalized sentence from the cold email - paste-ready once a
-    name is filled in, so the worksheet and the draft always show the same
-    number in front of a director who knows their own books."""
-    trips = f"{r.trips:,.0f}"
-    cpt = f"${r.cost_per_trip:,.2f}"
+    """The exact opening paragraph of the cold email - paste-ready once a name
+    is filled in, so the worksheet preview and the sent draft always match. The
+    dollar figure is a deliberately rounded, hedged ESTIMATE: NTD reports
+    deadhead as a share of vehicle-hours, and attributing cost uniformly to
+    hours is a modelling assumption, not guaranteed cash. Kept honest on
+    purpose - a precise savings promise is what a director who knows their own
+    books would nuke."""
     dh = f"{r.deadhead_pct_hours:.0%}"
-    val = f"${r.value_10pct_deadhead_cut:,.0f}"
-    return (f"Your agency's 2024 NTD filing shows {trips} demand-response trips "
-            f"at {cpt} per trip, with {dh} of vehicle-hours spent deadheading. "
-            f"If that's roughly right, cutting deadhead by 10 percent is worth "
-            f"about {val} a year to you.")
+    approx = f"${round(float(r.value_10pct_deadhead_cut), -4):,.0f}"
+    return (f"Your agency's 2024 NTD filing reports {r.trips:,.0f} "
+            f"demand-response trips at ${r.cost_per_trip:,.2f} per trip, and "
+            f"about {dh} of your vehicle-hours run empty (deadhead). Attributing "
+            f"cost to hours, trimming that by even 10 percent points to "
+            f"something like {approx} a year, though how much is really "
+            f"recoverable depends on your fixed-versus-variable costs, which is "
+            f"exactly what we'd want to pin down with you.")
 
 
 def google_url(r) -> str:
@@ -102,7 +107,28 @@ if __name__ == "__main__":
     ap.add_argument("--state", help="filter to a state abbreviation (e.g. PA)")
     ap.add_argument("--include-metros", action="store_true",
                     help="keep the big-city metros dropped by default")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite an existing worksheet even if it already "
+                         "has filled-in contacts (default: refuse, to protect "
+                         "hand-entered research)")
     args = ap.parse_args()
+
+    # Guard: never silently destroy hand-entered contact research. If the
+    # worksheet already exists with any filled contact_email, refuse to
+    # regenerate it (which would blank every row) unless --force. Add new
+    # targets by hand or to a copy; do not regenerate over live research.
+    if OUTFILE.exists() and not args.force:
+        existing = pd.read_csv(OUTFILE)
+        if "contact_email" in existing.columns:
+            filled = (existing["contact_email"].notna()
+                      & (existing["contact_email"].astype(str).str.strip() != "")
+                      & (existing["contact_email"].astype(str) != "nan"))
+            if filled.any():
+                raise SystemExit(
+                    f"REFUSING to overwrite {OUTFILE.name}: it already has "
+                    f"{int(filled.sum())} filled contact(s). Regenerating would "
+                    f"blank your research. Use --force only if you're sure, or "
+                    f"back the file up first.")
 
     df = pd.read_csv(HERE.parent / "ntd" / "agency_economics.csv",
                      dtype={"ntd_id": str})
