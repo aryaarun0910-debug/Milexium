@@ -7,18 +7,23 @@ a student." The personalized number is the pattern-interrupt that gets the
 15-minute call; the design-partner / free-analysis offer (see
 design_partner_pitch.md) is made on that call.
 
-Reads ntd/agency_economics.csv (every agency's own filing) and emits one
-ready-to-send email per target: subject + body, under ~120 words, leading
-with the agency's specific deadhead-dollar figure.
+Two modes:
 
-Output: outreach/drafts/<state>_<agency_slug>.txt  (subject on line 1,
-blank line, then body) - ready to paste into a Gmail draft, or to feed to
-the Gmail draft connector once it's authorized.
+  (default) Reads ntd/agency_economics.csv and emits one draft per top agency
+  with [FIRST NAME] left as a placeholder - for when you don't have contacts
+  yet. Output: outreach/drafts/<state>_<agency_slug>.txt
+
+  (--merge) Reads outreach/contact_research_worksheet.csv (the version you
+  filled with contact_name / contact_email) and emits fully-personalized,
+  ready-to-send drafts - real first name in the greeting, a To: line, and the
+  agency's own deadhead number - for every row that has an email. Rows still
+  missing an email are skipped and reported.
 
 Usage:
-  py -3 outreach/generate_design_partner_emails.py            # top 40 by savings
-  py -3 outreach/generate_design_partner_emails.py --top 100
-  py -3 outreach/generate_design_partner_emails.py --state PA # one state
+  py -3 outreach/generate_design_partner_emails.py            # top 40, placeholder name
+  py -3 outreach/generate_design_partner_emails.py --top 109
+  py -3 outreach/generate_design_partner_emails.py --state PA
+  py -3 outreach/generate_design_partner_emails.py --merge    # from filled worksheet
 """
 
 import argparse
@@ -30,10 +35,14 @@ import pandas as pd
 HERE = Path(__file__).parent
 DRAFTS = HERE / "drafts"
 DRAFTS.mkdir(exist_ok=True)
+WORKSHEET = HERE / "contact_research_worksheet.csv"
 
-# Fill these in once; they're the same across every email.
+# Personal for now - sending from a real, aged Gmail lands in inboxes far more
+# reliably than a brand-new company domain with no sending reputation. No site
+# link on purpose: a plain 1:1 note from a person reads warmer and dodges the
+# link-heavy pattern spam filters key on.
 SENDER = "Arya"
-SIGNOFF_CONTACT = "[your@domain email]  ·  [link to site or one-pager]"
+SENDER_EMAIL = "aryaarun0910@gmail.com"
 
 
 def slug(s: str) -> str:
@@ -51,7 +60,38 @@ def short_agency(name: str) -> str:
                   name).strip() or name
 
 
+def body_for(first_name: str, hook: str) -> str:
+    """The warm, human body. Leads with the agency's own number (the hook),
+    then owns the out-of-the-blue nature and the student angle rather than
+    hiding it - students running a free analysis is a low-risk yes, so the
+    student framing is an asset here, not a liability."""
+    return f"""Hi {first_name},
+
+{hook}
+
+I'll be honest, this is a bit out of the blue. I'm {SENDER}, and my co-founder
+and I are engineering students who got a little obsessed with one problem:
+paratransit and NEMT scheduling burns a lot of money and driver hours on empty
+miles, and almost none of the software explains why it makes the calls it does.
+
+So we built something that does. It forecasts demand and builds the schedule,
+and every decision, including every denial, comes with the specific reason
+behind it. That part is really for you: it makes your ADA and NTD reporting
+defensible when an auditor or a rider asks why.
+
+We're not trying to sell you anything. We're looking for a few agencies to
+learn from, and in return we'll run a free analysis on your own trip data and
+show you exactly where the deadhead is hiding, at no cost and no obligation.
+Could I borrow 15 minutes to walk you through what we already found in your
+public numbers?
+
+Thanks for reading this far,
+{SENDER}
+{SENDER_EMAIL}"""
+
+
 def email_for(r) -> tuple[str, str]:
+    """Placeholder-name draft from an economics row."""
     agency = short_agency(r.agency)
     trips = f"{r.trips:,.0f}"
     cpt = f"${r.cost_per_trip:,.2f}"
@@ -71,53 +111,81 @@ def email_for(r) -> tuple[str, str]:
                 f"trips at {cpt} per trip. We pulled every US agency's numbers "
                 f"and yours stood out enough that we wanted to reach out.")
 
-    body = f"""Hi [FIRST NAME],
-
-{hook}
-
-I'm {SENDER} - my co-founder and I build explainable demand forecasting and
-scheduling for paratransit and NEMT. Not a black-box optimizer: every
-scheduling decision and every denial comes with the specific reason behind
-it, which also makes your ADA and NTD reporting defensible when an auditor
-or a rider asks.
-
-We're choosing a small number of agencies to work with closely as design
-partners. Could I show you what we found in your public numbers on a
-15-minute call - and, if it's useful, run a free analysis on your own trip
-data to find exactly where the deadhead is hiding?
-
-{SENDER}
-{SIGNOFF_CONTACT}"""
-    return subject, body
+    return subject, body_for("[FIRST NAME]", hook)
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--top", type=int, default=40)
-    ap.add_argument("--state", help="filter to a state abbreviation")
-    args = ap.parse_args()
-
+def run_placeholder(top: int, state: str | None) -> None:
     df = pd.read_csv(HERE.parent / "ntd" / "agency_economics.csv",
                      dtype={"ntd_id": str})
     df = df[df.report_year == 2024].copy()
-    if args.state:
-        df = df[df.state == args.state.upper()]
-    # rank by the dollar hook where available, else by trips
+    if state:
+        df = df[df.state == state.upper()]
     df["rank_val"] = df.value_10pct_deadhead_cut.fillna(0)
-    df = df.sort_values(["rank_val", "trips"], ascending=False).head(args.top)
+    df = df.sort_values(["rank_val", "trips"], ascending=False).head(top)
 
     index_rows = []
     for r in df.itertuples():
         subject, body = email_for(r)
         fname = f"{r.state}_{slug(r.agency)}.txt"
         (DRAFTS / fname).write_text(f"{subject}\n\n{body}\n", encoding="utf-8")
-        index_rows.append({"file": fname, "agency": r.agency,
-                           "city": r.city, "state": r.state,
-                           "subject": subject})
+        index_rows.append({"file": fname, "agency": r.agency, "city": r.city,
+                           "state": r.state, "subject": subject})
 
     idx = pd.DataFrame(index_rows)
     idx.to_csv(DRAFTS / "_index.csv", index=False)
-    print(f"wrote {len(idx)} personalized drafts to {DRAFTS}/")
-    print(f"index: {DRAFTS / '_index.csv'}")
-    print("\nEach still needs: [FIRST NAME] (find the ops/mobility manager on "
-          "LinkedIn) and the sender contact line filled in.")
+    print(f"wrote {len(idx)} placeholder drafts to {DRAFTS}/")
+    print("Each still needs [FIRST NAME] and a recipient. Fill the worksheet "
+          "and re-run with --merge to get ready-to-send drafts.")
+
+
+def run_merge() -> None:
+    if not WORKSHEET.exists():
+        raise SystemExit(f"no worksheet at {WORKSHEET} - run "
+                         f"build_contact_worksheet.py first, then fill in "
+                         f"contact_name / contact_email.")
+    df = pd.read_csv(WORKSHEET)
+
+    def filled(v) -> bool:
+        return pd.notna(v) and str(v).strip() != ""
+
+    ready = df[df.contact_email.apply(filled)].copy()
+    missing = len(df) - len(ready)
+
+    index_rows = []
+    for r in ready.itertuples():
+        first = (str(r.contact_name).strip().split()[0]
+                 if filled(r.contact_name) else "there")
+        val = f"${int(r.deadhead_dollars_per_yr):,}"
+        subject = f"{r.short_name}: a {val}/yr question about your paratransit deadhead"
+        body = body_for(first, r.email_hook)
+        fname = f"SEND_{r.state}_{slug(r.agency)}.txt"
+        (DRAFTS / fname).write_text(
+            f"To: {r.contact_email}\nSubject: {subject}\n\n{body}\n",
+            encoding="utf-8")
+        index_rows.append({"file": fname, "to": r.contact_email,
+                           "agency": r.short_name, "state": r.state,
+                           "subject": subject})
+
+    if index_rows:
+        pd.DataFrame(index_rows).to_csv(DRAFTS / "_send_index.csv", index=False)
+    print(f"merged {len(index_rows)} ready-to-send drafts to {DRAFTS}/ "
+          f"(SEND_*.txt)")
+    if missing:
+        print(f"skipped {missing} rows with no contact_email yet - research "
+              f"those, refill the worksheet, and re-run --merge.")
+    print("Review each SEND_*.txt, then paste into Gmail (or push via the "
+          "connector in a fresh session). Send ~10-15/day, not a bulk blast.")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--top", type=int, default=40)
+    ap.add_argument("--state", help="filter to a state abbreviation")
+    ap.add_argument("--merge", action="store_true",
+                    help="build ready-to-send drafts from the filled worksheet")
+    args = ap.parse_args()
+
+    if args.merge:
+        run_merge()
+    else:
+        run_placeholder(args.top, args.state)
