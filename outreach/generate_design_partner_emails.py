@@ -29,6 +29,7 @@ Usage:
 import argparse
 import re
 from pathlib import Path
+from urllib.parse import quote
 
 import pandas as pd
 
@@ -158,13 +159,18 @@ def run_merge() -> None:
         val = f"${int(r.deadhead_dollars_per_yr):,}"
         subject = f"{r.short_name}: a {val}/yr question about your paratransit deadhead"
         body = body_for(first, r.email_hook)
+        # One-click: opens a Gmail compose window with to/subject/body filled.
+        compose = ("https://mail.google.com/mail/?view=cm&fs=1"
+                   f"&to={quote(str(r.contact_email))}"
+                   f"&su={quote(subject)}&body={quote(body)}")
         fname = f"SEND_{r.state}_{slug(r.agency)}.txt"
         (DRAFTS / fname).write_text(
-            f"To: {r.contact_email}\nSubject: {subject}\n\n{body}\n",
+            f"To: {r.contact_email}\nSubject: {subject}\n\n"
+            f"Open in Gmail: {compose}\n\n{body}\n",
             encoding="utf-8")
         index_rows.append({"file": fname, "to": r.contact_email,
                            "agency": r.short_name, "state": r.state,
-                           "subject": subject})
+                           "subject": subject, "gmail_compose_url": compose})
 
     if index_rows:
         pd.DataFrame(index_rows).to_csv(DRAFTS / "_send_index.csv", index=False)
