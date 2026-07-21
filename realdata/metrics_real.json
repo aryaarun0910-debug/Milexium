@@ -9,23 +9,23 @@
     "tune_span": "2025-09-03 to 2025-12-02",
     "cal_span": "2025-12-02 to 2026-03-02",
     "valid_span": "2026-03-02 to 2026-05-31",
-    "model_r2": 0.9854,
-    "model_mae": 20.3975,
-    "model_rmse": 35.9813,
+    "model_r2": 0.9857,
+    "model_mae": 20.1232,
+    "model_rmse": 35.5902,
     "naive_r2": 0.9231,
     "naive_mae": 55.4921,
     "naive_rmse": 82.4795,
     "conformal_target_coverage": 0.9,
     "conformal_decile_only": {
-      "achieved_coverage": 0.9781,
-      "mean_interval_width": 170.369
+      "achieved_coverage": 0.9811,
+      "mean_interval_width": 173.715
     },
     "conformal_hour_bucket_x_decile": {
-      "achieved_coverage": 0.9751,
-      "mean_interval_width": 168.646,
+      "achieved_coverage": 0.977,
+      "mean_interval_width": 171.658,
       "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
     },
-    "best_iteration": 338
+    "best_iteration": 383
   },
   "chicago_tnp": {
     "note": "Real Chicago TNP door-to-door trips, community-area-hour panel",
@@ -37,20 +37,76 @@
     "tune_span": "2025-09-03 to 2025-12-02",
     "cal_span": "2025-12-02 to 2026-03-02",
     "valid_span": "2026-03-02 to 2026-05-31",
-    "model_r2": 0.9657,
-    "model_mae": 15.8194,
-    "model_rmse": 48.2405,
+    "model_r2": 0.9656,
+    "model_mae": 15.8201,
+    "model_rmse": 48.2529,
     "naive_r2": 0.9339,
     "naive_mae": 25.0766,
     "naive_rmse": 66.9442,
     "conformal_target_coverage": 0.9,
     "conformal_decile_only": {
-      "achieved_coverage": 0.9452,
-      "mean_interval_width": 92.401
+      "achieved_coverage": 0.9438,
+      "mean_interval_width": 91.952
     },
     "conformal_hour_bucket_x_decile": {
-      "achieved_coverage": 0.9425,
-      "mean_interval_width": 90.921,
+      "achieved_coverage": 0.9409,
+      "mean_interval_width": 90.232,
+      "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
+    },
+    "best_iteration": 599
+  },
+  "mta_bus": {
+    "note": "Real MTA bus AFC (fare-payment) ridership, route-hour panel",
+    "n_train": 22106736,
+    "n_tune": 946080,
+    "n_cal": 946080,
+    "n_valid": 946080,
+    "train_span": "2020-01-01 to 2025-10-17",
+    "tune_span": "2025-10-17 to 2026-01-15",
+    "cal_span": "2026-01-15 to 2026-04-15",
+    "valid_span": "2026-04-15 to 2026-07-14",
+    "model_r2": 0.9492,
+    "model_mae": 14.991,
+    "model_rmse": 39.4089,
+    "naive_r2": 0.8262,
+    "naive_mae": 29.9147,
+    "naive_rmse": 72.918,
+    "conformal_target_coverage": 0.9,
+    "conformal_decile_only": {
+      "achieved_coverage": 0.9202,
+      "mean_interval_width": 74.857
+    },
+    "conformal_hour_bucket_x_decile": {
+      "achieved_coverage": 0.9199,
+      "mean_interval_width": 75.187,
+      "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
+    },
+    "best_iteration": 599
+  },
+  "mta_subway": {
+    "note": "Real MTA subway AFC (fare-payment) ridership, station-hour panel",
+    "n_train": 21540384,
+    "n_tune": 924480,
+    "n_cal": 924480,
+    "n_valid": 924480,
+    "train_span": "2020-01-01 to 2025-10-11",
+    "tune_span": "2025-10-11 to 2026-01-09",
+    "cal_span": "2026-01-09 to 2026-04-09",
+    "valid_span": "2026-04-09 to 2026-07-08",
+    "model_r2": 0.949,
+    "model_mae": 42.9342,
+    "model_rmse": 172.7587,
+    "naive_r2": 0.8602,
+    "naive_mae": 105.8264,
+    "naive_rmse": 286.1202,
+    "conformal_target_coverage": 0.9,
+    "conformal_decile_only": {
+      "achieved_coverage": 0.9172,
+      "mean_interval_width": 197.119
+    },
+    "conformal_hour_bucket_x_decile": {
+      "achieved_coverage": 0.9165,
+      "mean_interval_width": 194.666,
       "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
     },
     "best_iteration": 599
