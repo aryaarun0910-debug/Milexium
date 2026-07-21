@@ -2,6 +2,30 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the recollection file; docs/yc-plan-jul25.md is the forward-looking backlog.
 
+## 2026-07-21 (evening): GPU acceleration, Kaggle live runs, nationwide data expansion
+
+Discovered two capabilities that were sitting unused: (1) XGBoost GPU training works on this laptop's old MX350 (PyTorch's CUDA kernels don't support sm_61, but XGBoost's do), and (2) the Kaggle API is fully authenticated under account aryaarun07 with an existing token. Acted on both.
+
+**GPU everywhere local:** switched all four real-data XGBoost models and the pretrain/finetune experiment to `device="cuda"`. Also added MTA bus (438 routes) and MTA subway (428 stations) models to train_real_models.py, so it now trains all four real modalities (AAR, Chicago, MTA bus, MTA subway) in one run.
+
+**Kaggle live, not just a notebook to hand off:** uploaded the real panels as a Kaggle Dataset (aryaarun07/transitpulse-real-panels) and pushed the transformer notebook as an actual running kernel with `--accelerator NvidiaTeslaT4`. First run surfaced two real bugs the local CPU smoke test could not: (a) Kaggle silently decompresses uploaded .csv.gz to .csv, so every attached panel lookup failed (fixed with a find_panel helper checking both suffixes); (b) TEST_MODE's 6-month window couldn't fit the 90+90-day tune/test reservation, leaving zero training windows (fixed by scaling TUNE_DAYS/TEST_DAYS down under TEST_MODE). The first completed run gave an honest bad number: pretrain on TLC-alone got R2 -0.56 vs naive 0.91 on the untouched test set. That is a confounded, incomplete run (TLC-only, no multi-city pretrain, no AAR finetune, all because of the .gz bug), not a fair test of the design - re-running with the fix. Whatever the corrected number is, it ships next to the naive baseline, win or lose.
+
+**Nationwide data expansion (the "more data than people can get" push, all resumable through a laptop shutdown):**
+- NTD Monthly nationwide demand-response panel: 637 agencies, 2002-2026, 2.18 BILLION paratransit trips (realdata/panels/ntd_monthly_dr.csv.gz, ~2 MB gzipped, committed). This is the broadest public paratransit demand data that exists - every reporting US agency's monthly ridership time series. Complements AAR's hourly single-agency depth with national breadth. Not yet modeled.
+- NYC TLC Yellow + Green taxi download (realdata/fetch_tlc_yellow_green.py, raw_tlc_taxi/ gitignored): 2011-present, 15+ years, two more real NYC demand modalities. Running at shutdown; resume by rerunning the script (skips existing files).
+- NOAA NCEI HOURLY weather for NYC + Chicago (realdata/fetch_weather_hourly.py): upgrades the daily weather feature to hourly. Uses the token-free bulk LCD CSVs; a CDO token is saved in .env for any future API use.
+
+**Honest scope note:** true trip/stop-level APC data is NOT public - agencies hold it. There is no download for it; it becomes accessible through a pilot. The nationwide NTD monthly panel is the closest public equivalent and is now captured. Did not launch low-value downloads (GTFS schedules, tract census) just to fill the window.
+
+**Resume after shutdown (all resumable, rerun from repo root):**
+```
+py -3 realdata/fetch_tlc_yellow_green.py   # continues taxi download
+py -3 realdata/fetch_weather_hourly.py     # re-fetches hourly weather (one-shot, fast)
+py -3 realdata/train_real_models.py        # GPU, all 4 models -> metrics_real.json
+py -3 realdata/pretrain_finetune_xgboost.py # GPU transfer-learning experiment
+```
+Kaggle transformer: check https://www.kaggle.com/code/aryaarun07/transitpulse-transformer-test-mode; when the TEST_MODE run is validated, flip TEST_MODE=False and push the full-scale run. Optional WMATA key still pending from Arya for DC ridership.
+
 ## 2026-07-21 (later): code review found real bugs, all fixed and verified
 
 An external review of commit 14dd8b9 (the one pushed for Codex to look at) found six real issues, five of them substantive enough to actually change numbers or claims. All verified against the code before fixing (not taken on faith), then fixed, then re-verified. This entry is the record of what was wrong and what changed.
