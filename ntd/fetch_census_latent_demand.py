@@ -1,13 +1,17 @@
-"""Pull Census ACS 5-year data: the latent-paratransit-demand layer.
+"""Pull Census ACS 5-year data: a latent-mobility-need proxy layer.
 
-Every NTD number so far describes CURRENT ridership. This pulls the
-population that IS the addressable market regardless of current ridership:
+Every NTD number so far describes CURRENT ridership. This pulls a proxy for
+population that MAY have mobility needs regardless of current ridership:
 county-level share of residents 65+, share with a disability, and share of
-households with no vehicle available. No incumbent in this space appears to
-publish an addressable-population view; it is public, free (no API key
-needed for this volume), and reusable for both market sizing and outreach
-("your county has N residents who are ADA-paratransit-eligible by age or
-disability alone, and you're serving M of them").
+households with no vehicle available. This is NOT an ADA-paratransit-eligible
+headcount: 49 CFR Part 37 Subpart F defines eligibility by functional
+inability to use fixed-route service (and is often trip-specific), not by
+age or disability status alone; age in particular is explicitly not a
+qualifying criterion. Treat these figures as a directional latent-need
+signal for market sizing and outreach framing ("your county has N residents
+who are 65+ or report a disability, a population segment worth understanding
+even though it is not the same as your ADA-eligible ridership base"), never
+as a legal eligibility count.
 
 Source: ACS 5-year Data Profile, 2023 vintage, table DP02/DP04/DP05, county
 geography (best match to how most demand-response agencies define service

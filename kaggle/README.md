@@ -4,6 +4,16 @@ The laptop handles panels and gradient-boosted models; anything needing a
 GPU trains on Kaggle (weekly free GPU quota, internet-enabled notebooks,
 ~55 GB working disk, fast CDN bandwidth to the TLC corpus).
 
+**Status:** the coverage-aware window logic was verified locally with plain
+pandas/numpy against synthetic multi-dataset data, and the full
+architecture/training loop (forward pass, backward pass, loss, the
+train/tune/test split, non-crossing quantiles) was smoke-tested end to end
+on CPU with tiny synthetic data — confirmed to run without error. That is
+a different claim from "this has been run on the real data": the actual
+Kaggle GPU run, which is what produces the metrics JSONs referenced below,
+has not happened yet. Do not quote a number from this notebook until those
+files exist on disk from a real run.
+
 ## transitpulse_transformer.ipynb: pretrain, then finetune
 
 Why not one flat model on everything: our product target is paratransit
@@ -28,10 +38,36 @@ stages:
 
 Architecture: d_model 256, 8 heads, 6 layers, dual head (Poisson mean rate
 for the point forecast, quantile/pinball head for native 10/50/90
-percentile uncertainty, non-crossing quantiles enforced). Roughly
-15-20M parameters depending on final vocabulary size — scaled up from an
-earlier single-dataset ~1M-param version now that the pretraining corpus
-justifies it.
+percentile uncertainty, non-crossing quantiles enforced), 9 input channels
+per hour (log-count, 4 calendar, 4 weather). Parameter count, computed
+analytically from PyTorch's documented layer shapes (not guessed): the
+backbone is 4,852,320 params (789,760 per encoder layer x 6, plus
+projection and heads); entity + dataset embeddings add 68,096 (TLC only,
+265 zones) up to 294,912 (all four mass-transit datasets plus the AAR
+finetune, 1,147 entities across 5 dataset ids). Total: 4.92M to 5.15M
+depending on which datasets are attached — nowhere near the ~15-20M an
+earlier version of this README stated without computing it. The notebook
+also prints the exact runtime figure (`n_params` in both metrics JSONs);
+trust that over any number in prose, here included.
+
+**Two correctness fixes as of 2026-07-21** (see docs/JOURNAL.md for the
+full review that found these):
+- **Coverage masking:** an entity's training/tuning/test windows are now
+  restricted to its own real observed date range. The earlier version
+  built one shared clock across all attached datasets and zero-filled
+  everything outside a dataset's actual coverage, which meant a dataset
+  starting later than another (e.g. MTA bus from 2020 while TLC runs from
+  2019) got FABRICATED zero-demand training examples for the gap.
+- **Train/tune/test, not train/valid:** checkpoint selection during
+  training now uses a `tune` split; final reported metrics use a separate
+  `test` split that is never touched during training. The earlier version
+  reused one holdout for both, which reports tuning-set performance
+  dressed up as holdout performance.
+- **Weather is now actually wired in.** An earlier version of this
+  notebook claimed "weather sensitivity" as something the model learns
+  without ever loading `weather_daily.csv` into a feature. It's now a real
+  4-channel input (tmax/tmin/precip/snow, city-indexed by dataset,
+  optional and zero-filled if the weather file isn't attached).
 
 ## How to run
 
@@ -55,9 +91,11 @@ justifies it.
 
 ## Evaluation protocol (identical to the rest of the repo)
 
-Last 90 days held out, seasonal-naive (same hour, 7 days earlier) reported
-next to every model result. The finetuned AAR result must be compared
-against realdata/metrics_real.json's XGBoost result on the same data and
-the same holdout window (R2 0.987 vs 0.923 naive) before claiming the
-transformer is better. Report both, always, whichever wins — the honest
-comparison is the point, not the bigger model.
+Three-way split: train, tune (checkpoint selection only), test (final
+holdout, touched exactly once). Seasonal-naive (same hour, 7 days earlier)
+reported next to every model result. The finetuned AAR result must be
+compared against realdata/metrics_real.json's XGBoost result on the same
+data and a comparable holdout window (R2 0.985 vs 0.923 naive, clean
+train/tune/cal/valid split) before claiming the transformer is better.
+Report both, always, whichever wins — the honest comparison is the point,
+not the bigger model.

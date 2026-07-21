@@ -1,27 +1,30 @@
 {
   "nyc_access_a_ride": {
     "note": "Real NYC Access-A-Ride paratransit bookings, borough-hour panel",
-    "n_train": 82560,
+    "n_train": 71760,
+    "n_tune": 10800,
     "n_cal": 10800,
     "n_valid": 10800,
-    "train_span": "2024-01-01 to 2025-12-02",
+    "train_span": "2024-01-01 to 2025-09-03",
+    "tune_span": "2025-09-03 to 2025-12-02",
+    "cal_span": "2025-12-02 to 2026-03-02",
     "valid_span": "2026-03-02 to 2026-05-31",
-    "model_r2": 0.9867,
-    "model_mae": 19.7271,
-    "model_rmse": 34.3442,
+    "model_r2": 0.9854,
+    "model_mae": 20.3975,
+    "model_rmse": 35.9813,
     "naive_r2": 0.9231,
     "naive_mae": 55.4921,
     "naive_rmse": 82.4795,
     "conformal_target_coverage": 0.9,
     "conformal_decile_only": {
-      "achieved_coverage": 0.9811,
-      "mean_interval_width": 174.534
+      "achieved_coverage": 0.9781,
+      "mean_interval_width": 170.369
     },
     "conformal_hour_bucket_x_decile": {
-      "achieved_coverage": 0.9778,
-      "mean_interval_width": 174.676,
+      "achieved_coverage": 0.9751,
+      "mean_interval_width": 168.646,
       "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
     },
-    "best_iteration": 439
+    "best_iteration": 338
   }
 }

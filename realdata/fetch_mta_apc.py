@@ -1,10 +1,14 @@
-"""Fetch real APC-sourced transit ridership: MTA subway and bus, hourly.
+"""Fetch real AFC-sourced transit ridership: MTA subway and bus, hourly.
 
-Both datasets are fare-gate/farebox derived ridership (the closest public
-analog to bus APC counts and subway AFC counts), hourly by route/station,
-NYC MTA, 2020 to present. This is the phase-2 (fixed-route/campus/hub)
-evidence base: the same explainable-demand engine generalizes past
-paratransit, and this is real APC-scale data to prove it on.
+Both datasets are fare-payment (OMNY/MetroCard tap) derived ridership, i.e.
+AFC (automated fare collection), NOT onboard-sensor APC data. It is a
+legitimate real ridership proxy, hourly by route/station, NYC MTA, 2020 to
+present, but should not be marketed as APC-scale proof without this
+qualification: a rider entering on a transfer, a fare evasion, or a
+multi-rider tap can all diverge from actual physical boardings. This is
+the phase-2 (fixed-route/campus/hub) evidence base: the same
+explainable-demand engine generalizes past paratransit, and this is real
+fare-payment-scale data to prove it on.
 
 Datasets (data.ny.gov):
 - kv7t-n8in  MTA Bus Hourly Ridership: 2020-2024   (447M raw rows)
@@ -14,10 +18,19 @@ Datasets (data.ny.gov):
 
 Month-level group-bys are too heavy for Socrata on tables this size (same
 failure mode as Chicago's 2018-2022 TNP table), so this chunks by DAY,
-summing ridership across payment methods server-side. One CSV per month,
+summing ridership across payment methods server-side. A month file is
+only written once every one of its days has succeeded; if any day fails
+after retries, the whole month is left unwritten so the next run retries
+it in full (not marked complete with a silent gap). One CSV per month,
 skip-if-exists, safe to kill and resume:
 
   py -3 realdata/fetch_mta_apc.py
+
+Known limitation: once a month file is written, it is never topped up. The
+current (in-progress) month is written with whatever end-date boundary
+applied on the day it first fully completed; later days in that same
+month are not backfilled automatically. Delete that one month's file and
+rerun to pick up more recent days.
 
 Output:
   realdata/panels/mta_bus_route_hour.csv.gz    (date, hour, route, riders)
@@ -58,7 +71,10 @@ FEEDS = {
 }
 
 
-def fetch_day(ds: str, day: date, zone_col: str, extra_group: str) -> pd.DataFrame:
+def fetch_day(ds: str, day: date, zone_col: str, extra_group: str) -> pd.DataFrame | None:
+    """Returns None (not an empty DataFrame) on failure, so a failed day is
+    never indistinguishable from a legitimately empty response and can
+    never silently pass as "fetched" to the caller."""
     url = f"{BASE}/{ds}.csv"
     select = (f"date_extract_hh(transit_timestamp) as hour,"
               f"{zone_col} as zone,sum(ridership) as riders"
@@ -81,8 +97,8 @@ def fetch_day(ds: str, day: date, zone_col: str, extra_group: str) -> pd.DataFra
             time.sleep(10 * (attempt + 1))
             if attempt == 4:
                 print(f"  gave up on {day}: {e}", flush=True)
-                return pd.DataFrame()
-    return pd.DataFrame()
+                return None
+    return None
 
 
 def month_starts(start: date, end: date):
@@ -114,6 +130,12 @@ def run_feed(name: str, spec: dict):
                 futs = [ex.submit(fetch_day, ds, d, spec["zone_col"],
                                   spec["extra_group"]) for d in days]
                 parts = [f.result() for f in futs]
+            n_failed = sum(p is None for p in parts)
+            if n_failed:
+                print(f"{name} {ds} {m0:%Y-%m}: {n_failed}/{len(days)} days "
+                      f"failed, NOT marking complete, will retry next run "
+                      f"({time.time() - t0:.0f}s)", flush=True)
+                continue
             month = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
             month.to_csv(dest, index=False)
             print(f"{name} {ds} {m0:%Y-%m}: {len(month)} rows, "

@@ -21,7 +21,7 @@ Everything here is real, public, reproducible. No synthetic rows.
 py -3 realdata/fetch_nyc_aar.py         # AAR hourly + daily panels
 py -3 realdata/fetch_weather.py         # Open-Meteo daily, Chicago + NYC
 py -3 realdata/fetch_chicago_panel.py   # Chicago zone-hour panel (concurrent, day-chunked, resumable)
-py -3 realdata/fetch_mta_apc.py         # MTA bus + subway hourly ridership (real APC/AFC data, resumable)
+py -3 realdata/fetch_mta_apc.py         # MTA bus + subway hourly ridership (real AFC/fare-payment data, resumable)
 py -3 realdata/fetch_tlc_parquet.py     # bulk FHVHV parquet (resumable)
 py -3 realdata/aggregate_tlc.py         # DuckDB: parquet -> zone-hour panel
 py -3 realdata/train_real_models.py     # models + conformal + metrics_real.json
@@ -30,8 +30,13 @@ py -3 realdata/backtest_and_explain.py  # walk-forward backtest + SHAP explainab
 
 ## Modeling protocol (same as the synthetic pipeline, deliberately)
 
-Strict temporal split: last 90 days validation, prior 90 days calibration,
-rest training. XGBoost count:poisson with calendar, weather, and
+Strict temporal split into four non-overlapping 90-day-or-longer blocks:
+train, tune (XGBoost's eval_set for early stopping only), cal (split-conformal
+calibration only, never seen during fit), valid (final reporting, never
+touched by fit or calibration). Earlier versions of this pipeline reused the
+calibration block for early stopping too, which forfeits the clean
+split-conformal exchangeability guarantee; fixed 2026-07-21, see
+docs/JOURNAL.md. XGBoost count:poisson with calendar, weather, and
 demand-history features (lags available at day-ahead forecast time).
 Always reported against a seasonal-naive baseline: mean of the same
 (zone, hour, day-of-week) slot over the pre-validation window.
@@ -40,11 +45,15 @@ Split-conformal prediction intervals (Mondrian, binned by predicted decile,
 
 ## Current results (realdata/metrics_real.json)
 
-NYC Access-A-Ride, borough-hour, 90-day holdout ending 2026-05-31:
-- Model R2 0.987, MAE 19.7, RMSE 34.3
+NYC Access-A-Ride, borough-hour, 90-day holdout ending 2026-05-31 (clean
+train/tune/cal/valid split):
+- Model R2 0.985, MAE 20.4, RMSE 36.0
 - Seasonal-naive R2 0.923, MAE 55.5, RMSE 82.5
-- Conformal: 90 percent target, 98.1 percent achieved (conservative; the
+- Conformal: 90 percent target, 97.8 percent achieved (conservative; the
   calibration window straddled winter)
+- These numbers are materially unchanged from the pre-fix run (R2 0.987 vs
+  0.985), which is reassuring: the original result was not an artifact of
+  the tune/cal conflation, just not rigorously isolated from it.
 
 Without the demand-history lags, the calendar-plus-weather model ties the
 naive baseline (R2 0.919 vs 0.921). That finding is kept on purpose: it is

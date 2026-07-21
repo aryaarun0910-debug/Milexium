@@ -7,8 +7,12 @@ pickup community area per hour) so the laptop never downloads raw trip rows.
 Month-level group-bys time out on the 2018-2022 dataset (Socrata gives a
 grouped query a fixed compute window and 200M rows do not fit), so we chunk
 BY DAY: each day's group-by touches under a million rows and returns in
-seconds. Progress persists as one CSV per month in monthly/ and completed
-months are skipped, so the script is safe to kill and re-run any time:
+seconds. A month file is only written once every one of its days has
+succeeded; if any day fails after retries, the whole month is left
+unwritten so the next run retries it in full rather than marking it
+complete with a silent gap. Progress persists as one CSV per month in
+monthly/ and completed months are skipped, so the script is safe to kill
+and re-run any time:
 
   py -3 realdata/fetch_chicago_panel.py
 
@@ -16,6 +20,12 @@ Datasets (data.cityofchicago.org):
 - m6dm-c72p  Trips 2018-2022
 - n26f-ihde  Trips 2023-2024
 - 6dvr-xwnh  Trips 2025-
+
+Known limitation: once a month file is written, it is never topped up. The
+current (in-progress) month is written with whatever end-date boundary
+applied on the day it first fully completed; later days in that same
+month are not backfilled automatically. Delete that one month's file and
+rerun to pick up more recent days.
 
 Final output (written/refreshed whenever all months present so far are done):
 realdata/panels/chicago_tnp_zone_hour.csv.gz
@@ -45,7 +55,10 @@ SELECT = ("date_extract_hh(trip_start_timestamp) as hour,"
           "pickup_community_area as area,count(*) as trips")
 
 
-def fetch_day(ds: str, day: date) -> pd.DataFrame:
+def fetch_day(ds: str, day: date) -> pd.DataFrame | None:
+    """Returns None (not an empty DataFrame) on failure, so a failed day is
+    never indistinguishable from a legitimately empty response and can
+    never silently pass as "fetched" to the caller."""
     url = f"https://data.cityofchicago.org/resource/{ds}.csv"
     params = {
         "$select": SELECT,
@@ -65,8 +78,8 @@ def fetch_day(ds: str, day: date) -> pd.DataFrame:
         except Exception as e:
             print(f"  retry {attempt + 1} for {day} ({e})", flush=True)
             time.sleep(10 * (attempt + 1))
-    print(f"  gave up on {day}, leaving a gap", flush=True)
-    return pd.DataFrame(columns=["date", "hour", "area", "trips"])
+    print(f"  gave up on {day} after 5 attempts", flush=True)
+    return None
 
 
 def month_days(ds_end: date, m0: date):
@@ -108,8 +121,14 @@ if __name__ == "__main__":
             t0 = time.time()
             day_list = list(month_days(min(end, date.today()), m0))
             with ThreadPoolExecutor(max_workers=4) as ex:
-                days = list(ex.map(lambda d: fetch_day(ds, d), day_list))
-            month = pd.concat(days, ignore_index=True)
+                results = list(ex.map(lambda d: fetch_day(ds, d), day_list))
+            n_failed = sum(r is None for r in results)
+            if n_failed:
+                print(f"{ds} {m0:%Y-%m}: {n_failed}/{len(day_list)} days "
+                      f"failed, NOT marking complete, will retry next run "
+                      f"({time.time() - t0:.0f}s)", flush=True)
+                continue
+            month = pd.concat(results, ignore_index=True)
             month.to_csv(dest, index=False)
             print(f"{ds} {m0:%Y-%m}: {len(month)} rows, "
                   f"{month.trips.sum():,} trips "

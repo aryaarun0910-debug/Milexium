@@ -10,9 +10,15 @@ holdout, seasonal-naive baseline, count:poisson XGBoost):
    demand (about 300M trips). Structurally the same forecasting problem at
    77-zone scale; proves the recipe holds on big real data.
 
-Split per model: last 90 days = validation, prior 90 days = calibration
-(for split-conformal intervals), everything before = training.
-The seasonal-naive baseline gets train + calibration data (the generous,
+Split per model, four non-overlapping 90-day-or-longer blocks so the
+conformal calibration set is never touched by model fitting (using it for
+both early stopping and calibration would forfeit the clean split-conformal
+exchangeability guarantee):
+  train  = everything before tune
+  tune   = used ONLY as XGBoost's eval_set for early stopping
+  cal    = used ONLY for conformal calibration, never seen during fit
+  valid  = last 90 days, final reporting, never touched by fit or calibration
+The seasonal-naive baseline gets train + tune + cal data (the generous,
 honest choice). Conformal: Mondrian split-conformal, binned by predicted
 decile, target 90 percent coverage; we report achieved coverage on the
 untouched validation window.
@@ -160,7 +166,9 @@ def run(name, panel, zone_col, weather_city, extra_note):
     d_max = panel.date.max()
     v0 = d_max - pd.Timedelta(days=90)
     c0 = v0 - pd.Timedelta(days=90)
-    train = panel[panel.date <= c0].dropna(subset=["lag14", "roll28"])
+    t0 = c0 - pd.Timedelta(days=90)
+    train = panel[panel.date <= t0].dropna(subset=["lag14", "roll28"])
+    tune = panel[(panel.date > t0) & (panel.date <= c0)]
     cal = panel[(panel.date > c0) & (panel.date <= v0)]
     valid = panel[panel.date > v0]
 
@@ -171,13 +179,13 @@ def run(name, panel, zone_col, weather_city, extra_note):
         enable_categorical=True, early_stopping_rounds=30,
         eval_metric="poisson-nloglik")
     model.fit(train[features], train.y,
-              eval_set=[(cal[features], cal.y)], verbose=False)
+              eval_set=[(tune[features], tune.y)], verbose=False)
 
     pred_cal = model.predict(cal[features])
     pred = model.predict(valid[features])
 
-    # Seasonal-naive: (zone, hour, dow) mean over train + calibration
-    hist = pd.concat([train, cal])
+    # Seasonal-naive: (zone, hour, dow) mean over train + tune + calibration
+    hist = pd.concat([train, tune, cal])
     base = (hist.groupby([zone_col, "hour", "dow"], observed=True).y.mean()
             .rename("naive").reset_index())
     vb = valid.merge(base, how="left", on=[zone_col, "hour", "dow"])
@@ -193,9 +201,11 @@ def run(name, panel, zone_col, weather_city, extra_note):
 
     m = {
         "note": extra_note,
-        "n_train": int(len(train)), "n_cal": int(len(cal)),
-        "n_valid": int(len(valid)),
-        "train_span": f"{panel.date.min().date()} to {c0.date()}",
+        "n_train": int(len(train)), "n_tune": int(len(tune)),
+        "n_cal": int(len(cal)), "n_valid": int(len(valid)),
+        "train_span": f"{panel.date.min().date()} to {t0.date()}",
+        "tune_span": f"{t0.date()} to {c0.date()}",
+        "cal_span": f"{c0.date()} to {v0.date()}",
         "valid_span": f"{v0.date()} to {d_max.date()}",
         "model_r2": round(float(r2_score(valid.y, pred)), 4),
         "model_mae": round(float(mean_absolute_error(valid.y, pred)), 4),
