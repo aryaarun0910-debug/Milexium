@@ -26,5 +26,33 @@
       "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
     },
     "best_iteration": 338
+  },
+  "chicago_tnp": {
+    "note": "Real Chicago TNP door-to-door trips, community-area-hour panel",
+    "n_train": 4592280,
+    "n_tune": 166320,
+    "n_cal": 166320,
+    "n_valid": 166320,
+    "train_span": "2018-11-01 to 2025-09-03",
+    "tune_span": "2025-09-03 to 2025-12-02",
+    "cal_span": "2025-12-02 to 2026-03-02",
+    "valid_span": "2026-03-02 to 2026-05-31",
+    "model_r2": 0.9657,
+    "model_mae": 15.8194,
+    "model_rmse": 48.2405,
+    "naive_r2": 0.9339,
+    "naive_mae": 25.0766,
+    "naive_rmse": 66.9442,
+    "conformal_target_coverage": 0.9,
+    "conformal_decile_only": {
+      "achieved_coverage": 0.9452,
+      "mean_interval_width": 92.401
+    },
+    "conformal_hour_bucket_x_decile": {
+      "achieved_coverage": 0.9425,
+      "mean_interval_width": 90.921,
+      "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
+    },
+    "best_iteration": 599
   }
 }

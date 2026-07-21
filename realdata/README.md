@@ -59,6 +59,17 @@ Without the demand-history lags, the calendar-plus-weather model ties the
 naive baseline (R2 0.919 vs 0.921). That finding is kept on purpose: it is
 why every TransitPulse number ships with the naive comparison.
 
+Chicago TNP, community-area-hour (77 zones), same 90-day holdout, 4.6M
+training rows spanning 2018-11 to 2025-09:
+- Model R2 0.966, MAE 15.8, RMSE 48.2
+- Seasonal-naive R2 0.934, MAE 25.1, RMSE 66.9
+- Conformal: 90 percent target, 94.5 percent achieved (tighter than AAR's,
+  worth investigating why — larger zone count or different demand
+  variance shape are both plausible, not yet checked)
+- A second real city on the same recipe, same honest protocol: the model
+  beats naive by a comparable margin to AAR, which is the actual claim
+  ("this generalizes"), not either single number in isolation.
+
 Walk-forward backtest (4 rolling 90-day folds, expanding training window,
 see backtest_and_explain.py): model R2 0.972 mean (std 0.023) vs naive
 0.919 mean (std 0.025) — consistent across folds including a harder winter
