@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TransitPulse. Every trip, explained.</title>
+<meta name="description" content="Demand prediction and trip scheduling for paratransit and NEMT operators, with a plain-English audit trail for every routing decision.">
+
+<!-- Open Graph. Replace og:image with the absolute URL once the domain is live. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="TransitPulse. Every trip, explained.">
+<meta property="og:description" content="Scheduling your dispatchers can actually trust. Demand prediction and trip scheduling for paratransit and NEMT, with an audit trail for every routing decision.">
+<meta property="og:image" content="/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="TransitPulse. Every trip, explained.">
+<meta name="twitter:description" content="Scheduling your dispatchers can actually trust.">
+<meta name="twitter:image" content="/assets/og.jpg">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2306070a'/%3E%3Cpath d='M5 20 L11 20 L14 10 L18 24 L21 16 L27 16' stroke='%235aa2f0' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#06070a;
+  --text:#f2f4f7;
+  --gray:#c8cdd5;
+  --muted:#8b95a3;
+  --dim:#5b6572;
+  --accent:#2a78d6;
+  --accent-hi:#5aa2f0;
+  --amber:#e8833a;
+  --green:#3dbf7e;
+  --line:rgba(255,255,255,.10);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:#000;
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+  line-height:1.6;
+}
+::selection{background:rgba(42,120,214,.35)}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+
+/* ---------- liquid glass ---------- */
+.liquid-glass{
+  background:rgba(0,0,0,.4);
+  background-blend-mode:luminosity;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  border:none;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.1);
+  position:relative;
+  overflow:hidden;
+}
+.liquid-glass::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  padding:1.4px;
+  background:linear-gradient(180deg,
+    rgba(255,255,255,.3) 0%, rgba(255,255,255,.1) 20%,
+    rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+    rgba(255,255,255,.1) 80%, rgba(255,255,255,.3) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  pointer-events:none;
+}
+
+/* ---------- cursor ---------- */
+.cursor-dot,.cursor-ring{
+  position:fixed;top:0;left:0;z-index:200;pointer-events:none;
+  border-radius:50%;transform:translate(-50%,-50%);
+}
+.cursor-dot{width:6px;height:6px;background:var(--accent-hi)}
+.cursor-ring{
+  width:34px;height:34px;border:1px solid rgba(90,162,240,.5);
+  transition:width .25s,height .25s,border-color .25s,background .25s;
+}
+.cursor-ring.hot{width:52px;height:52px;border-color:rgba(90,162,240,.9);background:rgba(42,120,214,.08)}
+@media(pointer:coarse){.cursor-dot,.cursor-ring{display:none}}
+
+/* ---------- progress ---------- */
+.progress{position:fixed;top:0;left:0;height:2px;width:100%;z-index:100;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--accent),var(--accent-hi))}
+
+/* ---------- nav ---------- */
+.nav-outer{
+  position:fixed;top:0;left:0;right:0;z-index:60;
+  padding:24px 24px 0;
+}
+@media(min-width:768px){.nav-outer{padding:24px 48px 0}}
+@media(min-width:1024px){.nav-outer{padding:24px 64px 0}}
+.navbar{
+  border-radius:12px;
+  padding:8px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.brand svg{display:block}
+.nav-links{display:none;gap:32px;align-items:center;position:absolute;left:50%;transform:translateX(-50%)}
+@media(min-width:768px){.nav-links{display:flex}}
+.nav-links a{font-size:14px;color:var(--text);transition:color .25s}
+.nav-links a:hover{color:var(--gray)}
+.btn-white{
+  display:inline-block;background:#fff;color:#000;
+  padding:8px 24px;border-radius:8px;font-size:14px;font-weight:500;
+  transition:background .25s;border:none;cursor:pointer;
+}
+.btn-white:hover{background:#e8e8e8}
+.btn-white.lg{padding:12px 32px;font-size:15px}
+.btn-glass{
+  display:inline-block;border-radius:8px;padding:12px 32px;
+  font-size:15px;font-weight:500;color:#fff;cursor:pointer;
+  border:1px solid rgba(255,255,255,.2);
+  transition:background .3s,color .3s;
+}
+.btn-glass:hover{background:#fff;color:#000}
+.btn-white,.btn-glass{will-change:transform}
+
+/* ---------- hero ---------- */
+.hero{position:relative;height:100vh;height:100svh;overflow:hidden}
+#net{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hero-content{
+  position:relative;z-index:2;height:100%;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 24px 48px;
+}
+@media(min-width:768px){.hero-content{padding:0 48px 48px}}
+@media(min-width:1024px){.hero-content{padding:0 64px 64px;display:grid;grid-template-columns:1fr 1fr;align-items:end}}
+.hero-left h1{
+  font-size:clamp(36px,6.4vw,72px);
+  font-weight:400;letter-spacing:-.04em;line-height:1.08;
+  margin-bottom:16px;
+}
+.hero-left h1 .ch{display:inline-block;opacity:0;transform:translateX(-18px);transition:opacity .5s,transform .5s}
+.hero-left h1 .ch.on{opacity:1;transform:translateX(0)}
+.hero-sub{
+  font-size:clamp(16px,1.6vw,18px);color:var(--gray);
+  max-width:560px;margin-bottom:20px;
+  opacity:0;transition:opacity 1s;
+}
+.hero-btns{display:flex;flex-wrap:wrap;gap:16px;opacity:0;transition:opacity 1s}
+.hero-right{
+  display:flex;align-items:flex-end;justify-content:flex-start;
+  margin-top:28px;
+}
+@media(min-width:1024px){.hero-right{justify-content:flex-end;margin-top:0}}
+.hero-tag{
+  border:1px solid rgba(255,255,255,.2);
+  padding:12px 24px;border-radius:12px;
+  font-size:clamp(18px,2vw,24px);font-weight:300;letter-spacing:-.01em;
+  opacity:0;transition:opacity 1s;
+}
+.fade-on{opacity:1 !important}
+
+/* ---------- sections ---------- */
+section{position:relative}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+@media(min-width:768px){.wrap{padding:0 48px}}
+.chapter{
+  font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent-hi);margin-bottom:18px;display:flex;align-items:center;gap:14px;
+}
+.chapter::before{content:'';width:34px;height:1px;background:var(--accent)}
+h2{font-size:clamp(30px,4vw,50px);font-weight:400;letter-spacing:-.035em;line-height:1.12}
+.lede{color:var(--muted);max-width:640px;margin-top:18px;font-size:17px}
+.reveal{opacity:0;transform:translateY(36px)}
+
+/* ---------- problem ---------- */
+.problem{padding:20vh 0 12vh;background:linear-gradient(#000,#06070a 30%)}
+.statement{
+  font-size:clamp(26px,3.6vw,44px);font-weight:400;letter-spacing:-.03em;line-height:1.3;
+  max-width:940px;margin:0 auto 16vh;padding:0 24px;
+}
+.statement .w{opacity:.13;transition:opacity .3s}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:60px;perspective:1200px}
+.tilt{transform-style:preserve-3d;will-change:transform}
+.card{
+  border-radius:16px;padding:32px 28px;position:relative;
+}
+.card .glare{
+  position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  background:radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),rgba(90,162,240,.13),transparent 60%);
+  transition:opacity .3s;
+}
+.card:hover .glare{opacity:1}
+.card .num{font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:18px}
+.card h3{font-size:19px;font-weight:500;letter-spacing:-.015em;margin-bottom:12px}
+.card p{color:var(--muted);font-size:14.5px}
+
+/* ---------- product ---------- */
+.product{padding:14vh 0;background:#06070a}
+.product-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:80px;perspective:1400px}
+.product-grid.rev .copy{order:2}
+.product-grid .copy h3{font-size:26px;font-weight:500;letter-spacing:-.02em;margin-bottom:14px}
+.product-grid .copy p{color:var(--muted);font-size:15.5px}
+.tag{
+  display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;padding:5px 10px;border-radius:6px;margin-bottom:16px;
+  border:1px solid var(--line);color:var(--muted);
+}
+.tag.real{border-color:rgba(61,191,126,.4);color:var(--green)}
+.tag.synth{border-color:rgba(232,131,58,.4);color:var(--amber)}
+
+.audit,.shap{
+  border-radius:16px;padding:28px;font-size:14px;
+  background:rgba(10,13,19,.75);
+}
+.audit .k{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--accent-hi);text-transform:uppercase}
+.audit .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.audit .head .lg{color:var(--dim);font-family:var(--mono);font-size:11px}
+.audit h4{font-size:18px;font-weight:500;letter-spacing:-.015em;margin-bottom:6px}
+.audit .meta{color:var(--dim);font-size:12.5px;font-family:var(--mono);margin-bottom:20px}
+.factor{display:flex;gap:12px;align-items:flex-start;padding:8px 0;opacity:0;transform:translateX(-14px)}
+.factor .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:8px;flex-shrink:0}
+.factor p{color:#c3cbd6;font-size:13.5px}
+.audit .rej{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.audit .rej .k{color:var(--amber)}
+.rejline{
+  display:flex;gap:10px;align-items:baseline;font-family:var(--mono);font-size:12.5px;
+  padding:5px 0;color:var(--muted);opacity:0;flex-wrap:wrap;
+}
+.rejline .code{color:var(--amber);background:rgba(232,131,58,.1);padding:2px 8px;border-radius:5px;font-size:11px}
+
+.shap .title{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.shap .big{font-size:17px;font-weight:500;margin-bottom:22px}
+.shap .big b{color:var(--accent-hi);font-weight:600}
+.shaprow{display:grid;grid-template-columns:170px 1fr 52px;gap:12px;align-items:center;padding:9px 0;font-size:13px}
+.shaprow .lbl{color:var(--muted);text-align:right;font-size:12.5px}
+.shaprow .track{height:18px;position:relative;background:rgba(255,255,255,.03);border-radius:4px;overflow:hidden}
+.shaprow .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent-hi))}
+.shaprow .fill.neg{background:linear-gradient(90deg,var(--amber),#f0a468)}
+.shaprow .val{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.shap .foot{margin-top:18px;font-size:11.5px;color:var(--dim);font-family:var(--mono)}
+
+/* ---------- views (tabs) ---------- */
+.views{margin-top:120px}
+.tabbar{display:flex;gap:10px;margin:36px 0 26px;flex-wrap:wrap}
+.tabbtn{
+  border-radius:10px;padding:10px 22px;font-size:14px;font-weight:500;color:var(--muted);
+  border:1px solid var(--line);background:transparent;cursor:pointer;
+  transition:color .25s,border-color .25s,background .25s;
+}
+.tabbtn:hover{color:var(--text)}
+.tabbtn.on{color:#fff;border-color:rgba(90,162,240,.6);background:rgba(42,120,214,.12)}
+.panel{display:none;border-radius:16px;padding:30px}
+.panel.on{display:block}
+.panel .phead{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.panel .phead h4{font-size:17px;font-weight:500}
+.panel .phead .tag{margin:0}
+
+/* forecast chart */
+.chartbox{position:relative}
+#chart{width:100%;height:auto;display:block}
+.tip{
+  position:absolute;pointer-events:none;opacity:0;transition:opacity .2s;
+  background:rgba(6,8,12,.92);border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;font-family:var(--mono);font-size:12px;line-height:1.7;
+  transform:translate(-50%,-110%);white-space:nowrap;z-index:5;
+}
+.tip b{color:var(--accent-hi);font-weight:500}
+.tip .obs{color:var(--green)}
+.legend{display:flex;gap:22px;margin-top:16px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:8px}
+.sw{width:14px;height:3px;border-radius:2px;background:var(--accent-hi)}
+.sw.band{height:10px;background:rgba(42,120,214,.18);border-radius:3px}
+.sw.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+/* alerts */
+.alertrows{display:flex;flex-direction:column;gap:14px}
+.alertrow{
+  display:grid;grid-template-columns:130px 1fr 120px;gap:16px;align-items:center;
+  padding:14px 16px;border:1px solid var(--line);border-radius:12px;font-size:13.5px;
+}
+.alertrow .z{font-family:var(--mono);color:var(--muted);font-size:12.5px}
+.alertrow .bar{height:10px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden;position:relative}
+.alertrow .bar i{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent-hi))}
+.alertrow.hot{border-color:rgba(232,131,58,.45);animation:hotpulse 2.4s ease-in-out infinite}
+.alertrow.hot .bar i{background:linear-gradient(90deg,#c2601e,var(--amber))}
+@keyframes hotpulse{0%,100%{box-shadow:0 0 0 0 rgba(232,131,58,0)}50%{box-shadow:0 0 24px 0 rgba(232,131,58,.14)}}
+.alertrow .cap{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:right}
+.alertrow.hot .cap{color:var(--amber)}
+.actionline{
+  margin-top:20px;padding:14px 16px;border:1px dashed rgba(232,131,58,.4);border-radius:12px;
+  font-size:13.5px;color:var(--gray);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+}
+.actionline .k{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber)}
+.actionline .note{color:var(--dim);font-size:12px;width:100%}
+
+/* fleet */
+.fleet{display:flex;flex-direction:column;gap:10px}
+.fleetrow{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center}
+.fleetrow .v{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.lane{position:relative;height:30px;background:rgba(255,255,255,.03);border-radius:7px}
+.run{
+  position:absolute;top:4px;bottom:4px;border-radius:5px;width:0;
+  background:rgba(42,120,214,.55);cursor:default;
+  transition:filter .2s;
+}
+.run.pooled{background:linear-gradient(180deg,rgba(90,162,240,.75),rgba(42,120,214,.6))}
+.run.solo{background:rgba(42,120,214,.32)}
+.run.dead{background:repeating-linear-gradient(45deg,rgba(232,131,58,.35) 0 6px,rgba(232,131,58,.15) 6px 12px)}
+.run:hover{filter:brightness(1.35)}
+.fleetaxis{display:grid;grid-template-columns:56px 1fr;gap:14px;margin-top:6px}
+.fleetaxis .ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.fleetfoot{margin-top:18px;font-size:12.5px;color:var(--dim);font-family:var(--mono)}
+
+/* ---------- evidence ---------- */
+.evidence{padding:16vh 0 10vh;background:linear-gradient(#06070a,#000 60%)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:70px;perspective:1200px}
+.stat{border-radius:16px;padding:28px 24px}
+.stat .big{font-size:clamp(30px,3vw,42px);font-weight:600;letter-spacing:-.03em;font-family:var(--mono)}
+.stat .big small{font-size:.55em;color:var(--accent-hi)}
+.stat .cap{margin-top:10px;font-size:13px;color:var(--muted)}
+.stat .base{margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--dim);border-top:1px dashed var(--line);padding-top:12px}
+.marketbar{margin-top:70px;border-radius:16px;display:grid;grid-template-columns:repeat(4,1fr);overflow:hidden}
+.marketbar .cell{padding:26px 22px;border-left:1px solid var(--line)}
+.marketbar .cell:first-child{border-left:none}
+.marketbar .n{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--accent-hi)}
+.marketbar .l{font-size:12.5px;color:var(--muted);margin-top:6px}
+.evidence .src{margin-top:16px;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.cred{margin-top:80px;display:flex;gap:20px;max-width:760px;border-left:2px solid var(--accent);padding-left:24px}
+.cred p{color:var(--muted);font-size:15.5px}
+.cred p b{color:var(--text);font-weight:500}
+
+/* ---------- team ---------- */
+.team{padding:12vh 0;background:#000}
+.founders{display:grid;grid-template-columns:repeat(2,minmax(0,420px));gap:26px;margin-top:60px;perspective:1200px}
+.founder{border-radius:16px;padding:32px;display:flex;gap:22px;align-items:center}
+.ava{
+  width:72px;height:72px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:600;font-size:22px;letter-spacing:-.02em;
+  background:radial-gradient(circle at 30% 25%,#3f8ae0,#173c6b);
+}
+.founder h3{font-size:19px;font-weight:500}
+.founder p{color:var(--muted);font-size:14px;margin-top:4px}
+
+/* ---------- cta / footer ---------- */
+.cta{padding:18vh 0;text-align:center;position:relative;overflow:hidden;background:#000}
+.cta .glow{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:900px;height:560px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(ellipse,rgba(42,120,214,.16),transparent 65%);
+}
+.cta h2{max-width:760px;margin:0 auto}
+.cta .lede{margin:20px auto 0}
+.cta .btns{margin-top:44px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.cta .mail{margin-top:22px;font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.cta .mail a{color:var(--muted);border-bottom:1px dashed var(--dim)}
+.cta .mail a:hover{color:var(--accent-hi)}
+footer{border-top:1px solid var(--line);padding:34px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;background:#000}
+footer .fbrand{font-weight:600;font-size:14px}
+footer p{font-size:12.5px;color:var(--dim);font-family:var(--mono)}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-hi)}
+
+@media(max-width:900px){
+  .cards,.stats{grid-template-columns:1fr 1fr}
+  .product-grid{grid-template-columns:1fr;gap:36px}
+  .product-grid.rev .copy{order:0}
+  .marketbar{grid-template-columns:1fr 1fr}
+  .marketbar .cell:nth-child(3){border-left:none}
+  .marketbar .cell{border-top:1px solid var(--line)}
+  .marketbar .cell:nth-child(-n+2){border-top:none}
+  .founders{grid-template-columns:1fr}
+  .alertrow{grid-template-columns:90px 1fr 110px}
+}
+@media(max-width:560px){
+  .cards,.stats{grid-template-columns:1fr}
+  .shaprow{grid-template-columns:110px 1fr 46px}
+  .statement{margin-bottom:8vh}
+  .alertrow{grid-template-columns:1fr;gap:8px}
+  .alertrow .cap{text-align:left}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="cursor-dot" id="cdot"></div>
+<div class="cursor-ring" id="cring"></div>
+
+<div class="nav-outer">
+  <nav class="navbar liquid-glass">
+    <a class="brand" href="#top">
+      <svg width="24" height="24" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="rgba(255,255,255,.06)"/><path d="M5 20 L11 20 L14 10 L18 24 L21 16 L27 16" stroke="#5aa2f0" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      TransitPulse
+    </a>
+    <div class="nav-links">
+      <a href="#problem">Story</a>
+      <a href="#product">Product</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#team">Team</a>
+    </div>
+    <a class="btn-white magnet" href="mailto:aryaarun0910@gmail.com?subject=TransitPulse%2015-minute%20call">Book a call</a>
+  </nav>
+</div>
+
+<header class="hero" id="top">
+  <canvas id="net"></canvas>
+  <div class="hero-content">
+    <div class="hero-left">
+      <h1 id="heroH1" data-text="Scheduling your dispatchers&#10;can actually trust."></h1>
+      <p class="hero-sub" id="heroSub">Demand prediction and trip scheduling for paratransit and NEMT operators, with a plain-English audit trail for every routing decision.</p>
+      <div class="hero-btns" id="heroBtns">
+        <a class="btn-white lg magnet" href="mailto:aryaarun0910@gmail.com?subject=TransitPulse%2015-minute%20call">Book a 15-minute call</a>
+        <a class="btn-glass liquid-glass magnet" href="#product">See the audit trail</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-tag liquid-glass" id="heroTag">Every trip, explained.</div>
+    </div>
+  </div>
+</header>
+
+<section class="problem" id="problem">
+  <p class="statement" id="statement">Every morning, a dispatcher inherits hundreds of scheduling decisions that no one, including the software that made them, can explain.</p>
+  <div class="wrap">
+    <div class="chapter">01 / The story</div>
+    <h2 class="reveal">Opaque software runs a statutory service.</h2>
+    <p class="lede reveal">ADA paratransit and Medicaid NEMT move millions of riders to dialysis, day programs and medical care. The dispatch systems behind them are black boxes.</p>
+    <div class="cards">
+      <div class="card liquid-glass tilt reveal">
+        <div class="glare"></div>
+        <div class="num">/ 01</div>
+        <h3>Decisions nobody can see into</h3>
+        <p>Legacy schedulers place trips without showing their work. When a rider asks why their pickup moved by 40 minutes, the honest answer today is: the software decided. That erodes trust in every run it builds.</p>
+      </div>
+      <div class="card liquid-glass tilt reveal">
+        <div class="glare"></div>
+        <div class="num">/ 02</div>
+        <h3>Compliance assembled by hand</h3>
+        <p>ADA rules and NTD filings demand a defensible record of every trip and every denial. Reconstructing that record from an opaque scheduler is days of manual work, every reporting cycle.</p>
+      </div>
+      <div class="card liquid-glass tilt reveal">
+        <div class="glare"></div>
+        <div class="num">/ 03</div>
+        <h3>Demand you cannot see coming</h3>
+        <p>Dialysis runs Monday, Wednesday, Friday. Day programs load at nine. Weather cancels trips in waves. The pattern is right there in the booking history, but incumbent tools do not forecast it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="product" id="product">
+  <div class="wrap">
+    <div class="chapter">02 / The product</div>
+    <h2 class="reveal">The audit trail is the product.</h2>
+    <p class="lede reveal">TransitPulse forecasts demand, schedules trips, and writes down why. Every assignment and every denial carries human-readable factors, the alternatives considered, and a structured reason code for each one rejected.</p>
+
+    <div class="product-grid">
+      <div class="copy reveal">
+        <span class="tag synth">Audit log entry, synthetic trip data</span>
+        <h3>Why this trip</h3>
+        <p>Ask any trip in the schedule and get the full reasoning: which vehicles were considered, which constraint eliminated each alternative, and how the pickup landed inside the on-time window. Denials get the same treatment, with deterministic reason codes derived from the exact constraint that failed. This is the compliance trail, generated at decision time, not reconstructed after the fact.</p>
+      </div>
+      <div class="audit liquid-glass tilt" id="auditCard">
+        <div class="head"><span class="k">Why this trip</span><span class="lg">TransitPulse</span></div>
+        <h4>Shared run to dialysis center (Z11 to Z28)</h4>
+        <div class="meta">riders R1380, R1139, R1415 +2 more &nbsp;|&nbsp; requested 05:03 &nbsp;|&nbsp; pickup 05:12 &nbsp;|&nbsp; assigned V01</div>
+        <div class="factor"><span class="dot"></span><p>closest available vehicle: 13 min repositioning from Z27</p></div>
+        <div class="factor"><span class="dot"></span><p>first pickup +10 min vs requested, inside the [-10, +20] min on-time window</p></div>
+        <div class="factor"><span class="dot"></span><p>5 riders batched to the same facility, one shared run instead of 5 separate dispatches</p></div>
+        <div class="factor"><span class="dot"></span><p>wheelchair securement required; vehicle is lift-equipped</p></div>
+        <div class="rej">
+          <span class="k">Alternatives considered and rejected</span>
+          <div class="rejline"><span>V07</span><span class="code">NO_ACCESSIBLE_CAPACITY</span><span>no wheelchair securement</span></div>
+          <div class="rejline"><span>V08</span><span class="code">NO_ACCESSIBLE_CAPACITY</span><span>no wheelchair securement</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-grid rev">
+      <div class="copy reveal">
+        <span class="tag real">Real NYC Access-A-Ride data</span>
+        <h3>Why this forecast</h3>
+        <p>The demand model is explained the same way the scheduler is. Every zone-hour forecast decomposes into named factors a dispatcher already thinks in: what happened this slot last week, the trailing average, the day of week. Forecasts ship as calibrated ranges, not single numbers, so staffing decisions carry honest uncertainty.</p>
+      </div>
+      <div class="shap liquid-glass tilt" id="shapCard">
+        <div class="title">Why this forecast &nbsp;/&nbsp; Manhattan, 2026-03-15 13:00</div>
+        <div class="big"><b>458</b> bookings predicted, <b>449</b> observed</div>
+        <div class="shaprow"><span class="lbl">same day last week</span><div class="track"><div class="fill" data-w="76"></div></div><span class="val">+0.33</span></div>
+        <div class="shaprow"><span class="lbl">same day two weeks ago</span><div class="track"><div class="fill" data-w="51"></div></div><span class="val">+0.22</span></div>
+        <div class="shaprow"><span class="lbl">28-day average, this slot</span><div class="track"><div class="fill" data-w="25"></div></div><span class="val">+0.11</span></div>
+        <div class="shaprow"><span class="lbl">day of week</span><div class="track"><div class="fill neg" data-w="12"></div></div><span class="val">-0.05</span></div>
+        <div class="foot">SHAP contributions, Poisson log-rate space. Real NYC Access-A-Ride model, not synthetic.</div>
+      </div>
+    </div>
+
+    <div class="views">
+      <h2 class="reveal" style="font-size:clamp(24px,3vw,38px)">One system, three live views.</h2>
+      <div class="tabbar reveal">
+        <button class="tabbtn on" data-p="p-forecast">Demand forecast</button>
+        <button class="tabbtn" data-p="p-alerts">Capacity alerts</button>
+        <button class="tabbtn" data-p="p-fleet">Fleet timeline</button>
+      </div>
+
+      <div class="panel liquid-glass on" id="p-forecast">
+        <div class="phead">
+          <h4>Tomorrow, hour by hour, with calibrated intervals</h4>
+          <span class="tag real">real data model</span>
+        </div>
+        <div class="chartbox" id="chartbox">
+          <svg id="chart" viewBox="0 0 760 320" role="img" aria-label="Hourly demand forecast with prediction interval band and observed values"></svg>
+          <div class="tip" id="tip"></div>
+        </div>
+        <div class="legend">
+          <span><i class="sw"></i>predicted bookings</span>
+          <span><i class="sw band"></i>90% conformal interval</span>
+          <span><i class="sw dot"></i>observed</span>
+        </div>
+        <p class="fleetfoot">Shaped from the real NYC Access-A-Ride borough-hour model (Manhattan, weekday). Hover the curve.</p>
+      </div>
+
+      <div class="panel liquid-glass" id="p-alerts">
+        <div class="phead">
+          <h4>Tuesday 14:00, predicted load vs committed capacity</h4>
+          <span class="tag synth">synthetic</span>
+        </div>
+        <div class="alertrows" id="alertrows"></div>
+        <div class="actionline">
+          <span class="k">Suggested action</span>
+          <span>shift V09's midday break to 15:30 and hold V04 in Z14 after its 13:40 dropoff, covers the predicted dialysis return surge.</span>
+          <span class="note">The suggested action line is illustrative copy in this demo, not yet a computed recommendation.</span>
+        </div>
+      </div>
+
+      <div class="panel liquid-glass" id="p-fleet">
+        <div class="phead">
+          <h4>One service day across the fleet</h4>
+          <span class="tag synth">synthetic</span>
+        </div>
+        <div class="fleet" id="fleet"></div>
+        <div class="fleetaxis"><span></span><div class="ticks"><span>05:00</span><span>08:00</span><span>11:00</span><span>14:00</span><span>17:00</span></div></div>
+        <div class="fleetfoot">229 of 253 requests placed, 77% in shared runs, deadhead 17% of drive time. Hover a block.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="evidence" id="evidence">
+  <div class="wrap">
+    <div class="chapter">03 / Evidence</div>
+    <h2 class="reveal">Validated on real demand. Reported against the baseline.</h2>
+    <p class="lede reveal">Every number below comes from a strict temporal holdout, and every model is reported against a seasonal-naive baseline. If a metric ever looks too good, ask us for the protocol.</p>
+
+    <div class="stats">
+      <div class="stat liquid-glass tilt reveal">
+        <div class="big"><span class="count" data-target="0.986" data-dec="3">0</span></div>
+        <div class="cap">R2 on real paratransit demand: NYC Access-A-Ride, borough-hour panel, 90-day temporal holdout.</div>
+        <div class="base">seasonal-naive baseline: 0.923</div>
+      </div>
+      <div class="stat liquid-glass tilt reveal">
+        <div class="big"><span class="count" data-target="64" data-dec="0">0</span><small>%</small></div>
+        <div class="cap">Lower forecast error than the naive baseline on the same holdout.</div>
+        <div class="base">MAE 20.1 vs 55.5 bookings</div>
+      </div>
+      <div class="stat liquid-glass tilt reveal">
+        <div class="big"><span class="count" data-target="26.3" data-dec="1">0</span><small>M</small></div>
+        <div class="cap">Real paratransit bookings modeled, Jan 2024 to May 2026, from the largest US paratransit operation.</div>
+        <div class="base">plus Chicago TNP: R2 0.966 vs 0.934</div>
+      </div>
+      <div class="stat liquid-glass tilt reveal">
+        <div class="big"><span class="count" data-target="90" data-dec="0">0</span><small>%</small></div>
+        <div class="cap">Target coverage for split-conformal prediction intervals. Forecasts read as honest ranges.</div>
+        <div class="base">achieved coverage: 98% on holdout</div>
+      </div>
+    </div>
+
+    <div class="marketbar liquid-glass reveal">
+      <div class="cell"><div class="n">1,920</div><div class="l">US demand-response agencies</div></div>
+      <div class="cell"><div class="n">139.7M</div><div class="l">trips per year</div></div>
+      <div class="cell"><div class="n">$7.06B</div><div class="l">annual operating expense</div></div>
+      <div class="cell"><div class="n">17.3%</div><div class="l">of vehicle hours spent deadheading</div></div>
+    </div>
+    <p class="src">Source: FTA National Transit Database, 2024 report year, demand-response modes.</p>
+
+    <div class="cred reveal">
+      <p><b>Where this team comes from:</b> a demand-predictive routing system built on real transit data that reached the Grand Final of a 13,000-student international engineering competition. The explainability layer was built first, not bolted on.</p>
+    </div>
+  </div>
+</section>
+
+<section class="team" id="team">
+  <div class="wrap">
+    <div class="chapter">04 / Team</div>
+    <h2 class="reveal">Two founders. One rule: show your work.</h2>
+    <div class="founders">
+      <div class="founder liquid-glass tilt reveal">
+        <div class="ava">AA</div>
+        <div>
+          <h3>Arya Arun</h3>
+          <p>ML, demand modeling, optimization, backend.</p>
+        </div>
+      </div>
+      <div class="founder liquid-glass tilt reveal">
+        <div class="ava">CL</div>
+        <div>
+          <h3>Chris Legge</h3>
+          <p>Product, frontend, embedded systems.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="glow"></div>
+  <div class="wrap">
+    <h2 class="reveal">Bring us a trip your current system cannot explain.</h2>
+    <p class="lede reveal" style="text-align:center">15 minutes. We will show you what an audit trail for your operation looks like, using your own NTD numbers.</p>
+    <div class="btns reveal">
+      <a class="btn-white lg magnet" href="mailto:aryaarun0910@gmail.com?subject=TransitPulse%2015-minute%20call">Book a 15-minute call</a>
+    </div>
+    <p class="mail reveal">or write to <a href="mailto:aryaarun0910@gmail.com">aryaarun0910@gmail.com</a></p>
+  </div>
+</section>
+
+<footer>
+  <span class="fbrand">TransitPulse</span>
+  <p>No rider PHI anywhere on this site. Product data shown is labeled real or synthetic.</p>
+  <p><a href="mailto:aryaarun0910@gmail.com">aryaarun0910@gmail.com</a></p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var fine = window.matchMedia('(pointer: fine)').matches;
+
+/* ================= three.js cinematic network ================= */
+(function(){
+  var canvas = document.getElementById('net');
+  if(!window.THREE || !canvas) return;
+  var renderer;
+  try{ renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:true}); }
+  catch(e){ return; }
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000000, .026);
+  var camera = new THREE.PerspectiveCamera(58, 1, .1, 200);
+  camera.position.set(0, 4.5, 26);
+  camera.lookAt(0, 0, 0);
+
+  var group = new THREE.Group();
+  group.rotation.x = -.42;
+  scene.add(group);
+
+  function glowTexture(inner, outer){
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var g = c.getContext('2d');
+    var grd = g.createRadialGradient(32,32,2,32,32,30);
+    grd.addColorStop(0, inner); grd.addColorStop(.4, outer); grd.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle = grd; g.fillRect(0,0,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+  var nodeTex  = glowTexture('rgba(190,220,255,1)','rgba(90,162,240,.45)');
+  var pulseTex = glowTexture('rgba(255,255,255,1)','rgba(140,195,255,.6)');
+
+  var N = 130, nodes = [];
+  for(var i=0;i<N;i++){
+    var r = Math.pow(Math.random(), .58) * 17;
+    var a = Math.random() * Math.PI * 2;
+    nodes.push(new THREE.Vector3(Math.cos(a)*r*1.5, (Math.random()-.5)*1.6, Math.sin(a)*r*.95));
+  }
+  var nodeGeo = new THREE.BufferGeometry().setFromPoints(nodes);
+  group.add(new THREE.Points(nodeGeo, new THREE.PointsMaterial({
+    map:nodeTex, color:0xffffff, size:.85, transparent:true, opacity:.85,
+    depthWrite:false, blending:THREE.AdditiveBlending
+  })));
+
+  var SEG = 22, edges = [], seen = {};
+  for(var i=0;i<N;i++){
+    var d = [];
+    for(var j=0;j<N;j++) if(j!==i) d.push([nodes[i].distanceTo(nodes[j]), j]);
+    d.sort(function(a,b){return a[0]-b[0];});
+    for(var k=0;k<2;k++){
+      var j2 = d[k][1], key = Math.min(i,j2)+'_'+Math.max(i,j2);
+      if(!seen[key]){ seen[key]=1; edges.push([i,j2]); }
+    }
+  }
+  var curves = [], linePts = [];
+  edges.forEach(function(e){
+    var A = nodes[e[0]], B = nodes[e[1]];
+    var mid = A.clone().add(B).multiplyScalar(.5);
+    mid.y += (Math.random()-.3)*1.4;
+    var curve = new THREE.QuadraticBezierCurve3(A, mid, B);
+    curves.push(curve);
+    var pts = curve.getPoints(SEG);
+    for(var s=0;s<SEG;s++){ linePts.push(pts[s], pts[s+1]); }
+  });
+  var lineGeo = new THREE.BufferGeometry().setFromPoints(linePts);
+  group.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({
+    color:0x2a78d6, transparent:true, opacity:.22, blending:THREE.AdditiveBlending, fog:true
+  })));
+
+  var amberPts = [];
+  for(var i=0;i<7;i++) amberPts.push(nodes[(Math.random()*N)|0].clone());
+  group.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(amberPts),
+    new THREE.PointsMaterial({map:nodeTex, color:0xe8833a, size:1.15, transparent:true, opacity:.8, depthWrite:false, blending:THREE.AdditiveBlending})));
+
+  var P = 56, pulses = [], pulsePos = new Float32Array(P*3);
+  for(var i=0;i<P;i++) pulses.push({c:(Math.random()*curves.length)|0, t:Math.random(), s:.0018+Math.random()*.005});
+  var pulseGeo = new THREE.BufferGeometry();
+  pulseGeo.setAttribute('position', new THREE.BufferAttribute(pulsePos,3));
+  group.add(new THREE.Points(pulseGeo, new THREE.PointsMaterial({
+    map:pulseTex, color:0xcfe6ff, size:.9, transparent:true, opacity:.95,
+    depthWrite:false, blending:THREE.AdditiveBlending
+  })));
+
+  var mx=0, my=0;
+  if(fine) document.addEventListener('mousemove', function(ev){
+    mx = ev.clientX/window.innerWidth - .5;
+    my = ev.clientY/window.innerHeight - .5;
+  }, {passive:true});
+
+  function resize(){
+    var w = canvas.clientWidth || window.innerWidth;
+    var h = canvas.clientHeight || window.innerHeight;
+    renderer.setSize(w, h, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var visible = true;
+  new IntersectionObserver(function(en){ visible = en[0].isIntersecting; }).observe(canvas);
+
+  var v = new THREE.Vector3();
+  function tick(){
+    requestAnimationFrame(tick);
+    if(!visible) return;
+    var t = performance.now()*.001;
+    if(!reduced){
+      camera.position.x += ((mx*3.2 + Math.sin(t*.07)*1.2) - camera.position.x)*.02;
+      camera.position.y += ((4.5 - my*2.2 + Math.cos(t*.05)*.5) - camera.position.y)*.02;
+      camera.lookAt(0, 0, 0);
+      group.rotation.y += .0004;
+      for(var i=0;i<P;i++){
+        var p = pulses[i];
+        p.t += p.s;
+        if(p.t>1){ p.t=0; p.c=(Math.random()*curves.length)|0; }
+        curves[p.c].getPoint(p.t, v);
+        pulsePos[i*3]=v.x; pulsePos[i*3+1]=v.y; pulsePos[i*3+2]=v.z;
+      }
+      pulseGeo.attributes.position.needsUpdate = true;
+    }
+    renderer.render(scene, camera);
+  }
+  tick();
+})();
+
+/* ================= hero character animation ================= */
+(function(){
+  var h1 = document.getElementById('heroH1');
+  var lines = h1.getAttribute('data-text').split('\n');
+  var CHAR_DELAY = 30, INITIAL = 200, html = '';
+  lines.forEach(function(line, li){
+    var base = INITIAL + li*line.length*CHAR_DELAY;
+    for(var ci=0; ci<line.length; ci++){
+      var ch = line[ci] === ' ' ? ' ' : line[ci];
+      html += '<span class="ch" style="transition-delay:'+(base+ci*CHAR_DELAY)+'ms">'+ch+'</span>';
+    }
+    if(li < lines.length-1) html += '<br>';
+  });
+  h1.innerHTML = html;
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    var chs = h1.querySelectorAll('.ch');
+    for(var i=0;i<chs.length;i++) chs[i].classList.add('on');
+  });});
+  [['heroSub',800],['heroBtns',1200],['heroTag',1400]].forEach(function(cfg){
+    setTimeout(function(){ document.getElementById(cfg[0]).classList.add('fade-on'); }, reduced?0:cfg[1]);
+  });
+})();
+
+/* ================= custom cursor ================= */
+(function(){
+  if(!fine || reduced) return;
+  var dot = document.getElementById('cdot'), ring = document.getElementById('cring');
+  var x=innerWidth/2, y=innerHeight/2, rx=x, ry=y;
+  document.addEventListener('mousemove', function(e){ x=e.clientX; y=e.clientY; }, {passive:true});
+  (function loop(){
+    requestAnimationFrame(loop);
+    rx += (x-rx)*.16; ry += (y-ry)*.16;
+    dot.style.transform  = 'translate('+x+'px,'+y+'px) translate(-50%,-50%)';
+    ring.style.transform = 'translate('+rx+'px,'+ry+'px) translate(-50%,-50%)';
+  })();
+  document.addEventListener('mouseover', function(e){
+    ring.classList.toggle('hot', !!e.target.closest('a,button,.tilt,.run'));
+  }, {passive:true});
+})();
+
+/* ================= magnetic buttons ================= */
+(function(){
+  if(!fine || reduced) return;
+  var btns = document.querySelectorAll('.magnet');
+  for(var i=0;i<btns.length;i++)(function(btn){
+    btn.addEventListener('mousemove', function(e){
+      var r = btn.getBoundingClientRect();
+      var dx = e.clientX - (r.left+r.width/2), dy = e.clientY - (r.top+r.height/2);
+      btn.style.transform = 'translate('+dx*.14+'px,'+dy*.18+'px)';
+    });
+    btn.addEventListener('mouseleave', function(){
+      btn.style.transition = 'transform .4s cubic-bezier(.2,.9,.3,1.4)';
+      btn.style.transform = '';
+      setTimeout(function(){ btn.style.transition=''; }, 400);
+    });
+  })(btns[i]);
+})();
+
+/* ================= 3D tilt cards ================= */
+(function(){
+  if(!fine || reduced) return;
+  var els = document.querySelectorAll('.tilt');
+  for(var i=0;i<els.length;i++)(function(el){
+    el.addEventListener('mousemove', function(e){
+      var r = el.getBoundingClientRect();
+      var px = (e.clientX-r.left)/r.width, py = (e.clientY-r.top)/r.height;
+      el.style.transform = 'rotateY('+((px-.5)*7)+'deg) rotateX('+((.5-py)*7)+'deg) translateZ(6px)';
+      el.style.setProperty('--gx', (px*100)+'%');
+      el.style.setProperty('--gy', (py*100)+'%');
+    });
+    el.addEventListener('mouseleave', function(){
+      el.style.transition = 'transform .5s ease';
+      el.style.transform = '';
+      setTimeout(function(){ el.style.transition=''; }, 500);
+    });
+  })(els[i]);
+})();
+/* ================= forecast chart (SVG, hand-built) ================= */
+(function(){
+  var svg = document.getElementById('chart');
+  if(!svg) return;
+  var W=760, H=320, L=52, R=16, T=18, B=34;
+  var pred = [72,58,49,45,52,88,148,242,338,396,412,428,441,458,447,418,382,340,296,248,204,164,121,92];
+  var noise = [5,-7,3,-2,6,-9,12,-14,9,-18,15,-8,4,-9,11,-16,7,-12,8,-6,10,-5,3,-4];
+  var obs = pred.map(function(p,i){ return Math.max(0, p+noise[i]); });
+  function lo(p){ return Math.max(0, Math.round(p - (18 + p*.10))); }
+  function hi(p){ return Math.round(p + (18 + p*.10)); }
+  var ymax = 560;
+  function X(i){ return L + i*(W-L-R)/23; }
+  function Y(vv){ return T + (H-T-B)*(1 - vv/ymax); }
+  var ns = 'http://www.w3.org/2000/svg';
+  function el(n, at){ var e=document.createElementNS(ns,n); for(var k in at) e.setAttribute(k,at[k]); return e; }
+
+  [0,140,280,420,560].forEach(function(g){
+    svg.appendChild(el('line',{x1:L,y1:Y(g),x2:W-R,y2:Y(g),stroke:'rgba(255,255,255,.05)','stroke-width':1}));
+    var t = el('text',{x:L-8,y:Y(g)+4,'text-anchor':'end',fill:'#5b6572','font-size':11,'font-family':'JetBrains Mono, monospace'});
+    t.textContent = g; svg.appendChild(t);
+  });
+  [0,6,12,18,23].forEach(function(hh){
+    var t = el('text',{x:X(hh),y:H-10,'text-anchor':'middle',fill:'#5b6572','font-size':11,'font-family':'JetBrains Mono, monospace'});
+    t.textContent = (hh<10?'0':'')+hh+':00'; svg.appendChild(t);
+  });
+
+  var dBand = 'M'+X(0)+' '+Y(hi(pred[0]));
+  for(var i=1;i<24;i++) dBand += ' L'+X(i)+' '+Y(hi(pred[i]));
+  for(var i=23;i>=0;i--) dBand += ' L'+X(i)+' '+Y(lo(pred[i]));
+  dBand += ' Z';
+  var band = el('path',{d:dBand,fill:'rgba(42,120,214,.16)',stroke:'none',opacity:0});
+  svg.appendChild(band);
+
+  var dLine = 'M'+X(0)+' '+Y(pred[0]);
+  for(var i=1;i<24;i++) dLine += ' L'+X(i)+' '+Y(pred[i]);
+  var line = el('path',{d:dLine,fill:'none',stroke:'#5aa2f0','stroke-width':2.2,'stroke-linejoin':'round','stroke-linecap':'round'});
+  svg.appendChild(line);
+
+  var dots = [];
+  for(var i=0;i<24;i++){
+    var c = el('circle',{cx:X(i),cy:Y(obs[i]),r:3,fill:'#3dbf7e',opacity:0});
+    dots.push(c); svg.appendChild(c);
+  }
+
+  var vline = el('line',{x1:0,y1:T,x2:0,y2:H-B,stroke:'rgba(255,255,255,.18)','stroke-width':1,opacity:0});
+  var focus = el('circle',{cx:0,cy:0,r:5,fill:'none',stroke:'#5aa2f0','stroke-width':2,opacity:0});
+  svg.appendChild(vline); svg.appendChild(focus);
+
+  var tip = document.getElementById('tip');
+  svg.addEventListener('mousemove', function(e){
+    var r = svg.getBoundingClientRect();
+    var xr = (e.clientX-r.left)/r.width*W;
+    var i = Math.max(0, Math.min(23, Math.round((xr-L)/((W-L-R)/23))));
+    vline.setAttribute('x1',X(i)); vline.setAttribute('x2',X(i)); vline.setAttribute('opacity',1);
+    focus.setAttribute('cx',X(i)); focus.setAttribute('cy',Y(pred[i])); focus.setAttribute('opacity',1);
+    tip.style.opacity = 1;
+    tip.style.left = (X(i)/W*100)+'%';
+    tip.style.top = (Y(pred[i])/H*100)+'%';
+    tip.innerHTML = (i<10?'0':'')+i+':00<br><b>'+pred[i]+'</b> predicted [' + lo(pred[i]) + ', ' + hi(pred[i]) + ']<br><span class="obs">'+obs[i]+' observed</span>';
+  });
+  svg.addEventListener('mouseleave', function(){
+    vline.setAttribute('opacity',0); focus.setAttribute('opacity',0); tip.style.opacity = 0;
+  });
+
+  var len = line.getTotalLength();
+  line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
+  window._chartAnim = function(){
+    if(reduced || !window.gsap){
+      line.style.strokeDashoffset = 0; band.setAttribute('opacity',1);
+      dots.forEach(function(d){d.setAttribute('opacity',.9);});
+      return;
+    }
+    gsap.to(line.style, {strokeDashoffset:0, duration:1.6, ease:'power2.inOut'});
+    gsap.to(band, {attr:{opacity:1}, duration:1, delay:.7});
+    gsap.to(dots, {attr:{opacity:.9}, duration:.4, stagger:.03, delay:.9});
+  };
+})();
+
+/* ================= capacity alerts ================= */
+(function(){
+  var rows = [
+    {z:'Z07 medical',     pred:14, cap:22, hot:false},
+    {z:'Z11 dialysis',    pred:19, cap:24, hot:false},
+    {z:'Z14 dialysis',    pred:31, cap:24, hot:true},
+    {z:'Z22 day program', pred:12, cap:20, hot:false},
+    {z:'Z28 medical',     pred:16, cap:22, hot:false}
+  ];
+  var host = document.getElementById('alertrows');
+  rows.forEach(function(r0){
+    var pct = Math.min(100, Math.round(r0.pred/r0.cap*100));
+    var div = document.createElement('div');
+    div.className = 'alertrow'+(r0.hot?' hot':'');
+    div.innerHTML = '<span class="z">'+r0.z+'</span>'+
+      '<div class="bar"><i data-w="'+pct+'"></i></div>'+
+      '<span class="cap">'+r0.pred+' / '+r0.cap+' seats'+(r0.hot?' !':'')+'</span>';
+    host.appendChild(div);
+  });
+  window._alertAnim = function(){
+    var bars = document.querySelectorAll('#alertrows .bar i');
+    for(var i=0;i<bars.length;i++)(function(b,i2){
+      if(reduced || !window.gsap){ b.style.width = Math.min(100,b.dataset.w)+'%'; return; }
+      gsap.to(b, {width:b.dataset.w+'%', duration:1, delay:i2*.08, ease:'power3.out'});
+    })(bars[i],i);
+  };
+})();
+
+/* ================= fleet timeline ================= */
+(function(){
+  function pos(h){ return (h-5)/13*100; }
+  var data = [
+    {v:'V01', runs:[[5.0,7.2,'pooled','05:00 dialysis run, 5 riders pooled'],[7.4,8.1,'dead','deadhead to Z04'],[8.1,10.6,'pooled','day program run, 4 riders'],[11.2,13.4,'solo','medical, lift required'],[14.0,16.8,'pooled','dialysis returns, 5 riders']]},
+    {v:'V02', runs:[[5.4,7.8,'pooled','05:24 dialysis run, 4 riders'],[8.2,10.9,'pooled','day program run, 3 riders'],[11.5,12.2,'dead','deadhead to Z18'],[12.2,14.9,'solo','medical appointment'],[15.3,17.6,'pooled','day program returns, 4 riders']]},
+    {v:'V03', runs:[[6.0,8.9,'pooled','dialysis run, 5 riders pooled'],[9.3,11.8,'solo','wheelchair securement, single rider'],[12.4,15.1,'pooled','medical cluster, 3 riders'],[15.4,16.1,'dead','deadhead to depot']]},
+    {v:'V04', runs:[[5.2,6.0,'dead','pull-out repositioning'],[6.0,8.7,'pooled','dialysis run, 5 riders'],[9.1,12.0,'pooled','day program, 4 riders'],[12.8,15.4,'pooled','midday medical, 3 riders'],[15.8,17.9,'pooled','dialysis returns, 4 riders']]},
+    {v:'V05', runs:[[7.0,9.6,'pooled','day program run, 4 riders'],[10.1,12.3,'solo','medical, door-to-door'],[13.0,15.7,'pooled','dialysis returns, 5 riders'],[16.0,17.4,'solo','late medical return']]},
+    {v:'V06', runs:[[5.6,8.3,'pooled','dialysis run, 4 riders'],[8.7,9.4,'dead','deadhead to Z22'],[9.4,12.1,'pooled','day program, 5 riders'],[12.9,15.6,'pooled','medical cluster, 4 riders']]}
+  ];
+  var host = document.getElementById('fleet');
+  data.forEach(function(row){
+    var div = document.createElement('div');
+    div.className = 'fleetrow';
+    var lane = '<div class="lane">';
+    row.runs.forEach(function(r0){
+      lane += '<span class="run '+r0[2]+'" data-l="'+pos(r0[0])+'" data-w="'+(pos(r0[1])-pos(r0[0]))+'" title="'+row.v+': '+r0[3]+'"></span>';
+    });
+    lane += '</div>';
+    div.innerHTML = '<span class="v">'+row.v+'</span>'+lane;
+    host.appendChild(div);
+  });
+  window._fleetAnim = function(){
+    var runs = document.querySelectorAll('#fleet .run');
+    for(var i=0;i<runs.length;i++)(function(r0,i2){
+      r0.style.left = r0.dataset.l+'%';
+      if(reduced || !window.gsap){ r0.style.width = r0.dataset.w+'%'; return; }
+      gsap.to(r0, {width:r0.dataset.w+'%', duration:.7, delay:i2*.03, ease:'power3.out'});
+    })(runs[i],i);
+  };
+})();
+
+/* ================= tabs ================= */
+(function(){
+  var fired = {};
+  function firePanel(id){
+    if(fired[id]) return; fired[id] = true;
+    if(id==='p-forecast' && window._chartAnim) window._chartAnim();
+    if(id==='p-alerts' && window._alertAnim) window._alertAnim();
+    if(id==='p-fleet' && window._fleetAnim) window._fleetAnim();
+  }
+  var btns = document.querySelectorAll('.tabbtn');
+  for(var i=0;i<btns.length;i++)(function(b){
+    b.addEventListener('click', function(){
+      var all = document.querySelectorAll('.tabbtn'), panels = document.querySelectorAll('.panel');
+      for(var j=0;j<all.length;j++) all[j].classList.remove('on');
+      for(var j=0;j<panels.length;j++) panels[j].classList.remove('on');
+      b.classList.add('on');
+      var p = document.getElementById(b.dataset.p);
+      p.classList.add('on');
+      if(window.gsap && !reduced) gsap.fromTo(p, {opacity:0, y:14}, {opacity:1, y:0, duration:.45, ease:'power2.out'});
+      firePanel(b.dataset.p);
+    });
+  })(btns[i]);
+  window._fireForecast = function(){ firePanel('p-forecast'); };
+})();
+
+/* ================= GSAP scroll choreography ================= */
+if(window.gsap){
+  gsap.registerPlugin(ScrollTrigger);
+
+  gsap.to('#progress', {scaleX:1, ease:'none',
+    scrollTrigger:{trigger:document.body, start:'top top', end:'bottom bottom', scrub:.3}});
+
+  gsap.to('.hero-content', {yPercent:-10, opacity:.2, ease:'none',
+    scrollTrigger:{trigger:'.hero', start:'top top', end:'bottom top', scrub:true}});
+
+  var st = document.getElementById('statement');
+  st.innerHTML = st.textContent.split(' ').map(function(w){return '<span class="w">'+w+'</span>';}).join(' ');
+  gsap.to('#statement .w', {opacity:1, stagger:.06, ease:'none',
+    scrollTrigger:{trigger:'#statement', start:'top 78%', end:'bottom 45%', scrub:true}});
+
+  gsap.utils.toArray('.reveal').forEach(function(el){
+    gsap.to(el, {opacity:1, y:0, duration:.9, ease:'power3.out',
+      scrollTrigger:{trigger:el, start:'top 86%'}});
+  });
+
+  gsap.timeline({scrollTrigger:{trigger:'#auditCard', start:'top 72%'}})
+    .to('#auditCard .factor', {opacity:1, x:0, duration:.55, stagger:.35, ease:'power2.out'})
+    .to('#auditCard .rejline', {opacity:1, duration:.5, stagger:.3}, '-=.1');
+
+  gsap.utils.toArray('#shapCard .fill').forEach(function(bar){
+    gsap.to(bar, {width:bar.dataset.w+'%', duration:1.1, ease:'power3.out',
+      scrollTrigger:{trigger:'#shapCard', start:'top 75%'}});
+  });
+
+  ScrollTrigger.create({trigger:'#p-forecast', start:'top 80%', onEnter:function(){ window._fireForecast(); }});
+
+  gsap.utils.toArray('.count').forEach(function(el){
+    var target = parseFloat(el.dataset.target), dec = parseInt(el.dataset.dec,10);
+    var obj = {v:0};
+    gsap.to(obj, {v:target, duration:1.6, ease:'power2.out',
+      scrollTrigger:{trigger:el, start:'top 85%'},
+      onUpdate:function(){ el.textContent = obj.v.toFixed(dec); }});
+  });
+} else {
+  var show = document.querySelectorAll('.reveal,.factor,.rejline');
+  for(var i=0;i<show.length;i++){ show[i].style.opacity = 1; show[i].style.transform = 'none'; }
+  if(window._fireForecast) window._fireForecast();
+  if(window._alertAnim) window._alertAnim();
+  if(window._fleetAnim) window._fleetAnim();
+}
+})();
+</script>
+</body>
+</html>
