@@ -37,20 +37,20 @@
     "tune_span": "2025-09-03 to 2025-12-02",
     "cal_span": "2025-12-02 to 2026-03-02",
     "valid_span": "2026-03-02 to 2026-05-31",
-    "model_r2": 0.9656,
-    "model_mae": 15.8201,
-    "model_rmse": 48.2529,
-    "naive_r2": 0.9339,
-    "naive_mae": 25.0766,
-    "naive_rmse": 66.9442,
+    "model_r2": 0.9655,
+    "model_mae": 15.8326,
+    "model_rmse": 48.3342,
+    "naive_r2": 0.9362,
+    "naive_mae": 24.4399,
+    "naive_rmse": 65.7558,
     "conformal_target_coverage": 0.9,
     "conformal_decile_only": {
-      "achieved_coverage": 0.9438,
-      "mean_interval_width": 91.952
+      "achieved_coverage": 0.9264,
+      "mean_interval_width": 81.406
     },
     "conformal_hour_bucket_x_decile": {
-      "achieved_coverage": 0.9409,
-      "mean_interval_width": 90.232,
+      "achieved_coverage": 0.923,
+      "mean_interval_width": 81.902,
       "note": "Mondrian bins on (hour-of-day bucket, prediction quintile within bucket); falls back to the decile-only calibration for any bin with fewer than 30 calibration examples."
     },
     "best_iteration": 599

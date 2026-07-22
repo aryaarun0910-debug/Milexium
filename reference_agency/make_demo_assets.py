@@ -1,7 +1,7 @@
 """Render the demo assets for the website and demo video.
 
-Inputs: pipeline/output/* (trips, model, audit log, schedule)
-Outputs: docs/demo-assets/*.png  (committed; these are marketing screenshots)
+Inputs: reference_agency/output/* (trips, model, audit log, schedule)
+Outputs: artifacts/demo-assets/*.png
 
 All data is synthetic; rider ids are synthetic. Palette follows the validated
 reference set: blue #2a78d6 accent/sequential, blue/orange for polarity,
@@ -20,7 +20,7 @@ from matplotlib.patches import FancyBboxPatch
 from pathlib import Path
 
 OUT = Path(__file__).parent / "output"
-ASSETS = Path(__file__).parent.parent / "docs" / "demo-assets"
+ASSETS = Path(__file__).parent.parent / "artifacts" / "demo-assets"
 ASSETS.mkdir(parents=True, exist_ok=True)
 
 SURFACE, INK, INK2, MUTED = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984"

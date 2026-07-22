@@ -2,7 +2,7 @@
 
 First full draft. Written against the stable, publicly-documented standard YC question set (confirmed against two independent current guides, since the live form at apply.ycombinator.com/home is behind login and couldn't be fetched directly) — **check the actual live form for exact current wording/order before submitting**, but the substance below should transfer directly.
 
-Style: direct, decisions stated, tradeoffs owned, no hedging, no filler. Per YC_APPLICATION_NOTES.md and the locked strategy decisions — do not relitigate those here. Every number below traces to a script in this repo; see the bracketed source.
+Style: direct, decisions stated, tradeoffs owned, no hedging, no filler. Historical strategy context is archived in `docs/archive/2026-07-yc-application-notes.md`; current work is governed by `docs/MASTER_ROADMAP.md`. Every number below must trace to a script or evidence artifact in this repository.
 
 Anywhere you see `[ARYA/CHRIS: ...]`, that's personal/biographical content I don't have and won't invent. Fill those in, then run `/grill-me` against the whole thing before submission.
 
@@ -15,7 +15,7 @@ Anywhere you see `[ARYA/CHRIS: ...]`, that's personal/biographical content I don
 **Describe what your company does in 50 characters or less:**
 Explainable dispatch software for paratransit.
 
-**Company URL:** `[ARYA/CHRIS: domain not yet registered as of this draft — docs/yc-plan-jul25.md flags this as an open human-only task]`
+**Company URL:** https://transitpulse-psi.vercel.app
 
 **What is your company going to make?**
 Software that predicts paratransit and NEMT demand and schedules trips with a full audit trail — every assignment and every denial comes with the exact factors that drove it and the alternatives that were rejected, with reasons. Paratransit (ADA-mandated door-to-door transit) and NEMT (Medicaid non-emergency medical transport) run on decades-old dispatch software from vendors like Ecolane, TripSpark, and RouteMatch/Uber Health that gives agencies no visibility into why the system made a scheduling decision. That's a real problem because these agencies are compliance-heavy: they get audited on missed trips, late pickups, denials, and negotiated pickup windows (49 CFR Part 37), and right now most of them can't produce a clean answer to "why was this trip denied" without manually reconstructing it. We give them that answer automatically, plus a demand forecast so they can staff ahead of it instead of reacting to it.
@@ -31,7 +31,7 @@ Pre-revenue, pre-pilot. What exists: a demand-forecasting model validated on rea
 No revenue, no pilot customers yet. Outreach to `[N — see outreach/targets_ntd.csv, currently 80 tiered targets]` paratransit agencies and NEMT brokers is in progress as of this application. `[ARYA/CHRIS: update this line with actual reply/call count once outreach has run — do not submit with a stale number]`
 
 **What have you built, concretely?**
-- A demand model validated on 26.3 million real NYC Access-A-Ride bookings (the largest paratransit operation in the US): R2 0.985 against a seasonal-naive baseline of 0.923, on a strict 90-day holdout the model never saw during training or tuning [realdata/metrics_real.json]. The same recipe, unmodified, gets R2 0.966 vs 0.934 naive on a second real city (Chicago, 4.6M training rows, 77 zones) [realdata/metrics_real.json] — the point isn't either number alone, it's that the approach generalizes.
+- A demand model validated on 26.3 million real NYC Access-A-Ride bookings (the largest paratransit operation in the US): R2 0.986 against a seasonal-naive baseline of 0.923, on a strict 90-day holdout the model never saw during training or tuning [realdata/metrics_real.json]. The same recipe, unmodified, gets R2 0.966 vs 0.936 naive on a second real city (Chicago, 4.6M training rows, 77 zones) [realdata/metrics_real.json] - the point isn't either number alone, it's that the approach generalizes.
 - A four-fold rolling-origin backtest (not a single lucky holdout window): R2 0.972 mean across folds including a materially harder winter fold, still beating naive [realdata/backtest_aar.json].
 - Calibrated uncertainty, not just point forecasts: split-conformal prediction intervals, so a capacity-planning answer reads "16 to 21 bookings expected," not a bare number pretending to be exact.
 - A rule-based scheduler that pools shared rides to common destinations (dialysis centers, day programs) and produces a structured reason code for every rejected vehicle assignment (`NO_ACCESSIBLE_CAPACITY`, `NEGOTIATION_WINDOW`, `SHIFT_END`) — deterministic and auditable, never an LLM explanation standing in for the actual decision logic.
@@ -48,7 +48,12 @@ No revenue, no pilot customers yet. Outreach to `[N — see outreach/targets_ntd
 The incumbents (Ecolane, TripSpark, RouteMatch/Uber Health) are 15-20-year-old dispatch platforms built before "explainability" was a category anyone asked for. Their optimization is a black box even to the agencies running it — when a rider or a state auditor asks "why was this trip denied," the honest answer at most agencies today is "someone has to go dig through logs." We built the audit trail as the actual product, not a feature bolted onto a routing algorithm afterward: every scheduling decision is deterministic and traceable back to the specific constraint that produced it, in a format an agency can hand to an auditor or a grievance hearing without translation. That is a genuinely different starting point than "we have a smarter model," and it's why we didn't chase a bigger model this week when we had the chance to — see the technical-depth evidence above, which exists specifically to demonstrate engineering seriousness, not because "bigger" was the actual product bet.
 
 **Who are your competitors, and what do you understand that they don't?**
-Ecolane, TripSpark, and RouteMatch/Uber Health are the incumbent dispatch vendors; NEMT brokers like Modivcare and MTM are a channel-partner-or-competitor question we haven't resolved yet (open item, see YC_APPLICATION_NOTES.md). What we understand that a generic "AI for transit" competitor wouldn't: this market's actual buying trigger is compliance risk, not routing efficiency. An agency doesn't switch dispatch software because the new one is 5% more efficient — it switches when an audit or a grievance exposes that it can't explain its own decisions. That reframes the sell from "better optimization" (a hard, slow sell against entrenched incumbents) to "compliance infrastructure you can't currently produce" (a forced-hand sell). It also means our forecasting sophistication, while real, is not the thing that closes a deal.
+Ecolane, TripSpark, and RouteMatch/Uber Health are incumbent dispatch vendors;
+NEMT brokers such as Modivcare and MTM may be channel partners or competitors.
+What we understand that a generic "AI for transit" competitor would miss is that
+forecast accuracy alone does not cause an agency to replace operational software.
+The initial product must fit around the incumbent workflow and make decisions,
+overrides, denials, and performance evidence reviewable.
 
 **How do you/will you make money?**
 `[ARYA/CHRIS: pricing model not yet locked — per-vehicle/month SaaS is the obvious default for this market (matches how Ecolane/TripSpark are typically priced), but confirm before submitting. Do not leave this blank; YC penalizes vagueness on monetization more than an imperfect-but-stated model.]`
@@ -61,7 +66,7 @@ Bottom-up, not top-down: $7.06B in annual US demand-response operating expense a
 ## Team
 
 **Founders:**
-- Arya Arun — ML, demand modeling, data engineering, backend. `[ARYA: add location, visa status detail beyond what's in YC_APPLICATION_NOTES.md, and full-time/part-time status]`
+- Arya Arun — ML, demand modeling, data engineering, backend. `[ARYA: add location, visa status, and full-time/part-time status]`
 - Chris Legge — product, frontend, embedded systems. `[CHRIS: same as above]`
 
 **How did you meet, and how long have you known each other?**
@@ -74,10 +79,10 @@ Bottom-up, not top-down: $7.06B in annual US demand-response operating expense a
 `[ARYA/CHRIS: answer honestly, standard YC disclosure question]`
 
 **Equity split and who is CEO on the form:**
-`[ARYA/CHRIS: YC_APPLICATION_NOTES.md and docs/HANDOFF.md both flag this as needing to be settled before submission and both note it wasn't settled as of when they were written — confirm this is actually locked before the form goes in. Do not submit with this unresolved; YC asks directly and vagueness here reads badly.]`
+`[ARYA/CHRIS: settle the equity split and CEO before submission. Do not submit this answer unresolved.]`
 
 **Where do you live now, and where will the company be based?**
-`[ARYA/CHRIS: fill in. YC_APPLICATION_NOTES.md notes both founders are UK-based with no US visa yet and willing to relocate — say this plainly rather than dodging it; YC has an immigration support process for accepted international teams and reads directness here as a positive, not a red flag.]`
+`[ARYA/CHRIS: state current UK locations, visa status, and willingness to relocate plainly.]`
 
 ---
 
@@ -85,7 +90,7 @@ Bottom-up, not top-down: $7.06B in annual US demand-response operating expense a
 
 Grand Final, top 36 of roughly 13,000 students, Engineers Without Borders UK Engineering for People Design Challenge — a demand-predictive bus-routing system for Ladywood, Birmingham (source repo: github.com/ChrisLegge/ewb_bus_routing_project). That project's R2 0.94 and other headline numbers belong to that system and that dataset; they are never to be quoted as TransitPulse's numbers. TransitPulse's own numbers (above) are lower and come from different, real data — reported that way on purpose. This is a single credential line establishing the team can ship real ML/optimization work under a deadline, not a claim that the two systems are the same thing.
 
-**IP check:** `[ARYA/CHRIS: docs/yc-plan-jul25.md flags "EWB competition IP terms check" as a still-open item — YC asks about IP encumbrances directly. Confirm this before submitting, not after.]`
+**IP check:** `[ARYA/CHRIS: confirm the EWB competition terms and disclose any IP encumbrance before submitting.]`
 
 ---
 

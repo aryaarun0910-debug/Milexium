@@ -1,6 +1,28 @@
 # TransitPulse project journal
 
-Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the recollection file; docs/yc-plan-jul25.md is the forward-looking backlog.
+Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
+
+## 2026-07-22: repository and data-storage audit
+
+- Consolidated active planning into `docs/MASTER_ROADMAP.md`; moved superseded
+  handoffs, initial plans, website briefs, and strategy notes to `docs/archive/`.
+- Renamed the ambiguous synthetic `pipeline/` to `reference_agency/`. It remains
+  the explicitly fictional trip-level source for scheduling demonstrations; real
+  aggregate forecasting evidence remains in `realdata/`.
+- Moved generated screenshots and the dated Graphify snapshot under `artifacts/`.
+- Documented the 56 GB local data lifecycle in `docs/DATA_STORAGE.md` and added
+  `tools/audit_repository.py` to check storage boundaries, schemas, duplicate
+  keys, coverage, raw Parquet containers, checkpoint continuity, and links.
+- The audit found a missing Chicago checkpoint for 2024-12 and empty header-only
+  checkpoints incorrectly finalizing unpublished June/July 2026 data. Restored
+  December, removed the false completions, rebuilt the panel, and increased the
+  verified total to 555,422,454 trips through 2026-05. The fetchers now reject
+  empty high-volume service days, distinguish `.partial.csv` current months, and
+  publish checkpoints atomically through `.part` files.
+- Final audit: all eight compact/local panels passed schemas and unique-key
+  checks; all 88 FHVHV Parquet containers passed; monthly checkpoint sequences
+  are continuous. The only warning is expected unfinished scope: green taxi has
+  not been fetched.
 
 ## 2026-07-21 (evening): GPU acceleration, Kaggle live runs, nationwide data expansion
 

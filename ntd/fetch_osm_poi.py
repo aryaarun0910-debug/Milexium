@@ -1,7 +1,7 @@
 """Pull real medical/senior/dialysis facility locations from OpenStreetMap.
 
-Replaces the synthetic pipeline's guessed zone flags (has_dialysis,
-has_daycenter, has_medical in pipeline/generate_trips.py) with real
+Replaces the fictional reference agency's guessed zone flags (has_dialysis,
+has_daycenter, has_medical in reference_agency/generate_trips.py) with real
 geography. Any US county can get this, not just the two cities we have
 event-level trip data for, so it's a scalable feature source for any
 outreach target in ntd/agency_economics.csv.

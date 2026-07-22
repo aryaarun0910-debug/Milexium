@@ -9,8 +9,8 @@ Everything here is real, public, reproducible. No synthetic rows.
    provider type, Jan 2024 to May 2026, 26.3M trips. This is the product's
    exact target variable.
 2. Chicago TNP (data.cityofchicago.org m6dm-c72p, n26f-ihde, 6dvr-xwnh):
-   every rideshare trip since Nov 2018, about 300M, aggregated server-side
-   to a 77-community-area hourly panel. Door-to-door demand at scale.
+   555.4M rideshare trips from Nov 2018 through May 2026, aggregated
+   server-side to a 77-community-area hourly panel. Door-to-door demand at scale.
 3. NYC TLC FHVHV parquet (CloudFront CDN): about 1.5B raw trips, roughly
    40 GB, monthly files. Transformer-scale corpus; aggregated locally with
    DuckDB, trained on Kaggle GPUs (see kaggle/).
@@ -62,9 +62,9 @@ why every TransitPulse number ships with the naive comparison.
 
 Chicago TNP, community-area-hour (77 zones), same 90-day holdout, 4.6M
 training rows spanning 2018-11 to 2025-09:
-- Model R2 0.966, MAE 15.8, RMSE 48.2
-- Seasonal-naive R2 0.934, MAE 25.1, RMSE 66.9
-- Conformal: 90 percent target, 94.5 percent achieved (tighter than AAR's,
+- Model R2 0.966, MAE 15.8, RMSE 48.3
+- Seasonal-naive R2 0.936, MAE 24.4, RMSE 65.8
+- Conformal: 90 percent target, 92.6 percent achieved (tighter than AAR's,
   worth investigating why — larger zone count or different demand
   variance shape are both plausible, not yet checked)
 - A second real city on the same recipe, same honest protocol: the model

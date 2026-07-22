@@ -21,11 +21,9 @@ Datasets (data.cityofchicago.org):
 - n26f-ihde  Trips 2023-2024
 - 6dvr-xwnh  Trips 2025-
 
-Known limitation: once a month file is written, it is never topped up. The
-current (in-progress) month is written with whatever end-date boundary
-applied on the day it first fully completed; later days in that same
-month are not backfilled automatically. Delete that one month's file and
-rerun to pick up more recent days.
+Complete calendar months use `YYYY-MM.csv`. The current in-progress month uses
+`YYYY-MM.partial.csv` and is refreshed on every run, so a partial month is never
+mistaken for a finalized checkpoint.
 
 Final output (written/refreshed whenever all months present so far are done):
 realdata/panels/chicago_tnp_zone_hour.csv.gz
@@ -73,6 +71,8 @@ def fetch_day(ds: str, day: date) -> pd.DataFrame | None:
             r = requests.get(url, params=params, timeout=90)
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
+            if df.empty:
+                raise ValueError("empty response for a high-volume service day")
             df.insert(0, "date", day)
             return df
         except Exception as e:
@@ -97,6 +97,12 @@ def month_starts(start: date, end: date):
                else date(cur.year, cur.month + 1, 1))
 
 
+def is_complete_month(m0: date, end: date) -> bool:
+    next_month = (date(m0.year + 1, 1, 1) if m0.month == 12
+                  else date(m0.year, m0.month + 1, 1))
+    return end >= next_month - timedelta(days=1)
+
+
 def combine():
     files = sorted(MONTHLY.glob("*.csv"))
     if not files:
@@ -115,8 +121,10 @@ def combine():
 if __name__ == "__main__":
     for ds, start, end in DATASETS:
         for m0 in month_starts(start, end):
-            dest = MONTHLY / f"{m0:%Y-%m}.csv"
-            if dest.exists():
+            complete = is_complete_month(m0, end)
+            dest = MONTHLY / (f"{m0:%Y-%m}.csv" if complete
+                              else f"{m0:%Y-%m}.partial.csv")
+            if complete and dest.exists():
                 continue
             t0 = time.time()
             day_list = list(month_days(min(end, date.today()), m0))
@@ -129,7 +137,9 @@ if __name__ == "__main__":
                       f"({time.time() - t0:.0f}s)", flush=True)
                 continue
             month = pd.concat(results, ignore_index=True)
-            month.to_csv(dest, index=False)
+            temp = dest.with_suffix(dest.suffix + ".part")
+            month.to_csv(temp, index=False)
+            temp.replace(dest)
             print(f"{ds} {m0:%Y-%m}: {len(month)} rows, "
                   f"{month.trips.sum():,} trips "
                   f"({time.time() - t0:.0f}s)", flush=True)

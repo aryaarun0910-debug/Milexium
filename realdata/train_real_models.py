@@ -31,6 +31,7 @@ Outputs: realdata/metrics_real.json, realdata/output/*.json models,
 realdata/output/*_valid.csv.gz per-row validation predictions/intervals.
 """
 
+import argparse
 import json
 from pathlib import Path
 
@@ -304,40 +305,56 @@ def load_mta_subway():
                             "station_id", "riders")
 
 
-if __name__ == "__main__":
-    results = {}
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--only", choices=("aar", "chicago", "mta_bus", "mta_subway"),
+        help="retrain one model and preserve the other committed metrics")
+    args = parser.parse_args()
 
-    results["nyc_access_a_ride"] = run(
-        "aar", load_aar(), "borough", "nyc",
-        "Real NYC Access-A-Ride paratransit bookings, borough-hour panel")
-    print(json.dumps(results["nyc_access_a_ride"], indent=2))
-
-    chi_path = PANELS / "chicago_tnp_zone_hour.csv.gz"
-    if chi_path.exists():
-        results["chicago_tnp"] = run(
-            "chicago", load_chicago(), "area", "chicago",
-            "Real Chicago TNP door-to-door trips, community-area-hour panel")
-        print(json.dumps(results["chicago_tnp"], indent=2))
+    metrics_path = HERE / "metrics_real.json"
+    if args.only and metrics_path.exists():
+        results = json.loads(metrics_path.read_text())
     else:
-        print("chicago panel not downloaded yet, skipping")
+        results = {}
 
-    bus_path = PANELS / "mta_bus_route_hour.csv.gz"
-    if bus_path.exists():
-        results["mta_bus"] = run(
-            "mta_bus", load_mta_bus(), "route", "nyc",
-            "Real MTA bus AFC (fare-payment) ridership, route-hour panel")
-        print(json.dumps(results["mta_bus"], indent=2))
-    else:
-        print("MTA bus panel not downloaded yet, skipping")
+    if args.only in (None, "aar"):
+        results["nyc_access_a_ride"] = run(
+            "aar", load_aar(), "borough", "nyc",
+            "Real NYC Access-A-Ride paratransit bookings, borough-hour panel")
+        print(json.dumps(results["nyc_access_a_ride"], indent=2))
 
-    subway_path = PANELS / "mta_subway_station_hour.csv.gz"
-    if subway_path.exists():
-        results["mta_subway"] = run(
-            "mta_subway", load_mta_subway(), "station_id", "nyc",
-            "Real MTA subway AFC (fare-payment) ridership, station-hour panel")
-        print(json.dumps(results["mta_subway"], indent=2))
-    else:
-        print("MTA subway panel not downloaded yet, skipping")
+    jobs = {
+        "chicago": (
+            "chicago_tnp", PANELS / "chicago_tnp_zone_hour.csv.gz", "chicago",
+            load_chicago, "area", "chicago",
+            "Real Chicago TNP door-to-door trips, community-area-hour panel"),
+        "mta_bus": (
+            "mta_bus", PANELS / "mta_bus_route_hour.csv.gz", "mta_bus",
+            load_mta_bus, "route", "nyc",
+            "Real MTA bus AFC (fare-payment) ridership, route-hour panel"),
+        "mta_subway": (
+            "mta_subway", PANELS / "mta_subway_station_hour.csv.gz", "mta_subway",
+            load_mta_subway, "station_id", "nyc",
+            "Real MTA subway AFC (fare-payment) ridership, station-hour panel"),
+    }
+    for selected, (metric_key, panel_path, model_name, loader, zone_col,
+                   weather_city, note) in jobs.items():
+        if args.only not in (None, selected):
+            continue
+        if not panel_path.exists():
+            message = f"{selected} panel not downloaded yet"
+            if args.only == selected:
+                raise SystemExit(message)
+            print(message + ", skipping")
+            continue
+        results[metric_key] = run(
+            model_name, loader(), zone_col, weather_city, note)
+        print(json.dumps(results[metric_key], indent=2))
 
-    (HERE / "metrics_real.json").write_text(json.dumps(results, indent=2))
+    metrics_path.write_text(json.dumps(results, indent=2))
     print("saved realdata/metrics_real.json")
+
+
+if __name__ == "__main__":
+    main()

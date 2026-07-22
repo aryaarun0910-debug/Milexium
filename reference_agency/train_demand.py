@@ -6,7 +6,8 @@ baseline (mean bookings for the same zone/hour/day-of-week over the training
 window), because R2 against zeros is easy and R2 against a calendar baseline
 is the honest number.
 
-Outputs: pipeline/output/demand_model.json, metrics.json, panel_valid.csv
+Outputs: reference_agency/output/demand_model.json, metrics.json,
+panel_valid.csv
 """
 
 import json

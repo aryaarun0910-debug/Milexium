@@ -10,7 +10,7 @@ Two-stage scheduler mirroring real paratransit ops:
      logged with the factors that drove it and the alternatives rejected,
      with reasons. The audit trail is the product wedge.
 
-Outputs: pipeline/output/schedule.csv, audit_log.json, day_stats.json
+Outputs: reference_agency/output/schedule.csv, audit_log.json, day_stats.json
 """
 
 import json

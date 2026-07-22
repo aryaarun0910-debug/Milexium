@@ -6,7 +6,8 @@ norms: ~1.5-2.5 passenger trips per revenue vehicle hour, ~50% subscription
 (standing-order) trips, medical/dialysis as the dominant purpose, midday
 demand peaks rather than commuter peaks, 10-20% cancellation/no-show.
 
-No real rider data anywhere. Output: pipeline/output/trips.csv, zones.csv, weather.csv
+No real rider data anywhere. Output: reference_agency/output/trips.csv,
+zones.csv, weather.csv
 """
 
 import numpy as np

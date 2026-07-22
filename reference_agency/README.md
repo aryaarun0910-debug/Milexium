@@ -1,12 +1,17 @@
-# TransitPulse pipeline (v1, synthetic)
+# Fictional reference agency (synthetic trip-level prototype)
+
+This directory is intentionally separate from `realdata/`. It supplies the
+trip-level requests needed to demonstrate scheduling decisions and audit events
+without using rider data or implying that public aggregate datasets validate
+dispatch decisions.
 
 Run in order:
 
 ```
-py -3 pipeline/generate_trips.py    # synthetic county paratransit bookings, 12 months
-py -3 pipeline/train_demand.py     # zone-hour XGBoost demand model, temporal validation
-py -3 pipeline/schedule_trips.py   # one service day: pooling + assignment + audit trail
-py -3 pipeline/make_demo_assets.py # renders docs/demo-assets/*.png
+py -3 reference_agency/generate_trips.py
+py -3 reference_agency/train_demand.py
+py -3 reference_agency/schedule_trips.py
+py -3 reference_agency/make_demo_assets.py
 ```
 
 Current numbers (seed 42):
@@ -37,9 +42,9 @@ Current numbers (seed 42):
    still runs on synthetic trip-level data because no individual-trip
    paratransit dataset is public. Real pilot data access, not more model
    sophistication, is the actual unlock for validating dispatch decisions.
-   Concretely: docs/demo-assets/why_this_forecast_real.png and
+   Concretely: artifacts/demo-assets/why_this_forecast_real.png and
    demand_curve_real.png (realdata/make_real_demo_assets.py) are the real
    equivalents of two of this pipeline's five demo assets. The other three
-   (why_this_trip, capacity_alert, fleet_timeline) stay synthetic until a
+   (`why_this_trip`, `capacity_alert`, `fleet_timeline`) stay synthetic until a
    real trip-level booking stream exists — they are not fakeable honestly
    with aggregate data.

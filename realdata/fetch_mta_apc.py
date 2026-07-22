@@ -21,16 +21,12 @@ failure mode as Chicago's 2018-2022 TNP table), so this chunks by DAY,
 summing ridership across payment methods server-side. A month file is
 only written once every one of its days has succeeded; if any day fails
 after retries, the whole month is left unwritten so the next run retries
-it in full (not marked complete with a silent gap). One CSV per month,
-skip-if-exists, safe to kill and resume:
+it in full (not marked complete with a silent gap). Completed calendar months
+use `YYYY-MM.csv`; the current month uses `YYYY-MM.partial.csv` and is refreshed
+on every run. Checkpoints are written through `.part` files and atomically
+renamed, so an interrupted write cannot look complete.
 
   py -3 realdata/fetch_mta_apc.py
-
-Known limitation: once a month file is written, it is never topped up. The
-current (in-progress) month is written with whatever end-date boundary
-applied on the day it first fully completed; later days in that same
-month are not backfilled automatically. Delete that one month's file and
-rerun to pick up more recent days.
 
 Output:
   realdata/panels/mta_bus_route_hour.csv.gz    (date, hour, route, riders)
@@ -39,7 +35,7 @@ Output:
 
 import io
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -91,6 +87,8 @@ def fetch_day(ds: str, day: date, zone_col: str, extra_group: str) -> pd.DataFra
             r = requests.get(url, params=params, timeout=180)
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
+            if df.empty:
+                raise ValueError("empty response for a high-volume service day")
             df.insert(0, "date", day)
             return df
         except Exception as e:
@@ -116,13 +114,21 @@ def month_days(m0: date, end: date):
         d += timedelta(days=1)
 
 
+def is_complete_month(m0: date, end: date) -> bool:
+    next_month = (date(m0.year + 1, 1, 1) if m0.month == 12
+                  else date(m0.year, m0.month + 1, 1))
+    return end >= next_month - timedelta(days=1)
+
+
 def run_feed(name: str, spec: dict):
     spec["monthly_dir"].mkdir(parents=True, exist_ok=True)
     for ds, start, end in spec["datasets"]:
         end = min(end, date.today() - timedelta(days=3))
         for m0 in month_starts(start, end):
-            dest = spec["monthly_dir"] / f"{m0:%Y-%m}.csv"
-            if dest.exists():
+            complete = is_complete_month(m0, end)
+            dest = spec["monthly_dir"] / (f"{m0:%Y-%m}.csv" if complete
+                                           else f"{m0:%Y-%m}.partial.csv")
+            if complete and dest.exists():
                 continue
             t0 = time.time()
             days = list(month_days(m0, end))
@@ -137,7 +143,9 @@ def run_feed(name: str, spec: dict):
                       f"({time.time() - t0:.0f}s)", flush=True)
                 continue
             month = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
-            month.to_csv(dest, index=False)
+            temp = dest.with_suffix(dest.suffix + ".part")
+            month.to_csv(temp, index=False)
+            temp.replace(dest)
             print(f"{name} {ds} {m0:%Y-%m}: {len(month)} rows, "
                   f"{month.riders.sum() if len(month) else 0:,.0f} riders "
                   f"({time.time() - t0:.0f}s)", flush=True)

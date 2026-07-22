@@ -1,32 +1,41 @@
 # TransitPulse
 
-Explainable scheduling and demand prediction for US paratransit and NEMT operators.
+Explainable demand forecasting and scheduling support for US paratransit and
+NEMT operators. TransitPulse is being built around a simple operational promise:
+every forecast, scheduling recommendation, rejection, and human override should
+be reviewable after the fact.
 
-Paratransit is a statutory duty (ADA complementary paratransit, Medicaid NEMT) run on opaque legacy dispatch software. Operators cannot see why the system scheduled a trip the way it did, which makes compliance reporting painful and makes bad routing impossible to challenge. TransitPulse predicts demand and schedules trips with a full audit trail: every routing decision comes with a human-readable explanation of why.
+The production model recommendation is deliberately conventional: XGBoost beat
+the experimental transformer on the same real Access-A-Ride holdout, so the tree
+model remains the reference implementation. See [realdata/README.md](realdata/README.md)
+for the full comparison and limitations.
 
-## Why us
+## Repository map
 
-We built a demand-predictive routing system on real transit data (0.94 R2 demand model with temporal validation, 1.16% mean routing optimality gap, SHAP-based explainability, benchmarked against ARIMA and deep learning baselines) that reached the Grand Final of a 13,000-student international engineering competition. The explainability layer was built first, not bolted on.
+| Path | Purpose |
+|---|---|
+| `realdata/` | Public-data ingestion, derived demand panels, model training, evaluation, and compact evidence outputs |
+| `ntd/` | FTA National Transit Database economics, market sizing, and outreach inputs |
+| `reference_agency/` | Fictional, synthetic trip-level agency used only for scheduler and audit-trail demonstrations |
+| `kaggle/` | GPU notebook and recorded transformer experiment results |
+| `outreach/` | Design-partner research, templates, target tables, and locally ignored drafts |
+| `web/` | Live static website source and deployed media |
+| `docs/` | Active roadmap, source catalog, research questions, journal, and YC draft |
+| `artifacts/` | Curated generated screenshots and dated knowledge-graph snapshots |
+| `tools/` | Repository and data integrity checks |
 
-## Founders
+Large raw files, resumable checkpoints, trained models, predictions, outreach
+drafts, and credentials are local-only and gitignored. The storage contract is
+documented in [docs/DATA_STORAGE.md](docs/DATA_STORAGE.md).
 
-- Arya Arun: ML, demand modeling, optimization, backend
-- Chris Legge: product, frontend, embedded systems
+## Start here
 
-## Structure
+- [Documentation index](docs/README.md)
+- [Master roadmap](docs/MASTER_ROADMAP.md)
+- [Data source catalog](docs/DATA_SOURCES.md)
+- [Project journal](docs/JOURNAL.md)
+- [YC application draft](docs/yc/application-draft.md)
 
-- `ntd/` FTA National Transit Database pulls: the full US demand-response market, per-agency economics, market sizing, outreach personalization
-- `realdata/` real demand data (NYC Access-A-Ride, Chicago TNP, NYC TLC) and real-data demand models with conformal intervals
-- `kaggle/` GPU-scale training packages (transformer on the 1B+ trip TLC corpus)
-- `outreach/` generated target lists with per-agency hooks
-- `pipeline/` v1 synthetic pipeline (to be retired once real data covers everything it demonstrates)
-- `web/` marketing and demo site (React + TypeScript + Vite, not started)
-- `docs/` briefs, plans, decisions, and the project journal
-
-## Working docs
-
-- [docs/JOURNAL.md](docs/JOURNAL.md) — running journal: what was added, when, and why
-- [docs/yc-plan-jul25.md](docs/yc-plan-jul25.md) — execution backlog for the 25 July YC deadline
-- [docs/website-brief.md](docs/website-brief.md) — website first-pass brief for Chris
-- [YC_APPLICATION_NOTES.md](YC_APPLICATION_NOTES.md) — locked strategy decisions
-- [outreach_target_list.md](outreach_target_list.md) + [cold_outreach_template.md](cold_outreach_template.md) — customer discovery
+Run `py -3 tools/audit_repository.py` after fetches, file moves, or model runs to
+check repository structure, ignored-data boundaries, panel schemas, duplicate
+keys, checkpoint continuity, and raw Parquet file integrity.
