@@ -1,0 +1,53 @@
+{
+  "generated_utc": "2026-07-22T08:38:10+00:00",
+  "panels": [
+    {
+      "panel": "aar_hourly_borough.csv.gz",
+      "sha256": "83141d404e1cbbfd8aa243e5375d36d77288d38e4cfbd423fe6aa7d8f673680e",
+      "rows": 571114,
+      "source": "data.ny.gov ['hasd-hdb7']"
+    },
+    {
+      "panel": "aar_daily.csv",
+      "sha256": "fbad46fea6e530b0d706696e07802038ee71ee220c9c65b9d059c1e8cf44f300",
+      "rows": 1776,
+      "source": "data.ny.gov ['vxuj-8kew']"
+    },
+    {
+      "panel": "chicago_tnp_zone_hour.csv.gz",
+      "sha256": "5dd24130e6dbfea2fc99e3b4176e529712567a953126e337b0328e1881cd820b",
+      "rows": 5088993,
+      "source": "data.cityofchicago.org ['m6dm-c72p', 'n26f-ihde', '6dvr-xwnh']"
+    },
+    {
+      "panel": "mta_bus_route_hour.csv.gz",
+      "sha256": "445d361e8dd992b0e97f5eb9fb56ce02a230e44299842d62d94a894ce6d6b11c",
+      "rows": 24400680,
+      "source": "data.ny.gov ['kv7t-n8in', 'gxb3-akrn']"
+    },
+    {
+      "panel": "mta_subway_station_hour.csv.gz",
+      "sha256": "fa16e5347ce930f5a421ed5829ab97dc4f6d37594a0aa1c0f031e49bf53b140c",
+      "rows": 23542173,
+      "source": "data.ny.gov ['wujg-7c2s', '5wq4-mkjj']"
+    },
+    {
+      "panel": "ntd_monthly_dr.csv.gz",
+      "sha256": "72a97da33256f212e9edd2202e505d6286235f1e8999f6e543628b72002cb8ba",
+      "rows": 151991,
+      "source": "data.transportation.gov ['8bui-9xvu']"
+    },
+    {
+      "panel": "weather_daily.csv",
+      "sha256": "0005f82388e37bf2d2448f3df7bc2bcf2c88c8627f25baacf7214a524cc1e20f",
+      "rows": 5638,
+      "source": "archive-api.open-meteo.com ['ERA5 archive']"
+    },
+    {
+      "panel": "weather_hourly.csv.gz",
+      "sha256": "af68f04bdc189d331783212c05d002f6030bbce7192d86f4ce7102f774a4c95d",
+      "rows": 134057,
+      "source": "ncei.noaa.gov ['LCD 72503014732', 'LCD 72530094846']"
+    }
+  ]
+}

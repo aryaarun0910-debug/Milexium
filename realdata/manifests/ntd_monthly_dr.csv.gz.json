@@ -1,0 +1,34 @@
+{
+  "panel": "ntd_monthly_dr.csv.gz",
+  "built_utc": "2026-07-22T08:38:09+00:00",
+  "sha256": "72a97da33256f212e9edd2202e505d6286235f1e8999f6e543628b72002cb8ba",
+  "bytes": 1998692,
+  "source": {
+    "name": "NTD monthly demand-response ridership, nationwide",
+    "portal": "data.transportation.gov",
+    "dataset_ids": [
+      "8bui-9xvu"
+    ],
+    "fetch_script": "realdata/fetch_ntd_monthly.py",
+    "license": "FTA / US DOT (public domain)"
+  },
+  "schema": {
+    "ntd_id": "int64",
+    "agency": "str",
+    "state": "str",
+    "uza_name": "str",
+    "mode": "str",
+    "tos": "str",
+    "date": "str",
+    "upt": "int64",
+    "vrh": "float64",
+    "vrm": "float64",
+    "voms": "float64"
+  },
+  "coverage": {
+    "rows": 151991,
+    "date_min": "2002-01-01",
+    "date_max": "2026-05-01",
+    "distinct_ntd_id": 637
+  }
+}

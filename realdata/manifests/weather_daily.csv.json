@@ -1,0 +1,29 @@
+{
+  "panel": "weather_daily.csv",
+  "built_utc": "2026-07-22T08:38:10+00:00",
+  "sha256": "0005f82388e37bf2d2448f3df7bc2bcf2c88c8627f25baacf7214a524cc1e20f",
+  "bytes": 201175,
+  "source": {
+    "name": "Daily weather (NYC + Chicago)",
+    "portal": "archive-api.open-meteo.com",
+    "dataset_ids": [
+      "ERA5 archive"
+    ],
+    "fetch_script": "realdata/fetch_weather.py",
+    "license": "Open-Meteo (free, attribution)"
+  },
+  "schema": {
+    "city": "str",
+    "date": "str",
+    "tmax_c": "float64",
+    "tmin_c": "float64",
+    "precip_mm": "float64",
+    "snow_cm": "float64"
+  },
+  "coverage": {
+    "rows": 5638,
+    "date_min": "2018-11-01",
+    "date_max": "2026-07-20",
+    "distinct_city": 2
+  }
+}

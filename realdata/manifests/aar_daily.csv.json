@@ -1,0 +1,24 @@
+{
+  "panel": "aar_daily.csv",
+  "built_utc": "2026-07-22T08:36:22+00:00",
+  "sha256": "fbad46fea6e530b0d706696e07802038ee71ee220c9c65b9d059c1e8cf44f300",
+  "bytes": 31855,
+  "source": {
+    "name": "NYC Access-A-Ride daily scheduled trips",
+    "portal": "data.ny.gov",
+    "dataset_ids": [
+      "vxuj-8kew"
+    ],
+    "fetch_script": "realdata/fetch_nyc_aar.py",
+    "license": "NY Open Data"
+  },
+  "schema": {
+    "date": "str",
+    "scheduled_trips": "int64"
+  },
+  "coverage": {
+    "rows": 1776,
+    "date_min": "2020-03-01",
+    "date_max": "2025-01-09"
+  }
+}

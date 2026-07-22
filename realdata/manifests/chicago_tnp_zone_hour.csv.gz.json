@@ -1,0 +1,29 @@
+{
+  "panel": "chicago_tnp_zone_hour.csv.gz",
+  "built_utc": "2026-07-22T08:36:35+00:00",
+  "sha256": "5dd24130e6dbfea2fc99e3b4176e529712567a953126e337b0328e1881cd820b",
+  "bytes": 18806591,
+  "source": {
+    "name": "Chicago TNP rideshare, community-area x hour",
+    "portal": "data.cityofchicago.org",
+    "dataset_ids": [
+      "m6dm-c72p",
+      "n26f-ihde",
+      "6dvr-xwnh"
+    ],
+    "fetch_script": "realdata/fetch_chicago_panel.py",
+    "license": "City of Chicago Open Data"
+  },
+  "schema": {
+    "date": "str",
+    "hour": "int64",
+    "area": "int64",
+    "trips": "int64"
+  },
+  "coverage": {
+    "rows": 5088993,
+    "date_min": "2018-11-01",
+    "date_max": "2026-05-31",
+    "distinct_area": 77
+  }
+}
