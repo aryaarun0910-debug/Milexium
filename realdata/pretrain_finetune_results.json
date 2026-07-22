@@ -1,0 +1,27 @@
+{
+  "A_aar_only_no_zone": {
+    "model_r2": 0.9862,
+    "model_mae": 20.0998,
+    "naive_r2": 0.9231,
+    "naive_mae": 55.4921,
+    "best_iteration": 402
+  },
+  "B_pretrain_then_finetune": {
+    "model_r2": 0.9913,
+    "model_mae": 17.1816,
+    "naive_r2": 0.9231,
+    "naive_mae": 55.4921,
+    "best_iteration": 743,
+    "pretrain_rows": 3000000,
+    "pretrain_datasets": 3
+  },
+  "C_aar_only_with_zone_production": {
+    "model_r2": 0.9857,
+    "model_mae": 20.1232,
+    "naive_r2": 0.9231,
+    "naive_mae": 55.4921,
+    "note": "production model already reported in metrics_real.json; recomputed here only so all three numbers sit side by side on one identical AAR holdout window"
+  },
+  "verdict": "PRETRAINING HELPED",
+  "verdict_note": "Comparing A (no pretrain) vs B (pretrained on Chicago+MTA bus+MTA subway, generic features only, no zone identity in either). This is the honest, narrow test of the transformer notebook's central design bet, run with a method that actually executed today."
+}
