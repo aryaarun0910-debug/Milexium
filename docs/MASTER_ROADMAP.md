@@ -1,4 +1,4 @@
-# TransitPulse master roadmap
+# Milexium master roadmap
 
 This is the only active backlog. Completed work belongs in `JOURNAL.md`; obsolete
 plans belong in `archive/`. The internal YC submission target is **25 July 2026**.

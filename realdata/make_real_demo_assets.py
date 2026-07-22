@@ -47,7 +47,7 @@ plt.rcParams.update({
     "text.color": INK, "axes.labelcolor": INK2,
     "savefig.dpi": 200, "savefig.facecolor": SURFACE,
 })
-BRAND = "TransitPulse"
+BRAND = "Milexium"
 
 
 def card_frame(ax):
@@ -107,7 +107,7 @@ ax.fill_between(dv.hour, dv.lo, dv.hi, color=BLUE, alpha=0.12, zorder=2,
 ax.plot(dv.hour, dv.y, color="#9b9a95", lw=2, marker="o", ms=4, zorder=4,
         label="Observed bookings")
 ax.plot(dv.hour, dv.pred, color=BLUE, lw=2, marker="o", ms=4, zorder=5,
-        label="TransitPulse forecast")
+        label="Milexium forecast")
 ax.plot(dv.hour, dv.naive, color=MUTED, lw=1.3, ls="--", zorder=3,
         label="Seasonal-naive baseline")
 ax.set_xlim(-0.5, 23.5)

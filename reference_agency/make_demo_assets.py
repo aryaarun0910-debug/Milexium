@@ -41,7 +41,7 @@ sched = pd.read_csv(OUT / "schedule.csv")
 valid = pd.read_csv(OUT / "panel_valid.csv", parse_dates=["date"])
 metrics = json.loads((OUT / "metrics.json").read_text())
 
-BRAND = "TransitPulse"
+BRAND = "Milexium"
 
 def card_frame(ax):
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
@@ -160,7 +160,7 @@ dv = valid[valid.date == DAY].groupby("hour")[["bookings", "pred"]].sum()
 fig, ax = plt.subplots(figsize=(7.4, 3.6))
 ax.plot(dv.index, dv.bookings, color="#9b9a95", lw=2, label="Observed bookings",
         marker="o", ms=4, zorder=3)
-ax.plot(dv.index, dv.pred, color=BLUE, lw=2, label="TransitPulse forecast",
+ax.plot(dv.index, dv.pred, color=BLUE, lw=2, label="Milexium forecast",
         marker="o", ms=4, zorder=4)
 ax.text(dv.index[-1] + 0.25, dv.pred.iloc[-1], "Forecast", color=BLUE,
         fontsize=9, va="center", weight="bold")

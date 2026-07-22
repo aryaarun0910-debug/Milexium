@@ -8,7 +8,7 @@ Sources (DOT Socrata open data portal, no API key needed):
   ADA UPT, sponsored UPT, days of service, average speed.
 
 Modes: DR (demand response), DT (demand response - taxi). Both are the
-paratransit/NEMT universe TransitPulse targets.
+paratransit/NEMT universe Milexium targets.
 
 Output: ntd/raw/metrics_dr.csv, ntd/raw/service_dr.csv
 """

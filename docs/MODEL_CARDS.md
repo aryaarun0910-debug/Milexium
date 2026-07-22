@@ -1,4 +1,4 @@
-# TransitPulse model cards
+# Milexium model cards
 
 _Generated 2026-07-22 by tools/build_model_cards.py from the committed metrics artifacts. Every number here traces to a JSON in realdata/. Regenerate after any retrain._
 

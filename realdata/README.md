@@ -58,7 +58,7 @@ train/tune/cal/valid split):
 
 Without the demand-history lags, the calendar-plus-weather model ties the
 naive baseline (R2 0.919 vs 0.921). That finding is kept on purpose: it is
-why every TransitPulse number ships with the naive comparison.
+why every Milexium number ships with the naive comparison.
 
 Chicago TNP, community-area-hour (77 zones), same 90-day holdout, 4.6M
 training rows spanning 2018-11 to 2025-09:

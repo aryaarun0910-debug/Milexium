@@ -10,12 +10,14 @@ Anywhere you see `[ARYA/CHRIS: ...]`, that's personal/biographical content I don
 
 ## Company
 
-**Company name:** TransitPulse
+**Company name:** Milexium
+
+**Tagline (tentative, confirm before submitting):** Every mile, justified.
 
 **Describe what your company does in 50 characters or less:**
 Explainable dispatch software for paratransit.
 
-**Company URL:** https://transitpulse-psi.vercel.app
+**Company URL:** https://milexium.com
 
 **What is your company going to make?**
 Software that predicts paratransit and NEMT demand and schedules trips with a full audit trail — every assignment and every denial comes with the exact factors that drove it and the alternatives that were rejected, with reasons. Paratransit (ADA-mandated door-to-door transit) and NEMT (Medicaid non-emergency medical transport) run on decades-old dispatch software from vendors like Ecolane, TripSpark, and RouteMatch/Uber Health that gives agencies no visibility into why the system made a scheduling decision. That's a real problem because these agencies are compliance-heavy: they get audited on missed trips, late pickups, denials, and negotiated pickup windows (49 CFR Part 37), and right now most of them can't produce a clean answer to "why was this trip denied" without manually reconstructing it. We give them that answer automatically, plus a demand forecast so they can staff ahead of it instead of reacting to it.
@@ -88,7 +90,7 @@ Bottom-up, not top-down: $7.06B in annual US demand-response operating expense a
 
 ## Credential / evidence line (use once, don't oversell)
 
-Grand Final, top 36 of roughly 13,000 students, Engineers Without Borders UK Engineering for People Design Challenge — a demand-predictive bus-routing system for Ladywood, Birmingham (source repo: github.com/ChrisLegge/ewb_bus_routing_project). That project's R2 0.94 and other headline numbers belong to that system and that dataset; they are never to be quoted as TransitPulse's numbers. TransitPulse's own numbers (above) are lower and come from different, real data — reported that way on purpose. This is a single credential line establishing the team can ship real ML/optimization work under a deadline, not a claim that the two systems are the same thing.
+Grand Final, top 36 of roughly 13,000 students, Engineers Without Borders UK Engineering for People Design Challenge — a demand-predictive bus-routing system for Ladywood, Birmingham (source repo: github.com/ChrisLegge/ewb_bus_routing_project). That project's R2 0.94 and other headline numbers belong to that system and that dataset; they are never to be quoted as Milexium's numbers. Milexium's own numbers (above) are lower and come from different, real data — reported that way on purpose. This is a single credential line establishing the team can ship real ML/optimization work under a deadline, not a claim that the two systems are the same thing.
 
 **IP check:** `[ARYA/CHRIS: confirm the EWB competition terms and disclose any IP encumbrance before submitting.]`
 

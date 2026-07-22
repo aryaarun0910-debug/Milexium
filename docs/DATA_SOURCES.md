@@ -1,6 +1,6 @@
 # Data source catalog
 
-Every dataset TransitPulse uses, where it comes from, what it's for, and where it lives in the repo. Update this file whenever a new source is added or an existing pull is refreshed. This is the index; the fetch scripts and their READMEs (ntd/README.md, realdata/README.md, kaggle/README.md) are the authority on exact columns and run instructions.
+Every dataset Milexium uses, where it comes from, what it's for, and where it lives in the repo. Update this file whenever a new source is added or an existing pull is refreshed. This is the index; the fetch scripts and their READMEs (ntd/README.md, realdata/README.md, kaggle/README.md) are the authority on exact columns and run instructions.
 
 ## Real, event-level data (the evidence base)
 

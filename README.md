@@ -1,9 +1,10 @@
-# TransitPulse
+# Milexium
 
 Explainable demand forecasting and scheduling support for US paratransit and
-NEMT operators. TransitPulse is being built around a simple operational promise:
-every forecast, scheduling recommendation, rejection, and human override should
-be reviewable after the fact.
+NEMT operators. Every mile, justified (tagline, tentative). Milexium is being
+built around a simple operational promise: every forecast, scheduling
+recommendation, rejection, and human override should be reviewable after the
+fact.
 
 The production model recommendation is deliberately conventional: XGBoost beat
 the experimental transformer on the same real Access-A-Ride holdout, so the tree

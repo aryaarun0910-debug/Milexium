@@ -1,4 +1,4 @@
-"""Audit TransitPulse repository structure and local data integrity.
+"""Audit Milexium repository structure and local data integrity.
 
 The audit is read-only. It checks repository boundaries, panel schemas and
 duplicate keys, raw Parquet containers, and monthly checkpoint continuity.
@@ -243,7 +243,7 @@ def main() -> int:
     report["errors"] = errors
     report["warnings"] = warnings
 
-    print("TransitPulse repository audit")
+    print("Milexium repository audit")
     for item in report["panels"]:
         print(f"  {item['path']}: {item['rows']:,} rows, "
               f"{item['first']} to {item['last']}, duplicates={item['duplicates']}")

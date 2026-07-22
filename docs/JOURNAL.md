@@ -1,6 +1,31 @@
-# TransitPulse project journal
+# Milexium project journal
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
+
+Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
+dated before the rename refer to the company as TransitPulse throughout,
+unchanged, because this file is an append-only historical record.
+
+## 2026-07-22 (later): rebrand to Milexium
+
+Company renamed TransitPulse -> Milexium. Tagline "Every mile, justified" proposed,
+not yet confirmed. Chris is building the new marketing site at https://milexium.com
+separately; `web/` in this repo (the old transitpulse-psi.vercel.app source) was
+deliberately left untouched to avoid conflicting with that work. Updated company
+name/URL/tagline references across active docs (README, MASTER_ROADMAP,
+DATA_SOURCES, DATA_STORAGE, MODEL_CARDS, YC application draft), active scripts
+(audit_repository.py, build_model_cards.py, fetch_osm_poi.py, make_real_demo_assets.py
+x2, ntd/build_economics.py, ntd/fetch_ntd.py), and outreach/design_partner_pitch.md.
+Left untouched on purpose: `docs/archive/` (historical record), prior JOURNAL.md
+entries above this one (historical record), `artifacts/knowledge-graph/2026-07-21/`
+(dated generated snapshot), and the live external resource identifiers `kaggle/transitpulse_transformer.ipynb`
+and the Kaggle dataset `aryaarun07/transitpulse-real-panels` (renaming those means
+recreating/re-pushing them on Kaggle - deferred, not blocking anything). Also
+renamed the GitHub repo itself, aryaarun0910-debug/TransitPulse ->
+aryaarun0910-debug/Milexium (`gh repo rename`), and updated the local `origin`
+remote URL to match; GitHub redirects the old URL so existing clones (including
+Chris's) keep working without action, though they should update their remote
+URL when convenient. Local clone folder also renamed to `Milexium` to match.
 
 ## 2026-07-22: repository and data-storage audit
 

@@ -1,6 +1,6 @@
 # Data storage contract
 
-TransitPulse has roughly 56 GB of local research data. Moving it merely for a
+Milexium has roughly 56 GB of local research data. Moving it merely for a
 prettier tree would create unnecessary corruption and path risk, so the existing
 physical locations are retained and governed by the rules below.
 

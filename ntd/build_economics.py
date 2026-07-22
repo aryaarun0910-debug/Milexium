@@ -146,7 +146,7 @@ lines = [
     " opener: trips, cost per trip, deadhead share, and the dollar value of"
     " a 10 percent deadhead cut, all from the agency's own NTD filing.",
     "- YC market size: the operating expense total above is the annual spend"
-    " TransitPulse optimizes against; software captures a fraction of the"
+    " Milexium optimizes against; software captures a fraction of the"
     " savings it creates, not the whole budget. State both numbers plainly.",
 ]
 (HERE / "market_sizing.md").write_text("\n".join(lines), encoding="utf-8")

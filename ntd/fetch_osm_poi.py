@@ -27,7 +27,7 @@ OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 # Both OSM public services 406/block requests with no identifying
 # User-Agent, and their usage policies ask for one.
-HEADERS = {"User-Agent": "TransitPulse-research/1.0 (contact: aryaarun0910@gmail.com)"}
+HEADERS = {"User-Agent": "Milexium-research/1.0 (contact: aryaarun0910@gmail.com)"}
 
 
 def county_bbox(county: str, state: str) -> tuple[float, float, float, float]:

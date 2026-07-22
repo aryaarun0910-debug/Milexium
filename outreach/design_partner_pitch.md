@@ -1,7 +1,7 @@
 # Design-partner pitch and strategy
 
 The point of outreach is not "sell software." It is to earn the one thing that
-actually makes TransitPulse defensible: **a real operator's trip-level data,
+actually makes Milexium defensible: **a real operator's trip-level data,
 and eventually the decision-to-outcome loop that no competitor can replicate.**
 Public data (NTD, TLC, MTA, Chicago) proves we can build the ML. It is not a
 moat, because anyone can download it. The moat is a design partner's own data.

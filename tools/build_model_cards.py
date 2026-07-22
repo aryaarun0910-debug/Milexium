@@ -58,7 +58,7 @@ def zone_hour_card(key, m):
   operator's own bookings is unproven until a pilot."""
 
 
-cards = ["# TransitPulse model cards",
+cards = ["# Milexium model cards",
          "",
          f"_Generated {date.today()} by tools/build_model_cards.py from the "
          "committed metrics artifacts. Every number here traces to a JSON in "

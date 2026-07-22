@@ -31,4 +31,4 @@ Source: FTA National Transit Database annual data (datasets ekg5-frzt, wwdp-t4re
 ## How to use these numbers
 
 - Outreach: every row of agency_economics.csv gives a personalized opener: trips, cost per trip, deadhead share, and the dollar value of a 10 percent deadhead cut, all from the agency's own NTD filing.
-- YC market size: the operating expense total above is the annual spend TransitPulse optimizes against; software captures a fraction of the savings it creates, not the whole budget. State both numbers plainly.
+- YC market size: the operating expense total above is the annual spend Milexium optimizes against; software captures a fraction of the savings it creates, not the whole budget. State both numbers plainly.
