@@ -1,0 +1,63 @@
+{
+  "panel": {
+    "agencies": 637,
+    "rows": 151991,
+    "date_range": "2002-01-01 to 2026-05-01",
+    "total_upt": 2182930310
+  },
+  "temporal": {
+    "split": "temporal last 12mo, all agencies, full features",
+    "n": 6286,
+    "model_r2": 0.8854,
+    "model_mae": 2704.9,
+    "naive_r2": 0.9715,
+    "naive_mae": 1939.7,
+    "model_mape": 9.9176,
+    "naive_mape": 15.271
+  },
+  "cold_start_agency": {
+    "split": "held-out 127 agencies (20%), no agency identity",
+    "n": 2390,
+    "model_r2": 0.9757,
+    "model_mae": 1504.5,
+    "naive_r2": 0.9666,
+    "naive_mae": 1734.2,
+    "model_mape": 4.7535,
+    "naive_mape": 11.7241,
+    "held_out_agencies": 127
+  },
+  "temporal_top_features": [
+    [
+      "lag12",
+      0.7876
+    ],
+    [
+      "lag2",
+      0.1301
+    ],
+    [
+      "roll12",
+      0.0514
+    ],
+    [
+      "lag3",
+      0.0056
+    ],
+    [
+      "ntd_id_cat",
+      0.0055
+    ],
+    [
+      "yoy_ratio",
+      0.0044
+    ],
+    [
+      "vrm_lag1",
+      0.0029
+    ],
+    [
+      "voms_lag1",
+      0.0026
+    ]
+  ]
+}
