@@ -20,10 +20,13 @@ for the full comparison and limitations.
 | `reference_agency/` | Fictional, synthetic trip-level agency used only for scheduler and audit-trail demonstrations |
 | `kaggle/` | GPU notebook and recorded transformer experiment results |
 | `outreach/` | Design-partner research, templates, target tables, and locally ignored drafts |
-| `web/` | Live static website source and deployed media |
 | `docs/` | Active roadmap, source catalog, research questions, journal, and YC draft |
 | `artifacts/` | Curated generated screenshots and dated knowledge-graph snapshots |
 | `tools/` | Repository and data integrity checks |
+
+The public website and `milexium.com` infrastructure are owned by Chris and live
+outside this repository. This repository is the product, data, modeling, and
+technical-evidence workspace; it intentionally contains no deployable website.
 
 Large raw files, resumable checkpoints, trained models, predictions, outreach
 drafts, and credentials are local-only and gitignored. The storage contract is
@@ -33,6 +36,7 @@ documented in [docs/DATA_STORAGE.md](docs/DATA_STORAGE.md).
 
 - [Documentation index](docs/README.md)
 - [Master roadmap](docs/MASTER_ROADMAP.md)
+- [Competitive positioning](docs/COMPETITIVE_POSITIONING.md)
 - [Data source catalog](docs/DATA_SOURCES.md)
 - [Project journal](docs/JOURNAL.md)
 - [YC application draft](docs/yc/application-draft.md)

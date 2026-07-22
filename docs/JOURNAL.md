@@ -6,6 +6,19 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-22 (website handoff and YC execution reset)
+
+- Removed the tracked `web/` directory. Chris owns the new Milexium website,
+  domain, and Cloudflare deployment outside this repository; keeping the old
+  static site here created two sources of truth.
+- Updated the repository map and structural audit so a website is no longer a
+  required product-repository component. Curated product screenshots remain in
+  `artifacts/demo-assets/` for demos and applications.
+- Replaced the open-ended backlog with a deadline-gated execution plan through
+  27 July 2026 at 8pm PT and added sourced competitive positioning. The technical
+  wedge is now a decision-evidence system that sits alongside incumbent dispatch
+  products, not an unsupported claim that Milexium already replaces them.
+
 ## 2026-07-22 (later): rebrand to Milexium
 
 Company renamed TransitPulse -> Milexium. Tagline "Every mile, justified" proposed,
