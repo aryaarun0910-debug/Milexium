@@ -122,6 +122,17 @@ if __name__ == "__main__":
         pretrain_frames.append(prep_generic(load_mta_subway(), "station_id", "nyc"))
     pretrain = pd.concat([f[GENERIC_FEATURES + ["y"]] for f in pretrain_frames],
                         ignore_index=True)
+    # The combined corpus is ~53M rows (Chicago + MTA bus + MTA subway),
+    # which does not fit this laptop's 2GB GPU VRAM and thrashes. Subsample
+    # to a size that fits and trains in minutes; the warm start does not
+    # need every row, only enough to learn the generic time/lag structure.
+    # (Full-corpus pretraining, if it ever mattered, belongs on Kaggle - the
+    # same hardware boundary the transformer hit.)
+    PRETRAIN_SAMPLE = 3_000_000
+    if len(pretrain) > PRETRAIN_SAMPLE:
+        pretrain = pretrain.sample(PRETRAIN_SAMPLE, random_state=42)
+    print(f"pretrain corpus: {len(pretrain):,} rows "
+          f"(subsampled to fit local GPU)", flush=True)
     # simple train/tune split for the pretrain stage's own early stopping
     # (a random split is fine here -- this stage isn't the one being
     # temporally evaluated, only used as a warm start)
