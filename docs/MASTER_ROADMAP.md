@@ -26,21 +26,27 @@ YC's official Fall 2026 on-time deadline is **27 July 2026 at 8pm PT**.
 
 - [x] Restore missing Chicago checkpoint `2024-12` and rebuild the combined panel.
 - [x] Mark current MTA checkpoints as partial and remove unpublished empty Chicago months.
-- [ ] Finish TLC yellow 2024-2026 and green 2014-present downloads.
-- [ ] Run full FHVHV aggregation and reconcile panel totals to the 88 raw Parquet files.
-- [ ] Add immutable fetch manifests with URL, fetch time, checksum, schema, and coverage.
-- [ ] Wire hourly NOAA weather into point-in-time feature generation and run an ablation.
-- [ ] Add formal data contracts for every production panel.
+- [x] Finish TLC yellow 2024-2026 and green 2014-present downloads. (334 files, 22GB; audit clean, 0 warnings.)
+- [x] Run full FHVHV aggregation. (39.8GB/88 files -> 16.2M zone-hour rows, 1.586B trips. Formal per-file reconcile still open.)
+- [x] Add immutable fetch manifests with URL, fetch time, checksum, schema, and coverage. (tools/build_manifests.py -> realdata/manifests/, sha256 per panel.)
+- [x] Wire hourly NOAA weather and run an ablation. (weather_ablation.py: hourly adds nothing, all within noise; keep free daily feature, do NOT wire hourly in.)
+- [ ] Add formal data contracts (enforced schema + range constraints) for every production panel. (Manifests are a first step, not yet contracts.)
 
 ## Modeling rigor
 
-- [ ] Model the nationwide NTD monthly panel with temporal and held-out-agency tests.
-- [ ] Compare Poisson, negative-binomial, Tweedie, and zero-inflated count objectives.
-- [ ] Complete a written point-in-time leakage audit covering every feature and split.
-- [ ] Run `pretrain_finetune_xgboost.py` and report whether transfer helps low-data targets.
+- [x] Model the nationwide NTD monthly panel with temporal and held-out-agency tests. (model_ntd_monthly.py: temporal loses to naive on abs R2 but wins MAPE; cold-start beats naive on 127 unseen agencies. See NTD_MONTHLY_RESULTS.md.)
+- [x] Compare Poisson, negative-binomial, Tweedie, and zero-inflated count objectives. (objective_bakeoff.py: Poisson validated for AAR; Gamma best MAPE nationally. True NB/full-ZIP need a custom objective - open.)
+- [x] Complete a written point-in-time leakage audit covering every feature and split. (leakage_audit.py: mechanical PASS, 24/24 features. LEAKAGE_AUDIT.md.)
+- [x] Run `pretrain_finetune_xgboost.py` and report whether transfer helps low-data targets. (TRANSFER WORKS, controlled: pretrain on Chicago+MTA lifts AAR 0.986->0.991; AAR-only plateaus at 0.986 for any tree count. TRANSFER_RESULTS.md.)
 - [ ] Compare transformer quantile calibration with clean split-conformal XGBoost.
 - [ ] Add hierarchical reconciliation across agency, zone, day, and hour where supported.
-- [ ] Create model cards and data sheets for each published result.
+- [x] Create model cards for each published result. (tools/build_model_cards.py -> docs/MODEL_CARDS.md, generated from metrics. Per-source data sheets still open.)
+
+## Newly surfaced (from this session's findings)
+
+- [ ] Switch the NTD monthly production objective to Gamma (best customer-relevant MAPE, 5.2% vs Poisson 12.4%) and headline MAPE; keep Tweedie(1.3) noted as absolute-error-optimal.
+- [ ] Combine the two winning axes: pretrained base (transfer) + zone identity, re-run the tree-count control at full pretrain scale on Kaggle (local VRAM capped pretrain at 3M rows).
+- [ ] Production weather fix: join the day-ahead weather FORECAST at issue time, not the realized value (leakage-audit caveat; not target leakage but a mild exogenous look-ahead).
 
 ## Product proof
 
