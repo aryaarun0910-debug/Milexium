@@ -76,11 +76,13 @@ if __name__ == "__main__":
         for month in months_from(start):
             # Up to 6 attempts with escalating backoff: a 403 throttle can
             # take a couple of minutes to clear, so back off longer on 403.
+            was_rate_limited = False
             for attempt in range(6):
                 try:
                     status = download(prefix, month)
                     break
                 except RateLimited as e:
+                    was_rate_limited = True
                     wait = min(120, 20 * (attempt + 1))
                     print(f"{prefix} {month}: {e}, backing off {wait}s",
                           flush=True)
@@ -90,7 +92,12 @@ if __name__ == "__main__":
                           flush=True)
                     time.sleep(15 * (attempt + 1))
             else:
-                status = "failed"
+                # A persistent 403 that survives ~6 min of backoff is almost
+                # never a live throttle (those clear in seconds-to-minutes);
+                # it is the recent-month tail the CDN returns 403 for instead
+                # of 404. Treat it as not-published so the streak logic breaks
+                # cleanly instead of churning through unpublished future months.
+                status = "not-published" if was_rate_limited else "failed"
             print(f"{prefix} {month}: {status}", flush=True)
             if status == "not-published":
                 missing_streak += 1
