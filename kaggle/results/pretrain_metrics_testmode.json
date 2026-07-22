@@ -1,0 +1,17 @@
+{
+  "stage": "pretrain",
+  "datasets": [
+    "chicago_tnp",
+    "mta_bus",
+    "mta_subway",
+    "nyc_tlc"
+  ],
+  "eval_set": "test (untouched holdout, never used for checkpoint selection)",
+  "model_r2": 0.6014,
+  "model_mae": 53.724,
+  "naive_r2": 0.6065,
+  "naive_mae": 58.13,
+  "n_entities": 1206,
+  "n_test_windows": 5446,
+  "n_params": 5162080
+}

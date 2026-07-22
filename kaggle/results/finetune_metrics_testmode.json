@@ -1,0 +1,15 @@
+{
+  "stage": "finetune_aar",
+  "pretrained_on": [
+    "chicago_tnp",
+    "mta_bus",
+    "mta_subway",
+    "nyc_tlc"
+  ],
+  "eval_set": "test (untouched holdout, never used for finetuning or checkpoint selection)",
+  "model_r2": 0.933,
+  "model_mae": 26.364,
+  "naive_r2": 0.8968,
+  "naive_mae": 29.098,
+  "n_params": 4855648
+}
