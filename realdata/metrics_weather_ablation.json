@@ -1,0 +1,26 @@
+{
+  "note": "AAR, 90-day holdout ending 2025-08-20 (inside hourly-weather coverage). Weather feature ablation, all else identical.",
+  "valid_window": "2025-05-22 to 2025-08-20",
+  "n_valid": 10800,
+  "hourly_weather_coverage_ends": "2025-08-25",
+  "none": {
+    "model_r2": 0.9851,
+    "model_mae": 18.594,
+    "naive_r2": 0.9419
+  },
+  "daily": {
+    "model_r2": 0.9853,
+    "model_mae": 18.82,
+    "naive_r2": 0.9419
+  },
+  "hourly": {
+    "model_r2": 0.9849,
+    "model_mae": 18.566,
+    "naive_r2": 0.9419
+  },
+  "daily+hourly": {
+    "model_r2": 0.9857,
+    "model_mae": 18.725,
+    "naive_r2": 0.9419
+  }
+}
