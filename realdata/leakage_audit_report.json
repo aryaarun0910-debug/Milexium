@@ -1,0 +1,51 @@
+{
+  "aar": {
+    "panel": "AAR zone-hour",
+    "n_features": 11,
+    "verdict": {
+      "hour": "clean",
+      "hour_sin": "clean",
+      "hour_cos": "clean",
+      "dow": "clean",
+      "month": "clean",
+      "is_weekend": "clean",
+      "is_holiday": "clean",
+      "lag1": "clean",
+      "lag7": "clean",
+      "lag14": "clean",
+      "roll28": "clean"
+    },
+    "leak_details": {},
+    "cutoffs_tested": [
+      "2025-06-01",
+      "2025-12-01",
+      "2026-03-01"
+    ]
+  },
+  "ntd_monthly": {
+    "panel": "NTD monthly",
+    "n_features": 13,
+    "verdict": {
+      "month": "clean",
+      "year": "clean",
+      "month_sin": "clean",
+      "month_cos": "clean",
+      "lag1": "clean",
+      "lag2": "clean",
+      "lag3": "clean",
+      "lag12": "clean",
+      "roll12": "clean",
+      "yoy_ratio": "clean",
+      "vrh_lag1": "clean",
+      "vrm_lag1": "clean",
+      "voms_lag1": "clean"
+    },
+    "leak_details": {},
+    "cutoffs_tested": [
+      "2020-01-01",
+      "2023-01-01",
+      "2025-05-01"
+    ]
+  },
+  "overall": "PASS - no leakage detected"
+}
