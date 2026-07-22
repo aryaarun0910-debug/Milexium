@@ -6,6 +6,7 @@ Only the documents in **Active** should drive current work.
 ## Active
 
 - [MASTER_ROADMAP.md](MASTER_ROADMAP.md): canonical backlog and scope boundary.
+- [COMPETITIVE_POSITIONING.md](COMPETITIVE_POSITIONING.md): sourced market map and technical wedge.
 - [DATA_SOURCES.md](DATA_SOURCES.md): public source catalog and claim provenance.
 - [DATA_STORAGE.md](DATA_STORAGE.md): tracked, ignored, raw, derived, and artifact storage contract.
 - [JOURNAL.md](JOURNAL.md): append-only record of completed work and decisions.

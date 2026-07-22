@@ -89,7 +89,7 @@ def parquet_container_ok(path: Path) -> bool:
 
 def audit_structure(errors: list[str]) -> dict:
     expected = ("realdata", "ntd", "reference_agency", "kaggle", "outreach",
-                "web", "docs", "artifacts", "tools")
+                "docs", "artifacts", "tools")
     stale = ("pipeline", "graphify-out", "YC_APPLICATION_NOTES.md",
              "cold_outreach_template.md", "outreach_target_list.md")
     missing = [name for name in expected if not (ROOT / name).exists()]
