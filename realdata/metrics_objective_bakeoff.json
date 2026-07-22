@@ -1,0 +1,87 @@
+{
+  "aar": {
+    "panel": "AAR zone-hour",
+    "pct_zero_cells": 0.007,
+    "poisson": {
+      "model_r2": 0.9865,
+      "model_mae": 19.893,
+      "model_mape": 0.1248,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.492
+    },
+    "tweedie_1.1": {
+      "model_r2": 0.9853,
+      "model_mae": 20.672,
+      "model_mape": 0.1243,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.492
+    },
+    "tweedie_1.3": {
+      "model_r2": 0.986,
+      "model_mae": 20.08,
+      "model_mape": 0.1236,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.492
+    },
+    "tweedie_1.5": {
+      "model_r2": 0.9866,
+      "model_mae": 19.886,
+      "model_mape": 0.1229,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.492
+    },
+    "log_target": {
+      "model_r2": 0.9864,
+      "model_mae": 19.849,
+      "model_mape": 0.1207,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.492
+    },
+    "hurdle": {
+      "model_r2": 0.9861,
+      "model_mae": 20.055,
+      "model_mape": 0.124,
+      "naive_r2": 0.9231,
+      "naive_mae": 55.492
+    }
+  },
+  "ntd_monthly": {
+    "panel": "NTD monthly (all agencies)",
+    "pct_zero_cells": 0.022,
+    "poisson": {
+      "model_r2": 0.8709,
+      "model_mae": 2862.059,
+      "model_mape": 12.4155,
+      "naive_r2": 0.9715,
+      "naive_mae": 1939.749
+    },
+    "tweedie_1.3": {
+      "model_r2": 0.8888,
+      "model_mae": 2825.494,
+      "model_mape": 11.0314,
+      "naive_r2": 0.9715,
+      "naive_mae": 1939.749
+    },
+    "tweedie_1.5": {
+      "model_r2": 0.8469,
+      "model_mae": 3236.272,
+      "model_mape": 9.4102,
+      "naive_r2": 0.9715,
+      "naive_mae": 1939.749
+    },
+    "gamma": {
+      "model_r2": 0.844,
+      "model_mae": 3036.811,
+      "model_mape": 5.2248,
+      "naive_r2": 0.9715,
+      "naive_mae": 1939.749
+    },
+    "log_target": {
+      "model_r2": 0.8434,
+      "model_mae": 3128.148,
+      "model_mape": 5.9679,
+      "naive_r2": 0.9715,
+      "naive_mae": 1939.749
+    }
+  }
+}
