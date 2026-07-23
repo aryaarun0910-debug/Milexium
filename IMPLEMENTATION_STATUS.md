@@ -46,19 +46,37 @@ This is the product `docs/README.md`, `docs/MASTER_ROADMAP.md`, and
 | ADRs 0001-0005 | orchestration | **Exists** | `architecture/decisions/` |
 | PostgreSQL 17 installed and running as a Windows service | C (infra only) | **Exists** (infra readiness only — nothing in this repo talks to it yet) | `architecture/decisions/0004-...md`; confirmed via `Get-Service postgresql-x64-17` = Running |
 
-Test evidence for everything in this table: `py -3 -m pytest packages/ conformance/`
-→ **92 passed, 0 failed** (last run 2026-07-23). `py -3 tools/audit_repository.py`
-→ unaffected, still passes (0 errors, 0 warnings) — the expansion added files,
-it did not modify anything the existing audit checks.
+## Second tranche this session (Programs B, C-Postgres, I first slices)
 
-## Programs B through M: Specified only
+Dispatched as three parallel work packets against the versioned A/G contract
+above (disjoint owned paths, no shared-file edits between them):
 
-Every other program in `SWARM_MANIFEST.yaml` (B Connect, D Core/adaptive
-memory, E Forecast-as-a-runtime, F Decide/optimization, H Simulation/replay,
-I Evidence/Experience IR, J Forge/Fabric, K Runtime/silicon, L Confidential/
-edge, M APIs/ecosystem) has **no code in this repository** as of 2026-07-23.
-Their entries in `blueprint/14-execution-roadmap.md` and `SWARM_MANIFEST.yaml`
-remain the specification; nothing here should be read as more than that.
+| Capability | Program | Status | Evidence |
+|---|---|---|---|
+| Generic adapter contract (`AdapterResult`/`QuarantinedRow`/`SemanticLossRecord`, exactly-one-outcome enforced by a Pydantic validator) | B | **Exists** (v0.1) | `packages/connect/adapter.py`; ADR-0007 |
+| One concrete adapter: `reference_agency/output/trips.csv` → `ServiceRequest`, tokenized rider identity, quarantine on malformed rows, semantic-loss recording on every unmapped source field | B | **Demonstrated** (source is explicitly fictional) | `packages/connect/reference_agency_trips.py`; verified against the real generated 89,566-row CSV |
+| `PostgresCanonicalStore` — same method contract as `SqliteCanonicalStore`, running against the installed PostgreSQL 17 via `milexium_dev` (non-superuser) role, portable DDL applied unmodified | C | **Exists** (v0.1: append/history/tamper-test-helper only — no RLS, PostGIS, replication, backup/restore) | `packages/canonical/postgres_storage.py`; ADR-0006, ADR-0008 |
+| Postgres test isolation via disposable per-instance schema (`mx_<uuid>` + `DROP ... CASCADE`) | C | **Exists** | ADR-0008; verified zero leftover schemas after repeated runs |
+| `EvidencePacket`/`ExperiencePacket` (Evidence IR / Experience IR v0.1) reconstructed from a `DecisionEvent` history plus independent hash-chain verification; refuses to build an `ExperiencePacket` from an unverified chain | I | **Exists** (v0.1: hash-chain check only, not schema/state-transition checks yet) | `packages/evidence/`; ADR-0009 |
+| ADRs 0006-0009 | orchestration | **Exists** | `architecture/decisions/` |
+
+Test evidence for everything in both tables: `py -3 -m pytest packages/ conformance/`
+→ **124 passed, 0 failed** (last run 2026-07-23; 92 from the first tranche + 32
+from this one). `py -3 tools/audit_repository.py` → unaffected, still passes
+(0 errors, 0 warnings).
+
+## Programs D, E, F, H, J, K, L, M: Specified only
+
+Every other program in `SWARM_MANIFEST.yaml` (D Core/adaptive memory, E
+Forecast-as-a-runtime, F Decide/optimization, H Simulation/replay, J Forge/
+Fabric, K Runtime/silicon, L Confidential/edge, M APIs/ecosystem) has **no
+code in this repository** as of 2026-07-23. Their entries in
+`blueprint/14-execution-roadmap.md` and `SWARM_MANIFEST.yaml` remain the
+specification; nothing here should be read as more than that. Programs B, C,
+and I now have real first slices (above) but are far from their full
+blueprint scope — e.g. Program B's adapter surface is one method of six,
+Program C has no RLS/PostGIS/replication, Program I checks hash-chain
+integrity only, not schema or state-transition legality.
 
 Notably: the existing `reference_agency/` scheduler (greedy, fictional data)
 is *not* Program F. Program F is Decision IR + a real solver portfolio (CP-SAT/
@@ -93,6 +111,14 @@ vendoring decisions:
    (`architecture/formal/`) — not installed; `packages/verify` v0.1 is plain
    Python, a manual precursor to formal verification, not formal verification
    itself.
+
+Not a blocker, but flagging so it isn't lost: **`DecisionAlternative` has no
+store method** (`packages/canonical/storage.py`/`postgres_storage.py` never
+read/write the `decision_alternatives` table `schema_v0_1.sql` already
+defines). `packages/evidence` worked around this with a v0.1 convention
+(alternatives embedded in a `RECOMMENDATION` event's payload, ADR-0009) —
+worth reconciling once a real scheduler (Program F, or the roadmap's OR-Tools
+work) actually needs to write `decision_alternatives` rows.
 
 ## Relationship to the YC deadline
 

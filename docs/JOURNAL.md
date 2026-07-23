@@ -6,6 +6,68 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-23 (later): expansion tranche 2 — Programs B, C-Postgres, I first slices
+
+After the Program A/G foundation checkpoint (below), Arya said to proceed
+full steam and dispatched three parallel work packets against the versioned
+A/G contract, each on a disjoint owned path:
+
+- **Program B (Connect), `packages/connect/`:** a minimal adapter contract
+  (`AdapterResult`/`QuarantinedRow`/`SemanticLossRecord`, exactly-one-outcome
+  enforced by a Pydantic validator) plus one concrete adapter mapping
+  `reference_agency/output/trips.csv` — a real, already-generated, but
+  explicitly fictional 89,566-row source — onto `ServiceRequest`. Tokenizes
+  rider identity via SHA-256; quarantines malformed rows (missing pickup
+  date, invalid mobility-device value, out-of-range hour) instead of
+  dropping or crashing; records every field the source has but
+  `ServiceRequest` v0.1 doesn't as a semantic-loss entry rather than
+  silently discarding it. Flagged one honest interpretive call: the source
+  has one timestamp per trip, not five, so `requested_at` is filled and the
+  negotiated/scheduled/predicted fields are left unset rather than guessed.
+- **Program C continued (Postgres store), `packages/canonical/postgres_storage.py`:**
+  a `PostgresCanonicalStore` mirroring `SqliteCanonicalStore`'s exact method
+  contract, running against the PostgreSQL 17 instance installed earlier this
+  session via the `milexium_dev` role (never the superuser). Applies
+  `schema_v0_1.sql` completely unmodified. Test isolation uses a disposable
+  per-instance PostgreSQL schema (`mx_<uuid>` + `DROP ... CASCADE`) rather
+  than any shared fixture database — verified zero leftover schemas after
+  repeated runs. New Postgres-backed tests skip cleanly (not fail) if
+  `milexium_dev` isn't reachable, so the suite stays green on a clone without
+  it provisioned.
+- **Program I (Evidence/Experience IR), `packages/evidence/`:** an
+  `EvidencePacket` that reconstructs, from an aggregate's recorded
+  `DecisionEvent` history alone, what was known, proposed, considered as an
+  alternative, approved/overridden, executed, and observed — plus the actual
+  result of running `packages.verify.verify_chain` against it, so a tampered
+  chain is visibly flagged (`integrity_verified=False`) rather than presented
+  as trustworthy evidence. `build_experience_packet` refuses to run against
+  an unverified packet. Flagged a real gap: `packages/canonical` has no store
+  method for the `decision_alternatives` table `schema_v0_1.sql` already
+  defines, so alternatives are read from a `RECOMMENDATION` event's
+  `payload["alternatives"]` as a v0.1 convention, not a canonical contract
+  change — recorded in ADR-0009 as something to reconcile once a real
+  scheduler needs to write that table.
+
+Formalized four more ADRs (0006 dedicated Postgres role — written before
+dispatching, since it involved real credential setup; 0007 Connect adapter
+contract; 0008 Postgres test-isolation strategy; 0009 Evidence IR
+conventions) during integration review, since the three agents were
+instructed not to self-author ADRs (to avoid three parallel agents colliding
+on the same ADR number) and to flag decisions in their reports instead.
+
+Reviewed all three agents' actual code and test output directly (not just
+their self-reports) before integrating — confirmed the same test counts
+independently: `py -3 -m pytest packages/ conformance/` → **124 passed, 0
+failed** (92 from the first tranche + 32 new). `tools/audit_repository.py`
+still passes unchanged. Nothing in `realdata/`, `reference_agency/` source,
+`ntd/`, `kaggle/`, `outreach/`, or existing `docs/` content was touched by
+any of the three packets.
+
+Next planned tranche (pending checkpoint review with Arya): Program D
+(Core/adaptive memory — task registry, feature contracts) and Program H
+(Replay — exact/historical replay using `EvidencePacket` as its evidence
+source) are the next dependency-unblocked programs per `SWARM_MANIFEST.yaml`.
+
 ## 2026-07-23: expansion kickoff — Program A/G foundation
 
 A separate specification, `C:\Users\aryaa\Documents\Milexium Expansion plan`
