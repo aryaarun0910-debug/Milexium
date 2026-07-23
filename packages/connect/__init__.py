@@ -13,6 +13,9 @@ from packages.connect.adapter import (
     parse_batch,
 )
 from packages.connect.reference_agency_trips import ReferenceAgencyTripsAdapter
+from packages.connect.tlc_trips import TlcTripsAdapter
+from packages.connect.tides_trips import TidesTripsAdapter
+from packages.connect.gtfs_flex import GtfsFlexAdapter
 
 __all__ = [
     "AdapterResult",
@@ -21,6 +24,9 @@ __all__ = [
     "SourceAdapter",
     "parse_batch",
     "ReferenceAgencyTripsAdapter",
+    "TlcTripsAdapter",
+    "TidesTripsAdapter",
+    "GtfsFlexAdapter",
 ]
 
 CONTRACT_VERSION = "0.1.0"
