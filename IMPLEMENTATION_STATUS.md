@@ -65,18 +65,41 @@ Test evidence for everything in both tables: `py -3 -m pytest packages/ conforma
 from this one). `py -3 tools/audit_repository.py` → unaffected, still passes
 (0 errors, 0 warnings).
 
-## Programs D, E, F, H, J, K, L, M: Specified only
+## Third tranche this session (Programs B second adapter, D first slice, I verification folded in)
 
-Every other program in `SWARM_MANIFEST.yaml` (D Core/adaptive memory, E
-Forecast-as-a-runtime, F Decide/optimization, H Simulation/replay, J Forge/
-Fabric, K Runtime/silicon, L Confidential/edge, M APIs/ecosystem) has **no
-code in this repository** as of 2026-07-23. Their entries in
-`blueprint/14-execution-roadmap.md` and `SWARM_MANIFEST.yaml` remain the
-specification; nothing here should be read as more than that. Programs B, C,
-and I now have real first slices (above) but are far from their full
-blueprint scope — e.g. Program B's adapter surface is one method of six,
-Program C has no RLS/PostGIS/replication, Program I checks hash-chain
-integrity only, not schema or state-transition legality.
+| Capability | Program | Status | Evidence |
+|---|---|---|---|
+| Second Connect adapter: NYC TLC FHVHV trip Parquet → `ServiceRequest`, structurally different from the first (columnar, pandas-null-typed, no rider identity) | B | **Demonstrated** (real public data, not consented operator data) | `packages/connect/tlc_trips.py`; ADR-0011; verified against real files, including observed schema drift (`cbd_congestion_fee`) |
+| Task/model registry: closed task vocabulary + `ModelRegistry` (register/get/list/promote-champion), cataloging this repo's 5 real trained models | D | **Exists** (v0.1: in-memory reference registry only; memory tiers, parameter-deltas, drift/calibration all Specified) | `packages/core/`; ADR-0010; every `training_data_manifest_hash`/`artifact_hash` value independently spot-checked against the actual committed manifest/model files |
+| `EvidencePacket` integrity check extended to schema conformance (all 3 checks now aggregate into `integrity_verified`) | I | **Exists** (v0.1); state-transition check honestly marked structurally inapplicable, not faked | `packages/evidence/`; ADR-0012 |
+| ADRs 0010-0012 | orchestration | **Exists** | `architecture/decisions/` |
+
+Test evidence: `py -3 -m pytest packages/ conformance/` → **154 passed, 0
+failed** (124 + 30 new across this tranche's three packets). `py -3
+tools/audit_repository.py` → unaffected, still passes.
+
+## Programs E, F, H, J, K, L, M: Specified only
+
+Every other program in `SWARM_MANIFEST.yaml` (E Forecast-as-a-runtime, F
+Decide/optimization, H Simulation/replay, J Forge/Fabric, K Runtime/silicon,
+L Confidential/edge, M APIs/ecosystem) has **no code in this repository** as
+of 2026-07-23. Their entries in `blueprint/14-execution-roadmap.md` and
+`SWARM_MANIFEST.yaml` remain the specification; nothing here should be read
+as more than that.
+
+Program F (Decide) is deliberately not being worked by this expansion effort
+right now: it overlaps with `docs/MASTER_ROADMAP.md`'s own "Friday 24 July:
+constrained scheduling and decision evidence" task (OR-Tools CP-SAT scheduler),
+explicitly owned by Arya directly. Building a parallel expansion-agent solver
+implementation risks two competing schedulers with no clear authority for the
+YC demo — this is being held back on purpose, not forgotten.
+
+Programs B, C, D, G, and I now have real first slices but remain far from
+their full blueprint scope — e.g. Program B's adapter surface is one method
+of six and has two adapters, not the full standards-adapter set; Program C
+has no RLS/PostGIS/replication; Program D has no memory tiers or drift
+detection; Program I's state-transition check is structurally inapplicable
+until a new payload convention or signature change is decided (ADR-0012).
 
 Notably: the existing `reference_agency/` scheduler (greedy, fictional data)
 is *not* Program F. Program F is Decision IR + a real solver portfolio (CP-SAT/
@@ -119,6 +142,12 @@ defines). `packages/evidence` worked around this with a v0.1 convention
 (alternatives embedded in a `RECOMMENDATION` event's payload, ADR-0009) —
 worth reconciling once a real scheduler (Program F, or the roadmap's OR-Tools
 work) actually needs to write `decision_alternatives` rows.
+
+Also not a blocker, also flagging: **`ModelVersion.tenant_id` has no answer
+for platform-trained models** that don't belong to any one customer (ADR-0010)
+— the model registry fixtures use a placeholder tenant id with no real
+meaning, pending a decision between a reserved "platform" tenant convention
+or an optional tenant_id specifically for this entity.
 
 ## Relationship to the YC deadline
 

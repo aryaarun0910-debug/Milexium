@@ -6,6 +6,67 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-23 (later still): expansion tranche 3 — B second adapter, D first slice, I verification folded in
+
+Three more parallel packets, dispatched after Arya said "GO GO GO" to
+continue past the tranche-2 checkpoint:
+
+- **Program B, second adapter:** `packages/connect/tlc_trips.py` maps real
+  NYC TLC FHVHV trip Parquet data (`realdata/raw_tlc/`, already downloaded
+  for the forecasting pipeline) onto `ServiceRequest` — structurally
+  different from the first adapter (columnar, pandas-null-typed, no rider
+  identity at all, real observed schema drift across file vintages). Found
+  and used real failure modes for quarantine tests: 108,898/20.16M null
+  request times, ~600k rows with TLC's own unknown/outside-NYC placeholder
+  zone codes. One genuine deviation from the original task brief, flagged in
+  ADR-0011: TLC does carry a `wav_request_flag` (wheelchair-accessible-
+  *vehicle* request), mapped to `mobility_device` with an explicit caveat
+  that it's a vehicle attribute, not a direct statement of the rider's own
+  device.
+- **Program D, first slice:** `packages/core/` catalogs this repository's 5
+  real, trained, evaluated models (`docs/MODEL_CARDS.md`) as `ModelVersion`
+  registry entries with a closed task vocabulary (`forecast.demand`) and a
+  simple per-task champion pointer. Every `training_data_manifest_hash` and
+  `artifact_hash` is a real sha256 read from or computed against a committed
+  file, cited per field — except NTD's artifact hash, honestly labeled
+  `NOT_COMPUTED` because `realdata/model_ntd_monthly.py` never saves a
+  booster file, rather than faking a hash. I independently re-verified one
+  claimed hash against its source manifest myself before accepting the
+  packet's work — exact match. Flagged a real contract gap in ADR-0010:
+  `ModelVersion.tenant_id` is mandatory but these models aren't tied to any
+  customer; a placeholder tenant id is a stopgap, not a resolution.
+- **Program I, verification folded in:** extended `EvidencePacket` to
+  aggregate schema conformance alongside the existing hash-chain check. The
+  packet's own honest conclusion: for every real call path in this repo
+  today, the schema check is close to a tautology (events arrive already
+  Pydantic-validated), and it said so plainly rather than overselling the
+  addition — then proved the one case where it isn't a tautology
+  (`DecisionEvent.model_construct`, bypassing validation). State-transition
+  verification could not be wired in at all: nothing in this repo's
+  contracts yet records a `ServiceRequestState` sequence inside a
+  `DecisionEvent` chain, so `state_check_applicable` stays honestly `False`
+  rather than being faked — recorded as a structural gap in ADR-0012, not a
+  shortcut.
+
+Wrote three more ADRs (0010, 0011, 0012) during integration review, same
+reasoning as tranche 2: agents flag decisions, the orchestrator numbers and
+formalizes them centrally to avoid parallel-agent ADR-number collisions.
+
+Deliberately did not dispatch a Program F (Decide/optimization) packet this
+tranche — it would overlap with `docs/MASTER_ROADMAP.md`'s own Friday
+OR-Tools scheduler task, which is Arya's directly-owned roadmap item, not
+expansion-swarm territory. Two competing scheduler implementations with no
+clear authority for the YC demo would be a real, avoidable risk.
+
+Reviewed all three agents' actual code directly before integrating —
+independently re-ran the full suite and re-verified specific factual claims
+(a manifest hash, the real diff on already-committed evidence files) rather
+than trusting self-reports alone. `py -3 -m pytest packages/ conformance/` →
+**154 passed, 0 failed** (124 from tranche 2 + 30 new). `tools/
+audit_repository.py` unaffected. Nothing in `realdata/` source,
+`reference_agency/`, `ntd/`, `kaggle/`, `outreach/`, or existing `docs/`
+content was touched by any of the three packets.
+
 ## 2026-07-23 (later): expansion tranche 2 — Programs B, C-Postgres, I first slices
 
 After the Program A/G foundation checkpoint (below), Arya said to proceed
