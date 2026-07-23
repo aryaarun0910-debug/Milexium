@@ -47,9 +47,14 @@ evidence artifact — now exist. Deliberately left as a clean follow-up (not
 done, to keep the just-committed SDK surface stable): exposing
 `forecast(...)` and `export_pack(...)` through `MilexiumClient`.
 
-Also reviewed Chris's first-pass website at https://milexium.com against the
-truth/claims guardrails from blueprint 01/10 — see the session notes for
-findings.
+Attempted to review Chris's first-pass website at https://milexium.com against
+the truth/claims guardrails from blueprint 01/10, but the site is
+client-side-rendered and a fetch returned only the app shell, not the rendered
+copy — so no actual review was possible. The guardrail checklist (no
+HIPAA/ADA/SOC2-compliant claims, "tamper-evident" not "immutable", no
+savings/customer claims until a pilot, keep forecasting=real vs
+scheduling=demonstrated separate) stands for whenever the copy can be read as
+text.
 
 ## 2026-07-23 (evening, later): standards adapters + SDK — the integration surface
 
