@@ -1,0 +1,30 @@
+{
+  "dataset_id": "tides-sample",
+  "owner_and_source": "TIDES-transit community (github.com/TIDES-transit/TIDES) -- Transit ITS Data Exchange Specification, the open standard for demand-responsive / paratransit trip-level operational data",
+  "license_and_commercial_rights": "Apache-2.0 (repository LICENSE); commercial use permitted with attribution and license notice retained",
+  "decision_tasks_enabled": [
+    "connect.standards_conformance",
+    "connect.tides_adapter_certification"
+  ],
+  "geography": "specification fixtures (agency-neutral)",
+  "time_coverage": "n/a (schema + sample fixtures, not a time series)",
+  "source_url": "https://raw.githubusercontent.com/TIDES-transit/TIDES/main/samples/template/TIDES/trips_performed.csv",
+  "expected_download_gb": 0.0001,
+  "expected_expanded_gb": 0.0001,
+  "expected_retained_gb": 0.0001,
+  "schema_and_format": "CSV sample of the TIDES trips_performed table -- real trip-level rows in the demand-responsive-transport standard, directly on-point for the paratransit request-to-outcome chain Milexium's ServiceRequest models",
+  "sensitive_fields": [],
+  "update_frequency": "spec revisions (versioned via git tags upstream)",
+  "source_checksum": null,
+  "canonical_contract": "packages.canonical.entities.ServiceRequest (TIDES trips -> ServiceRequest is a future Connect adapter, MX-B-TIDES-ADAPTER)",
+  "quality_tests": [
+    {
+      "name": "non_empty",
+      "description": "retained object is non-empty"
+    }
+  ],
+  "acceptance_threshold": "file downloads and is non-empty; it is a reference spec, not a metric-bearing dataset",
+  "retention_and_deletion": "retain as part of the standards-adapter certification corpus; cheaply reproducible (re-fetchable from upstream) so evictable first",
+  "derived_artifacts": [],
+  "zone": "standards"
+}

@@ -1,0 +1,31 @@
+{
+  "dataset_id": "osm-dc",
+  "owner_and_source": "Geofabrik GmbH extract of OpenStreetMap (download.geofabrik.de), District of Columbia",
+  "license_and_commercial_rights": "ODbL 1.0 (OpenStreetMap); commercial use permitted with attribution and share-alike on derived databases",
+  "decision_tasks_enabled": [
+    "decide.routing_feasibility",
+    "decide.travel_time_matrix",
+    "networks.road_graph"
+  ],
+  "geography": "Washington, District of Columbia, USA",
+  "time_coverage": "snapshot (Geofabrik daily extract)",
+  "source_url": "https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf",
+  "expected_download_gb": 0.021,
+  "expected_expanded_gb": 0.021,
+  "expected_retained_gb": 0.021,
+  "schema_and_format": "OSM PBF (protobuf) -- nodes/ways/relations for road network extraction; small on-point extract to prove the routing/networks estate before pulling a full metro",
+  "sensitive_fields": [],
+  "update_frequency": "daily upstream; re-pull on demand, not scheduled",
+  "source_checksum": null,
+  "canonical_contract": "none-yet (raw routing input; a normalized road-graph derived artifact is future Program F/H work)",
+  "quality_tests": [
+    {
+      "name": "pbf_magic",
+      "description": "retained object begins with a valid OSM PBF blob header (non-empty, >1KB)"
+    }
+  ],
+  "acceptance_threshold": "downloads, non-empty, > 1 MB (a DC extract is ~20 MB; a truncated download would be far smaller)",
+  "retention_and_deletion": "expensive-but-reproducible (re-fetchable from Geofabrik); evict before audit/contractual records",
+  "derived_artifacts": [],
+  "zone": "networks"
+}

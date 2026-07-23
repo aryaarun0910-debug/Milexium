@@ -65,6 +65,34 @@ Test evidence for everything in both tables: `py -3 -m pytest packages/ conforma
 from this one). `py -3 tools/audit_repository.py` → unaffected, still passes
 (0 errors, 0 warnings).
 
+## Fourth tranche this session (governed data estate — Program C data layer)
+
+Strategic repositioning (2026-07-23): Milexium as a transport decision
+*runtime other software companies integrate*, generating independent
+operational evidence from public data rather than waiting on a large agency.
+The data-estate governance layer is the foundation that makes that credible.
+
+| Capability | Program | Status | Evidence |
+|---|---|---|---|
+| `data/` estate zone layout (blueprint 17) + gitignore governance (raw ignored, catalog committed) | C | **Exists** | `data/README.md`, `.gitignore` |
+| Acquisition-manifest contract (rights **must** be declared) | C | **Exists** | `packages/estate/manifest.py` |
+| Manifest-gated `acquire()` — free-space guard, quarantine, checksum, content-addressed promotion, catalog record | C | **Exists** | `packages/estate/acquire.py`; 5 governance tests |
+| Catalog inventory + free-space reporting (completion evidence #7/#8) | C | **Exists** | `packages/estate/catalog.py` |
+| Two real rights-clean datasets acquired end-to-end | C | **Exists** | TIDES `trips_performed.csv` (Apache-2.0) → `data/standards/`; Geofabrik DC OSM extract 20.9 MB (ODbL) → `data/networks/`; catalog records committed |
+| Technology-vendoring gate (review manifest + ADR required; no blind cloning) | orchestration | **Exists** (process only — nothing vendored) | `third_party/VENDORING_PROCESS.md` |
+| ADR-0013 | orchestration | **Exists** | `architecture/decisions/` |
+
+Test evidence: `py -3 -m pytest packages/ conformance/` → **159 passed, 0
+failed** (154 + 5 estate governance tests). `py -3 tools/audit_repository.py`
+→ still passes.
+
+Explicitly **not** done: the 250 GB is not bulk-downloaded (each future
+dataset is a queued, rights-checked manifest, one `acquire()` call away); no
+dossier technology is vendored; PostGIS still not installed; the OSM extract
+in `networks/` has no routing-graph derivation yet (Program F/H). The estate
+holds ~0.02 GB of new governed data plus the pipeline to grow it deliberately
+— the value delivered is the *governance*, not the volume.
+
 ## Third tranche this session (Programs B second adapter, D first slice, I verification folded in)
 
 | Capability | Program | Status | Evidence |

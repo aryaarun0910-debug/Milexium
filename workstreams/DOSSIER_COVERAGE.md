@@ -111,7 +111,7 @@ Program the row happens to land in.
 | 74 | Partial evaluation and multi-stage programming | A/F/K | Tenant/service specialization of policy, schema, query, and kernel logic | Specified | A foundation exists; not touched |
 | 75 | Locality-sensitive hashing | C/K | Streaming/predictable-recall retrieval benchmark and backend | Specified | `SemanticIndex` protocol exists as the interface this would implement |
 | 76 | Graph DSLs and graph-specific compilation | E/F/H/K | Road, service, demand, dependency, and knowledge graph execution | Specified | No implementation yet |
-| 77 | Cuckoo and XOR filters | B/C/K | Deduplication, negative lookup, cache admission, and integrity checks | Specified | No implementation yet |
+| 77 | Cuckoo and XOR filters | B/C/K | Deduplication, negative lookup, cache admission, and integrity checks | Specified | Content-addressed raw objects (packages/estate, sha256 names) give exact dedup detection; probabilistic filters themselves not built |
 | 78 | HNSW navigable small-world graphs | C/K | Dynamic ANN backend and benchmark comparator | Specified | `SemanticIndex` protocol exists as the interface this would implement |
 | 79 | Interactive theorem proving and proof extraction | A/G | Machine-checked state, policy, compiler, and decision knowledge | Specified | A/G foundation exists (typed state machine + independent verifier are a manual precursor, not a proof system) |
 | 80 | RDMA and RoCE | C/D/J/K | Low-copy distributed state, model, rollout, and storage transport | Specified | No implementation yet |
@@ -227,14 +227,23 @@ status without re-deriving the mapping from the source blueprint.
 
 ## Coverage summary
 
-- **Exists:** 0 / 152 (the two landing programs A and G have a v0.1 contract;
-  none of the 152 specific technologies/projects are themselves implemented).
+- **Exists:** 0 / 152 — no dossier *technology* is itself implemented. Several
+  now have real foundations they would build on (Programs A, B, C, D, G, I
+  have v0.1 slices; the `SemanticIndex` interface + `ExactSearchIndex`
+  reference exists for the ANN-family rows 3/41/49/75/78; content-addressed
+  estate storage exists for the dedup/integrity rows 77), but a foundation is
+  not the technology — these stay Specified until the specific technology
+  lands and clears `third_party/VENDORING_PROCESS.md`.
 - **Specified:** 152 / 152.
 - **Demonstrated / Validated / Production:** 0 / 152.
 
-This is expected and honest at expansion kickoff: `blueprint/15-risks-and-
-falsification.md`'s first strategic risk is "infrastructure before demand,"
-and its control is "prefer a local vertical slice over horizontal empty
-abstractions." Programs A and G were built first because every other program
-in `SWARM_MANIFEST.yaml` depends on them, not because this ledger's count
-needed to move.
+Deliberate non-movement: the strategic direction (transport decision runtime
+others integrate; independent evidence from public data) is served by the
+canonical/decision/evidence contracts, the standards adapters, the SDK/API
+surface, and the governed data estate — **not** by vendoring dossier
+technologies. `blueprint/15-risks-and-falsification.md`'s first strategic risk
+is "infrastructure before demand"; bulk-vendoring FPGA/FHE/world-model
+toolchains now would be exactly that. The estate + vendoring gate
+(`third_party/VENDORING_PROCESS.md`) exist so the *next* technology can land
+deliberately (pgvector and OR-Tools are the nearest candidates), not so this
+count can be inflated.

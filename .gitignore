@@ -21,6 +21,24 @@ realdata/raw_tlc_taxi/
 realdata/output/
 *.part
 
+# Data estate (blueprint 17): raw/derived zones are large and reproducible,
+# so they stay local-only. The catalog (data/catalog/) holds small manifests
+# -- rights, checksums, inventories -- and IS committed as the governance
+# record; the .gitkeep files preserve the empty zone structure.
+data/raw/
+data/quarantine/
+data/canonical/
+data/features/
+data/networks/
+data/standards/
+data/simulation/
+data/semantic/
+data/experience/
+data/benchmarks/
+data/evidence/
+data/scratch/
+!data/**/.gitkeep
+
 # Large aggregated panels and their per-month checkpoints: regenerate via
 # the fetch scripts in realdata/. AAR (2.9 MB) and weather (small) stay
 # committed as the compact, reproducible evidence; these do not.

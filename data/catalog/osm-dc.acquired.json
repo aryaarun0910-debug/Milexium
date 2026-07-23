@@ -1,0 +1,12 @@
+{
+  "acquired_at": "2026-07-23T14:56:42.194005+00:00",
+  "dataset_id": "osm-dc",
+  "free_gb_after": 335.31,
+  "free_gb_before": 335.33,
+  "license_and_commercial_rights": "ODbL 1.0 (OpenStreetMap); commercial use permitted with attribution and share-alike on derived databases",
+  "raw_path": "data\\networks\\osm-dc.1415563876520a16.pbf",
+  "retained_bytes": 20898802,
+  "sha256": "1415563876520a166c6eead5c443d917a3c6b774e2dc542a3885655a6207365b",
+  "source_url": "https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf",
+  "zone": "networks"
+}

@@ -1,0 +1,52 @@
+# data/ — the governed Milexium estate
+
+Layout and governance from `blueprint/17-data-and-storage-readiness.md` of the
+expansion plan. The estate is deliberately composed, not accumulated: **every
+retained byte carries an acquisition manifest** (owner, rights, checksum,
+purpose, quality tests, retention) under `catalog/`, and nothing enters a
+trusted zone without passing validation in `quarantine/` first.
+
+This governance is the point, not overhead: a rights-clean, reproducible,
+inventoried estate is what lets other software companies trust and integrate
+Milexium as a transport decision runtime. An ungoverned pile of downloads is
+not integratable — no one can tell what they're allowed to do with it.
+
+## Zones
+
+| Zone | Committed to git? | Contents |
+|---|---|---|
+| `catalog/` | **yes** (small JSON) | Acquisition manifests + per-dataset acquired-records: the governance ledger |
+| `raw/public/`, `raw/partner/` | no (gitignored) | Immutable, content-addressed downloaded/received objects |
+| `quarantine/` | no | Untrusted inputs awaiting validation |
+| `standards/` | no | GTFS/Flex/Realtime/TIDES/TODS fixtures and archives (adapter-certification corpus) |
+| `networks/` | no | OSM extracts, road graphs, travel-time matrices |
+| `canonical/`, `features/`, `simulation/`, `semantic/`, `experience/`, `benchmarks/`, `evidence/` | no | Typed/derived/generated zones — reproducible from raw + code |
+| `scratch/` | no | Bounded, reproducible, auto-expired |
+
+Raw and derived zones are gitignored (like `realdata/raw_tlc/` already is) —
+they are large and reproducible. Only `catalog/` is committed, because the
+manifests and acquired-records ARE the governance record and must travel with
+the code.
+
+## How to acquire a dataset
+
+1. Write `catalog/<dataset_id>.manifest.json` (see `packages/estate/manifest.py`
+   for the required fields — rights **must** be declared, not "unknown").
+2. `py -3 -c "from packages.estate import acquire; acquire('data/catalog/<id>.manifest.json')"`.
+   The tool checks free space first, downloads into `quarantine/`, checksums,
+   and only then promotes the object to its zone under a content-addressed
+   name, writing `catalog/<id>.acquired.json`.
+3. Inventory / headroom: `py -3 -c "from packages.estate import free_space_report; import json; print(json.dumps(free_space_report(), indent=2))"`.
+
+A manifest with no acquired-record is a **queued** dataset — declared and
+rights-checked, not yet downloaded. This is how "every byte has a manifest"
+is enforced without pre-downloading everything at once.
+
+## Relationship to existing repo data
+
+The pre-existing `realdata/` and `ntd/` trees (the ~60 GB public mobility
+corpus that already backs the forecasting models) are **not** moved into this
+layout — `docs/DATA_STORAGE.md` explains why physical relocation of 56+ GB
+adds corruption/path risk for no benefit. `data/` is the governed home for
+*new* acquisitions; a future catalog back-fill can register the existing
+`realdata/` objects with manifests in place without moving them.

@@ -6,6 +6,67 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-23 (evening): repositioning + governed data estate
+
+Arya set the strategic frame explicitly: rather than wait on a large transit
+agency to prove Milexium works (outreach is brutally hard pre-YC), build
+enough product to generate undeniable operational evidence independently from
+public data, win smaller customers with it, and climb upward — and reposition
+Milexium as "the transport intelligence layer that converts operational data
+into forecasts, feasible plans, and auditable decisions," a decision *runtime
+other software integrates*, not just a dashboard agencies log into. This is
+consistent with the expansion blueprint's own north star (blueprint 01,
+"model-agnostic decision infrastructure"), so it's a sharpening of direction,
+not a pivot.
+
+The instinct was "download all the data and technology." The formidable
+version of that — and the one the blueprint itself mandates — is governed
+acquisition, not a bulk pull: blueprint 17 says "No download enters the estate
+without [a manifest: rights, checksum, purpose, quality tests, retention]" and
+blueprint 20 says "Do not vendor upstream projects blindly." A governed,
+rights-clean, reproducible estate is exactly what makes Milexium integratable
+by other software; an ungoverned pile is not. So this tranche built the
+governance, not the volume:
+
+- **`data/` estate** (blueprint 17 zone layout): `catalog/` (committed
+  governance ledger) + `raw/`, `quarantine/`, `standards/`, `networks/`,
+  `canonical/`, `features/`, `simulation/`, `semantic/`, `experience/`,
+  `benchmarks/`, `evidence/`, `scratch/` (gitignored, large/reproducible).
+- **`packages/estate/`**: an `AcquisitionManifest` contract where rights
+  *must* be declared (not "unknown"), and `acquire()` enforcing free-space
+  check → quarantine download → checksum → content-addressed promotion →
+  catalog record. Plus catalog inventory + free-space reporting.
+- **Proved end-to-end on real, rights-clean, on-point data**: acquired a TIDES
+  `trips_performed.csv` sample (Apache-2.0 — the demand-responsive-transport
+  trip-level standard, maximally on-brand for paratransit) into
+  `data/standards/`, and a Geofabrik DC OpenStreetMap extract (ODbL, 20.9 MB
+  real routing data) into `data/networks/`. Free space reported 335.33 →
+  335.31 GB across the two pulls; raw bytes gitignored, catalog records
+  committed.
+- **`third_party/VENDORING_PROCESS.md`**: the gate for the "download the
+  technology" half — a review manifest (license/maturity/security/benchmark)
+  + ADR required before anything lands, nothing vendored yet. Named the
+  nearest real candidates (pgvector, OR-Tools) and why the frontier dossier
+  tech (FHE, silicon, world models) is deliberately nowhere near the gate.
+- ADR-0013; 5 new governance conformance tests (rights required, free-space
+  guard fires before download, checksum mismatch leaves the object in
+  quarantine and never in the trusted zone, clean acquisition catalogs real
+  bytes). Full suite 159 passed; audit still clean.
+
+Deliberately NOT done, and why: the 250 GB is not bulk-downloaded (every
+future dataset is a queued rights-checked manifest, one command away — this is
+how "every byte has a manifest" is enforced without a reckless pull that could
+fill the disk or ingest unlicensed data); no dossier technology vendored. The
+value banked here is the governance pipeline, not the ~0.02 GB it has so far
+pulled through it.
+
+Next planned tranche (the actual repositioning payload): standards adapters —
+TIDES `trips_performed` → `ServiceRequest`, GTFS-Flex → `ServiceRequest` —
+against the newly-acquired `data/standards/` corpus. These are the
+vendor-neutral ingestion surface that makes Milexium a runtime other software
+plugs into, and they extend the existing two-adapter Connect base (ADR-0007,
+0011) toward blueprint 03's full standards-adapter set.
+
 ## 2026-07-23 (later still): expansion tranche 3 — B second adapter, D first slice, I verification folded in
 
 Three more parallel packets, dispatched after Arya said "GO GO GO" to
