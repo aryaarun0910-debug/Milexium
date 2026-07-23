@@ -6,6 +6,56 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-23 (evening, later): standards adapters + SDK — the integration surface
+
+Three parallel packets against the estate + canonical/connect foundations,
+all landed and integrated in one review pass:
+
+- **TIDES adapter** (`packages/connect/tides_trips.py`): maps TIDES
+  `trips_performed` (the open demand-responsive-transport trip standard) onto
+  `ServiceRequest`, built against the real TIDES schema acquired into
+  `data/standards/`. Notable honest call (ADR-0014): TIDES has no rider
+  request timestamp, so `requested_at` is anchored to `service_date` at
+  midnight — an obviously-synthetic day-granularity placeholder that
+  self-documents as "request instant unknown" and preserves `requested_at ≤
+  scheduled ≤ actual` ordering — rather than reusing `schedule_trip_start`
+  and falsely asserting zero advance-notice booking.
+- **GTFS-Flex adapter** (`packages/connect/gtfs_flex.py`): maps a real
+  GTFS-Flex on-demand feed (City of Aspen "Downtowner", acquired this
+  session) onto `ServiceRequest`. The standout: GTFS-Flex's
+  `start/end_pickup_drop_off_window` map directly onto
+  `RequestTimes.negotiated_window_start/end` — the *first* adapter in the repo
+  to populate the negotiated-window field from real data (reference-agency and
+  TLC both correctly left it unset). Concrete evidence that the canonical
+  `RequestTimes` contract actually fits the demand-responsive-transport domain
+  it was designed for. Honestly records that a Flex feed describes bookable
+  service *availability*, not observed demand, so downstream must not count it
+  as demand.
+- **MilexiumClient SDK** (`packages/sdk/`): the Program M integration surface —
+  one import (`from packages.sdk import MilexiumClient`) drives the whole loop
+  ergonomically: `in_memory()` → `ingest(adapter, rows)` →
+  `record_decision`/`record_override` → `evidence_for(id)` returns a verified
+  `EvidencePacket`. Decoupled from concrete adapters (imports only the generic
+  `parse_batch`), so a new adapter needs zero SDK change. Runnable ten-minute
+  quickstart. This is what makes "other software integrates Milexium" real
+  rather than aspirational — previously the biggest gap on the strategic path.
+
+Wired all four adapters (including the previously-unwired TLC one) into
+`packages/connect/__init__.py` during integration. Wrote ADR-0014 (standards
+adapters) and ADR-0015 (SDK facade) for the flagged decisions. Reviewed the
+SDK and both adapters' actual code — confirmed the negotiated-window and
+TIDES time mappings are real in the source, not just claimed. `py -3 -m
+pytest packages/ conformance/` → **202 passed** (159 → 202: +16 TIDES, +19
+GTFS-Flex, +8 SDK); audit clean.
+
+Five adapters now map five structurally different sources onto one
+`ServiceRequest` contract. Program M has a first real slice. Next
+dependency-unblocked, strategy-relevant targets: a Forecast-runtime wrapper
+around the existing real `realdata/` models (Program E — makes the real
+forecasting reachable through the same runtime/SDK), and a
+decision-evidence-export surface (Program I extension — the "hand a partner a
+verifiable evidence pack" capability).
+
 ## 2026-07-23 (evening): repositioning + governed data estate
 
 Arya set the strategic frame explicitly: rather than wait on a large transit

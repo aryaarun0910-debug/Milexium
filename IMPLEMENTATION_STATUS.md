@@ -65,6 +65,27 @@ Test evidence for everything in both tables: `py -3 -m pytest packages/ conforma
 from this one). `py -3 tools/audit_repository.py` → unaffected, still passes
 (0 errors, 0 warnings).
 
+## Fifth tranche this session (standards adapters + SDK — the integration surface)
+
+Three parallel packets, all landed and integrated:
+
+| Capability | Program | Status | Evidence |
+|---|---|---|---|
+| TIDES `trips_performed` → `ServiceRequest` adapter | B | **Demonstrated** | `packages/connect/tides_trips.py`; ADR-0014; built against real acquired TIDES schema |
+| GTFS-Flex on-demand → `ServiceRequest` adapter — maps booking windows → `negotiated_window_*` (first adapter to populate that field from real data) | B | **Demonstrated** | `packages/connect/gtfs_flex.py`; ADR-0014; built + tested against the real acquired Aspen feed |
+| `MilexiumClient` SDK facade — one import drives ingest→decide→override→verified-evidence; runnable quickstart | M | **Demonstrated** | `packages/sdk/`; ADR-0015 |
+| All four Connect adapters wired into `packages/connect/__init__.py` | B | **Exists** | central integration this tranche |
+| ADRs 0014-0015 | orchestration | **Exists** | `architecture/decisions/` |
+
+Test evidence: `py -3 -m pytest packages/ conformance/` → **202 passed, 0
+failed** (159 → 202: +16 TIDES, +19 GTFS-Flex, +8 SDK). Audit clean. Five
+adapters now map five structurally different sources (fictional CSV, real
+Parquet, TIDES open standard, GTFS-Flex open standard) onto one
+`ServiceRequest` contract — concrete progress on blueprint 01's "unavoidable"
+test #1 ("external data producers map to the schema without custom downstream
+code"). Program M (the integration surface that makes "other software
+integrates this" real) now has its first working slice.
+
 ## Fourth tranche this session (governed data estate — Program C data layer)
 
 Strategic repositioning (2026-07-23): Milexium as a transport decision
