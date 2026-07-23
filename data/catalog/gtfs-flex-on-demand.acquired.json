@@ -1,0 +1,12 @@
+{
+  "acquired_at": "2026-07-23T15:08:45.934116+00:00",
+  "dataset_id": "gtfs-flex-on-demand",
+  "free_gb_after": 335.26,
+  "free_gb_before": 335.26,
+  "license_and_commercial_rights": "Apache-2.0 (repository LICENSE); commercial use permitted with attribution and license notice retained",
+  "raw_path": "data\\standards\\gtfs-flex-on-demand.8402952cdbef7706.zip",
+  "retained_bytes": 4020,
+  "sha256": "8402952cdbef77062bf9e5b297e4630998d3f77ea841b6fc7b025e90e1a0bd8d",
+  "source_url": "https://raw.githubusercontent.com/MobilityData/gtfs-flex/master/spec/FlexExample--on-demand-service.zip",
+  "zone": "standards"
+}
