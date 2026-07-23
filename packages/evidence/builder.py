@@ -15,6 +15,40 @@ an evidence packet embeds them in a RECOMMENDATION event's
 `payload["alternatives"]` as a list of dicts, each parseable as a
 DecisionAlternative. This is a v0.1 convention owned by this package, not a
 new capability grafted onto packages.canonical.
+
+Three independent checks feed `integrity_verified`, per ADR-0009's
+"Consequences" follow-up:
+
+- **Hash chain** (`verify_chain`): unchanged from the original v0.1 slice.
+- **Schema** (`verify_against_schema`): every `DecisionEvent` in the chain and
+  the `Outcome`, if any, are re-validated via `event.model_dump(mode="json")`
+  against their own exported JSON Schema. For every call site actually in
+  this repository, `events` arrives already Pydantic-validated -- either
+  fresh from a `HashChainAppender`/`SqliteCanonicalStore` construction call,
+  or reconstructed by `SqliteCanonicalStore.history()`, which itself
+  re-validates via `DecisionEvent(...)` on every read -- so this check mostly
+  reconfirms what construction already checked; it is a tautology for the
+  current object-in-object-out call pattern, not a meaningful independent
+  catch. It stops being one the moment a `DecisionEvent` reaches this builder
+  via any path that skips validation (`model_construct`, a future adapter
+  that partially trusts wire data) -- see
+  conformance/adversarial/test_evidence_schema_tamper.py for exactly that
+  case, and the module docstring's honest-negative-finding framing in
+  packages/evidence/models.py.
+- **State transition** (`verify_state_sequence`): not wired into the default
+  path. It needs a real `ServiceRequestState` version sequence, but
+  `DecisionEvent` payloads carry none by any convention this repository has
+  established (packages/connect's adapters only ever set
+  `status=ServiceRequestState.REQUESTED` at creation; nothing writes further
+  transitions as recorded facts yet), and a `ServiceRequest`'s own version
+  history is a different stream than the event ledger this builder's fixed
+  `(events, raw_rows, outcome)` signature never receives. Inferring a state
+  from `DecisionEventType` (e.g. treating `OUTCOME_RECORDED` as implying
+  `COMPLETED`) would derive a new fact rather than reorganize a recorded one,
+  which this package's own models.py docstring rules out. `state_check_
+  applicable` is therefore always `False` in this slice -- a genuine gap, not
+  a fabricated pass, flagged for a follow-up ADR rather than worked around
+  with invented state data.
 """
 
 from __future__ import annotations
@@ -23,6 +57,8 @@ from packages.canonical.entities import DecisionAlternative, DecisionEvent, Outc
 from packages.canonical.vocab import DecisionEventType
 from packages.evidence.models import EvidencePacket, ExperiencePacket, KnownInput
 from packages.verify.hash_chain_verifier import verify_chain
+from packages.verify.schema_verifier import verify_against_schema
+from packages.verify.state_verifier import StateViolation
 
 
 def _alternatives_from_payload(payload: dict) -> tuple[DecisionAlternative, ...]:
@@ -105,7 +141,32 @@ def build_evidence_packet(
     executed = directives[-1] if directives else None
 
     relevant_raw_rows = [row for row in raw_rows if row.get("aggregate_id") == aggregate_id]
-    violations = tuple(verify_chain(relevant_raw_rows))
+    chain_violations = tuple(verify_chain(relevant_raw_rows))
+
+    schema_violations: list[str] = []
+    for event in ordered:
+        schema_violations.extend(
+            f"event {event.event_id} (sequence {event.sequence}): {error}"
+            for error in verify_against_schema(event.model_dump(mode="json"), DecisionEvent)
+        )
+    if outcome is not None:
+        schema_violations.extend(
+            f"outcome: {error}" for error in verify_against_schema(outcome.model_dump(mode="json"), Outcome)
+        )
+
+    # No ServiceRequestState sequence is ever reconstructable from this
+    # builder's inputs -- see module docstring -- so this check is always
+    # inapplicable rather than fabricated as a pass; a real wiring would need
+    # either a new payload convention or a signature change, both out of
+    # scope for this v0.1 slice.
+    state_check_applicable = False
+    state_violations: tuple[StateViolation, ...] = ()
+
+    integrity_verified = (
+        len(chain_violations) == 0
+        and len(schema_violations) == 0
+        and (not state_check_applicable or len(state_violations) == 0)
+    )
 
     return EvidencePacket(
         tenant_id=tenant_id,
@@ -118,8 +179,11 @@ def build_evidence_packet(
         outcome_events=outcome_events,
         executed=executed,
         observed=outcome,
-        integrity_verified=len(violations) == 0,
-        chain_violations=violations,
+        integrity_verified=integrity_verified,
+        chain_violations=chain_violations,
+        schema_violations=tuple(schema_violations),
+        state_check_applicable=state_check_applicable,
+        state_violations=state_violations,
     )
 
 
@@ -137,7 +201,8 @@ def build_experience_packet(packet: EvidencePacket, outcome: Outcome) -> Experie
     if not packet.integrity_verified:
         raise ValueError(
             "refusing to build an ExperiencePacket from an EvidencePacket whose "
-            "chain integrity did not verify -- see packet.chain_violations"
+            "integrity did not verify -- see packet.chain_violations and "
+            "packet.schema_violations"
         )
     if packet.observed is not None and packet.observed != outcome:
         raise ValueError("outcome does not match the Outcome already recorded on this EvidencePacket")

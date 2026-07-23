@@ -21,6 +21,7 @@ from packages.canonical.ids import DecisionEventId, TenantId
 from packages.canonical.time import UtcDateTime
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 from packages.verify.hash_chain_verifier import ChainViolation
+from packages.verify.state_verifier import StateViolation
 
 
 class _Evidence(BaseModel):
@@ -78,12 +79,40 @@ class EvidencePacket(_Evidence):
     """The recorded operational outcome, if one exists yet. Never fabricated when absent."""
 
     integrity_verified: bool
-    """True iff packages.verify.verify_chain found zero violations in this
-    aggregate's raw rows -- the actual check result, not a claim."""
+    """True iff every applicable independent check found zero violations:
+    packages.verify.verify_chain on this aggregate's raw rows, packages.verify.
+    verify_against_schema on every DecisionEvent (and the Outcome, if any),
+    and packages.verify.verify_state_sequence when state_check_applicable.
+    The actual aggregated check result, not a claim."""
 
     chain_violations: tuple[ChainViolation, ...]
     """Every violation packages.verify.verify_chain found for this
-    aggregate's raw rows. Empty iff integrity_verified is True."""
+    aggregate's raw rows. Empty iff the hash-chain check passed."""
+
+    schema_violations: tuple[str, ...] = ()
+    """Every packages.verify.verify_against_schema error found re-validating
+    each DecisionEvent (via event.model_dump(mode="json")) and the Outcome, if
+    any, independently against their own exported JSON Schema -- see
+    packages/evidence/builder.py's module note on why this mostly reconfirms
+    already-Pydantic-validated objects for the current object-in-object-out
+    construction path, and the one case (a DecisionEvent built via a path that
+    skipped validation) where it is not a tautology."""
+
+    state_check_applicable: bool = False
+    """True iff this packet's inputs actually carried a reconstructable
+    ServiceRequestState version sequence to check with packages.verify.
+    verify_state_sequence. Always False in this v0.1 slice: DecisionEvent
+    payloads carry no recorded ServiceRequestState by any convention this
+    repository has established, and a ServiceRequest's own version history is
+    a different stream this builder's (events, raw_rows, outcome) signature
+    never receives -- see packages/evidence/builder.py's module note."""
+
+    state_violations: tuple[StateViolation, ...] = ()
+    """Every packages.verify.verify_state_sequence violation found, if
+    state_check_applicable. Empty either because there were none, or because
+    the check was not applicable -- state_check_applicable disambiguates
+    which; absence of violations here must never be read as "state legality
+    verified" on its own."""
 
 
 class ExperiencePacket(_Evidence):
