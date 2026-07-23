@@ -1,0 +1,40 @@
+[project]
+name = "milexium"
+version = "0.1.0"
+description = "Milexium: explainable demand forecasting and scheduling evidence for paratransit and NEMT operators."
+# 3.14 because packages/canonical uses the stdlib uuid.uuid7() added there;
+# this repo's scripts already run under `py -3` -> 3.14 (see __pycache__ tags).
+requires-python = ">=3.14"
+dependencies = [
+    "pandas==3.0.0",
+    "numpy==2.3.5",
+    "xgboost==3.2.0",
+    "scikit-learn==1.8.0",
+    "pydantic==2.13.4",
+    "jsonschema==4.26.0",
+    "fastapi==0.136.3",
+    "matplotlib==3.10.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.2",
+]
+# Added only when Program C actually connects to the installed PostgreSQL
+# instance (see architecture/decisions/0004-sqlite-now-postgres-production.md);
+# not installed yet, listed here so the intended pin is visible.
+postgres = [
+    "psycopg[binary]>=3.2,<3.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["packages", "conformance", "realdata", "ntd", "reference_agency", "tools"]
+python_files = ["test_*.py", "*_test.py"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["packages*"]
