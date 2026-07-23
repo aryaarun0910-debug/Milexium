@@ -6,6 +6,93 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-23: expansion kickoff — Program A/G foundation
+
+A separate specification, `C:\Users\aryaa\Documents\Milexium Expansion plan`
+(blueprint documents 01-20, `SWARM_MANIFEST.yaml`, a dossier of 80
+technologies and 72 intelligence-layer projects), describes a long-term
+platform architecture: canonical transport substrate, MilexiumDB, Core/
+Forecast, Decide, Verify, Replay/Explain, Forge/Fabric, Runtime, Edge, and a
+product/API surface, built through contract-driven parallel agent work
+(programs A-M).
+
+Arya directed implementing this now, in parallel with the YC deadline work in
+`docs/MASTER_ROADMAP.md` rather than instead of it, with the instruction to
+record everything here and stop at defined checkpoints rather than running
+unattended to full blueprint completion. Before writing any code, the
+conflict between the expansion's scope and the roadmap's explicit "scope kill
+list until submission" was raised; Arya's call was to proceed with the full
+expansion and treat the roadmap as the thing to protect, not the thing to
+follow narrowly.
+
+Infrastructure: this machine had no Docker, no working WSL ("Class not
+registered" error), and no PostgreSQL. Arya asked what to install to remove
+the hindrance; PostgreSQL 17 was installed natively via
+`winget install --id PostgreSQL.PostgreSQL.17` and confirmed running as a
+Windows service. PostGIS is not installed yet (ships separately) and nothing
+in this repository talks to the new Postgres instance yet — see
+`architecture/decisions/0004-sqlite-now-postgres-production.md`.
+
+Built this session (all under new root directories `architecture/`,
+`packages/`, `conformance/`, `benchmarks/`, `research/`, `third_party/`,
+`ops/`, `workstreams/`, plus root `IMPLEMENTATION_STATUS.md` and
+`pyproject.toml` — nothing in `realdata/`, `reference_agency/`, `ntd/`,
+`kaggle/`, `outreach/`, or existing `docs/` content was touched):
+
+- **Program A (canonical substrate), `packages/canonical/`:** typed UUIDv7
+  identifiers; explicit requested/negotiated/scheduled/predicted/actual time
+  fields with a `known_as_of()` replay-cutoff method; a bitemporal-correction
+  envelope; the 12 canonical entities from `docs/MASTER_ROADMAP.md`'s
+  MilexiumDB table list (Tenant, ServiceRequest, Vehicle, Driver, Policy,
+  ModelVersion, ForecastVintage, ScheduleRun, DecisionAlternative,
+  DecisionEvent, Outcome, OutboxEntry); an 8-state ServiceRequest state
+  machine; policy/reason-code/sensitivity vocabularies; an append-only,
+  SHA-256 hash-chained decision-event log implemented *twice*
+  (in-memory and SQLite-backed) against one shared contract; a portable SQL
+  DDL file that runs unmodified on SQLite today and is intended for
+  PostgreSQL later.
+- **Program G (verify), `packages/verify/`:** independent JSON-Schema, state-
+  transition, and hash-chain verifiers, deliberately organized as a separate
+  package that never imports the event-log's write path — it re-derives
+  legality and hash integrity from raw stored rows instead of trusting the
+  writer's own bookkeeping.
+- **SemanticIndex interface** (`packages/canonical/semantic_index.py`): a
+  `Protocol` plus one reference implementation, brute-force cosine
+  `ExactSearchIndex` — no TurboVec or pgvector adapter yet; vendoring TurboVec
+  specifically requires a license/security review this session did not do
+  (`architecture/decisions/0005-...md`).
+- **Conformance suite:** 92 pytest tests across
+  `conformance/fixtures/`, `conformance/property-tests/`, and
+  `conformance/adversarial/` — exhaustive state-transition-table coverage (72
+  parametrized cases), idempotent-command replay, duplicate-payload
+  rejection, payload tampering detection, deleted-event gap detection,
+  forged-hash chain-break detection, cross-tenant read isolation, and a
+  database-level duplicate-sequence rejection test. All 92 pass;
+  `tools/audit_repository.py` still passes unchanged (0 errors, 0 warnings).
+- **ADRs 0001-0005** in `architecture/decisions/`: adopting the expansion
+  blueprint; canonical schema technology (Pydantic v2 + generated JSON
+  Schema); the append-only hash-chained event log design; SQLite-now/
+  PostgreSQL-production storage strategy; the SemanticIndex interface
+  decision.
+- **`workstreams/DOSSIER_COVERAGE.md`:** seeded the full 80-technology/
+  72-project ledger from the expansion's dossier, honestly marked
+  Specified across the board (0/152 Exists) — Programs A and G now have a
+  first versioned contract, which is not the same as any of the 152 specific
+  technologies being implemented.
+- **`IMPLEMENTATION_STATUS.md`:** the living Exists/Specified/Demonstrated/
+  Validated/Production gap analysis this journal entry summarizes.
+
+Deliberately not started this session: Programs B, D, E, F, H, I, J, K, L, M
+(no code); real PostgreSQL wiring (engine installed, nothing talks to it);
+PostGIS; object storage; TurboVec vendoring; any Lean/TLA+/SMT tooling.
+
+Next planned tranche (pending checkpoint review with Arya): dispatch parallel
+packets against the versioned A/G stubs — likely B (Connect adapter
+skeleton), continued C (a Postgres-backed store implementing the same
+`SqliteCanonicalStore` contract), and I (Evidence/Experience IR skeleton) —
+each as a disjoint-path work packet in the `blueprint/19-agent-swarm-
+execution-system.md` format.
+
 ## 2026-07-22 (website handoff and YC execution reset)
 
 - Removed the tracked `web/` directory. Chris owns the new Milexium website,
