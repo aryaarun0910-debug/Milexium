@@ -6,6 +6,51 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-23 (night): forecast runtime + evidence-pack export
+
+Finished the two next-unblocked strategic targets, built directly (not via
+subagents — focused enough to keep quality control at the finish line):
+
+- **Program E — Forecast runtime** (`packages/forecast/`): a `ForecastRuntime`
+  that resolves the champion model for a task from the Program D registry,
+  loads its real XGBoost booster, **hash-verifies the artifact bytes against
+  the registered `ModelVersion.artifact_hash` before predicting** (refuses a
+  stale/swapped/corrupted file, and refuses a model with a non-hash
+  placeholder like the NTD `NOT_COMPUTED` one), predicts on a point-in-time
+  feature row (missing feature → error, never silently zero-filled), and emits
+  a canonical `ForecastVintage`. Confirmed end-to-end on the *real* committed
+  Access-A-Ride booster — served a plausible ~54-booking forecast for a
+  Monday-8am summer borough-hour. This turns "we have good models" into "the
+  runtime serves forecasts." Honest: Demonstrated on real *aggregate* data;
+  aggregate forecasts don't validate individual dispatch, and a vintage
+  interval is a model interval, not a probability (blueprint 01).
+- **Program I — evidence-pack export** (`packages/evidence/export.py`): a
+  portable, JSON-serializable `EvidencePack` for one decision that a third
+  party re-verifies *without* Milexium — `verify_evidence_pack` recomputes the
+  bundle checksum and re-runs the hash chain from the pack's own embedded
+  bytes, trusting no manifest claim. Proven honest by tests: altering content
+  is caught by the checksum; even an attacker who re-anchors the checksum after
+  tampering is still caught by the inner chain. `redact_pack` masks sensitive
+  payload fields for sharing but is explicit that masking breaks per-event
+  chain re-verification and is field masking, **not** HIPAA de-identification
+  (blueprint 10). This is the "undeniable operational evidence you can hand a
+  partner" artifact.
+
+Wrote ADR-0016 (forecast runtime) and 0017 (evidence-pack export). `py -3 -m
+pytest packages/ conformance/` → **212 passed** (202 → 212: +5 each). Audit
+clean.
+
+With this, all 7 strategic-spine programs (A, B, C, D, E-slice, G, I, M) have
+working v0.1 slices AND the two capabilities that make the go-to-market
+concrete — real forecasts served through the runtime, and a verifiable
+evidence artifact — now exist. Deliberately left as a clean follow-up (not
+done, to keep the just-committed SDK surface stable): exposing
+`forecast(...)` and `export_pack(...)` through `MilexiumClient`.
+
+Also reviewed Chris's first-pass website at https://milexium.com against the
+truth/claims guardrails from blueprint 01/10 — see the session notes for
+findings.
+
 ## 2026-07-23 (evening, later): standards adapters + SDK — the integration surface
 
 Three parallel packets against the estate + canonical/connect foundations,

@@ -65,6 +65,25 @@ Test evidence for everything in both tables: `py -3 -m pytest packages/ conforma
 from this one). `py -3 tools/audit_repository.py` → unaffected, still passes
 (0 errors, 0 warnings).
 
+## Sixth tranche this session (Forecast runtime + evidence-pack export)
+
+| Capability | Program | Status | Evidence |
+|---|---|---|---|
+| `ForecastRuntime` — resolves champion model from the registry, hash-verifies the artifact, predicts, emits a canonical `ForecastVintage` | E | **Demonstrated** on real aggregate data (a real forecast served from the committed Access-A-Ride booster) | `packages/forecast/`; ADR-0016 |
+| Portable evidence pack — `build_evidence_pack`/`verify_evidence_pack` a third party re-verifies without Milexium; honest `redact_pack` | I | **Exists** (v0.1) | `packages/evidence/export.py`; ADR-0017 |
+| ADRs 0016-0017 | orchestration | **Exists** | `architecture/decisions/` |
+
+Test evidence: `py -3 -m pytest packages/ conformance/` → **212 passed, 0
+failed** (202 → 212: +5 forecast, +5 evidence-pack export). Audit clean.
+
+Program E now serves the repo's *real* forecasting models through the runtime
+(previously reachable only via `realdata/` scripts), and Program I can emit a
+self-contained, independently-verifiable evidence artifact — the "undeniable
+operational evidence you can hand a partner" the go-to-market rests on. Both
+stay honest on status: forecasts are Demonstrated on real *aggregate* data
+(not operator-validated dispatch), and the evidence pack is tamper-evident,
+not immutable and not a compliance certificate.
+
 ## Fifth tranche this session (standards adapters + SDK — the integration surface)
 
 Three parallel packets, all landed and integrated:

@@ -1,0 +1,38 @@
+id: MX-E-FORECAST-RUNTIME-001
+status: completed
+completed_date: "2026-07-23"
+objective: >
+  Serve real forecasts from registered, hash-verified models through one
+  runtime interface -- turning the existing realdata/ models into forecasts
+  the runtime emits as canonical ForecastVintage entities.
+owned_paths:
+  - packages/forecast/
+  - architecture/decisions/0016-forecast-runtime.md
+read_only_dependencies:
+  - packages/core/model_registry.py (champion resolution)
+  - packages/canonical/entities.py (ModelVersion, ForecastVintage), time.py
+  - realdata/output/*_model.json (real gitignored artifacts, local-only test)
+normative_contracts:
+  - blueprint/05-core-model-runtime-and-forecast.md, Program E
+  - architecture/decisions/0010-model-registry-platform-tenant.md
+required_outputs:
+  - packages/forecast/{runtime,features}.py
+  - conformance/property-tests/test_forecast_runtime.py
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_forecast_runtime.py -v"
+performance_budget: {}
+security_and_privacy_invariants:
+  - "artifact bytes are hash-verified against the registered ModelVersion.artifact_hash before predicting"
+  - "a model with a non-hash placeholder artifact_hash is refused, not served"
+failure_injections:
+  - "artifact hash mismatch -> ArtifactIntegrityError"
+  - "missing required feature -> KeyError (never silently zero-filled)"
+  - "no champion promoted -> NoChampionError"
+compatibility_matrix:
+  - "real committed AAR booster served end-to-end (local-only test, skips if absent)"
+evidence_to_emit:
+  - "5 passing tests incl. a real forecast from the committed Access-A-Ride model"
+forbidden_interface_changes: []
+upstream_blockers: []
+downstream_consumers:
+  - MilexiumClient.forecast (future SDK method), any partner serving demand forecasts
