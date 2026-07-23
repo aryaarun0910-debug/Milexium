@@ -15,6 +15,14 @@ integration review for whether/where this package should be re-exported.
 
 from packages.evidence.builder import build_evidence_packet, build_experience_packet
 from packages.evidence.models import EvidencePacket, ExperiencePacket, KnownInput
+from packages.evidence.export import (
+    EvidencePack,
+    PackManifest,
+    PackVerification,
+    build_evidence_pack,
+    redact_pack,
+    verify_evidence_pack,
+)
 
 __all__ = [
     "EvidencePacket",
@@ -22,6 +30,12 @@ __all__ = [
     "KnownInput",
     "build_evidence_packet",
     "build_experience_packet",
+    "EvidencePack",
+    "PackManifest",
+    "PackVerification",
+    "build_evidence_pack",
+    "redact_pack",
+    "verify_evidence_pack",
 ]
 
 CONTRACT_VERSION = "0.1.0"
