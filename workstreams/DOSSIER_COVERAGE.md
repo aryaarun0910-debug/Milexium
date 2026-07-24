@@ -69,7 +69,7 @@ Program the row happens to land in.
 | 32 | Processing-in-memory and near-memory computing | C/K | Bandwidth-bound scans, graph operations, retrieval, and feature aggregation | Specified | No implementation yet |
 | 33 | RISC-V custom instruction extensions | K/L | Packed scoring, bitmap, sketch, crypto, and constraint-propagation primitives | Specified | No implementation yet |
 | 34 | Randomized numerical linear algebra and graph sparsification | E/F/H/K | Compress matrices, road graphs, scenarios, and relaxations with error bounds | Specified | No implementation yet |
-| 35 | SMT solving | A/F/G | State/policy verification, counterexamples, and solver backend | Specified | A/G foundation exists; no SMT solver wired in |
+| 35 | SMT solving | A/F/G | State/policy verification, counterexamples, and solver backend | **Exists** | z3 wired in for **state verification** (ADR-0033): `architecture/formal/` proves 5 invariants — ServiceRequest lifecycle S1–S4 + hash-chain tamper-evidence H1 — run by `packages/verify/formal.py`, 10 tests, z3 in CI. NOT yet used as a Program F *solver backend*, and no counterexample extraction surface |
 | 36 | Succinct data structures and FM-indexes | C/I/K | Compressed exact event, route, policy, and evidence lookup | Specified | No implementation yet |
 | 37 | Systolic and dataflow accelerator generators | E/H/K | Regular graph, tensor, dynamic-programming, and simulation pipelines | Specified | No implementation yet |
 | 38 | High-level synthesis (HLS) | K | Transport-domain kernels compiled into FPGA/ASIC implementations | Specified | No implementation yet |
@@ -113,7 +113,7 @@ Program the row happens to land in.
 | 76 | Graph DSLs and graph-specific compilation | E/F/H/K | Road, service, demand, dependency, and knowledge graph execution | Specified | No implementation yet |
 | 77 | Cuckoo and XOR filters | B/C/K | Deduplication, negative lookup, cache admission, and integrity checks | Specified | Content-addressed raw objects (packages/estate, sha256 names) give exact dedup detection; probabilistic filters themselves not built |
 | 78 | HNSW navigable small-world graphs | C/K | Dynamic ANN backend and benchmark comparator | Specified | `SemanticIndex` protocol exists as the interface this would implement |
-| 79 | Interactive theorem proving and proof extraction | A/G | Machine-checked state, policy, compiler, and decision knowledge | Specified | A/G foundation exists (typed state machine + independent verifier are a manual precursor, not a proof system) |
+| 79 | Interactive theorem proving and proof extraction | A/G | Machine-checked state, policy, compiler, and decision knowledge | Specified (partial) | Automated SMT proofs now exist (row 35, ADR-0033) — machine-checked state invariants, no longer only a manual precursor. But this row is *interactive* theorem proving (Lean/Coq/Isabelle) with proof **extraction**: not started, and z3 emits no extractable proof term |
 | 80 | RDMA and RoCE | C/D/J/K | Low-copy distributed state, model, rollout, and storage transport | Specified | No implementation yet |
 
 ## All 72 intelligence-layer projects

@@ -2,6 +2,69 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-24 (night, latest): Phase 3 COMPLETE — D + G gate cleared, canonical gap closed, estate on MinIO
+
+Finished Phase 3 by dispatching the remaining work as four parallel packets on
+disjoint owned paths (`packages/core` / `packages/verify`+`architecture/formal` /
+`packages/canonical`+`packages/connect` / `packages/estate`). Reviewed every
+agent's actual code, not just its report, and re-ran the headline measurements
+myself. Suite: **603 passed, 0 failed** (513 → 603).
+
+- **D — adaptive memory** (`packages/core/`, ADR-0034, 52 tests): a leakage-safe
+  point-in-time `FeatureStore` whose one invariant is a *strict* `<` as-of read
+  (a value stamped exactly at label time t is never visible) — proved
+  mechanically by future-corruption on the REAL Access-A-Ride daily panel at
+  three cutoffs, the same discipline `realdata/leakage_audit.py` applies to the
+  training pipelines, now a runtime store. Plus a champion/challenger/canary
+  `PromotionController` where the evaluated gate is the *only* path to champion
+  (every verdict recorded, rollback stack), and a drift service (PSI + KS +
+  two-sided CUSUM). The real-data proof point: the March-2020 COVID collapse is
+  detected as a downward change-point, while a random exchangeable split of
+  stable-year 2023 correctly does not flag.
+- **G — formal invariants** (`architecture/formal/`, `packages/verify/formal.py`,
+  ADR-0033, 10 tests): five genuinely machine-checked properties via the free
+  z3 (installed, pinned as the `formal` extra, and wired into CI so the proofs
+  RUN there rather than skip). S1 terminals-are-sinks, S2 irreflexive, S3
+  acyclic, S4 no-dead-end on the ServiceRequest lifecycle; H1 hash-chain
+  tamper-evidence. Every result is a solver verdict (`unsat` of the negation,
+  or a constructive `sat` witness), never a Python assert. Independence is
+  preserved the ADR-0028 way: the provers transcribe the spec BY HAND and never
+  import `packages.canonical`; a single runner-side consistency check asserts
+  the transcription equals `SERVICE_REQUEST_TRANSITIONS`, and a negative control
+  flips one edge to prove that tie is load-bearing. H1 is honestly conditional
+  on an explicit collision-freeness axiom — dropping it makes the theorem `sat`
+  again, which the test asserts. It does **not** claim to prove SHA-256.
+- **A + C — the ADR-0031 canonical gap, CLOSED** (ADR-0035, 46 tests): added the
+  request-independent `VehicleObservation`/`StopTimeObservation` family with a
+  real PostGIS `geometry(Point,4326)` column + GiST index — kept OUT of the
+  portable base DDL (SQLite-safe, verified) in a separately-versioned
+  `sql/postgis_postgres.sql`, exactly the split `rls_postgres.sql` uses, and
+  applied by a new `observation_store.py` against the containerized PostGIS on
+  5433. Re-mapped the GTFS-RT adapter onto it. Measured on the real samples:
+  MBTA went from 251 `Outcome`s + **314 quarantined** to **567/567
+  `VehicleObservation`s, 0 quarantined**, with **no synthetic `request_id`
+  anywhere**. The spatial `ST_DWithin` round-trip genuinely ran (not skipped).
+  Nice detail the agent got right: source `vehicle_id`/`trip_id`/`stop_id` stay
+  plain strings, not canonical typed ids — they name another agency's entities,
+  and typing them would repeat the very category error the packet removes.
+- **C — estate raw zone backed by MinIO** (ADR-0036, 7 tests): `acquire()` now
+  additively mirrors each promoted object into the free, already-running MinIO
+  under **the same sha256 that is the estate's own content address** (mismatch
+  raises), recording the key in the catalog. Local disk stays default and
+  byte-for-byte unchanged when the store is off; the round-trip test ran live.
+  No paid-cloud SDK or credentials, per the founder's hard constraint.
+
+Centrally (mine, not the agents'): pinned `z3-solver` as a `formal` extra and
+installed it in CI; exported the two new entities to the generated `contracts/`
+layer (now 14 entities) so external producers have a schema to map onto — the
+contract-drift check that would otherwise have bitten on CI. Two long-standing
+blockers moved from "available" to "actually in use": PostGIS now carries a real
+geometry column, and MinIO now backs the estate.
+
+Phase 3's gate was D + G; both are built, integrated, tested, and committed.
+Everything remains **Demonstrated** — the Validated gate still needs a consented
+operator, and no amount of this work crosses it.
+
 ## 2026-07-24 (night): infra live — compose stack up, object storage + PostGIS cleared
 
 WSL2 + Docker Desktop came up on the dev machine (Docker Engine 29.6.2). Brought

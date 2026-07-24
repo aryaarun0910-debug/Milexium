@@ -50,9 +50,12 @@ There are two distinct "done"s, kept deliberately separate:
   partner can integrate against, plus a pilot-ready evidence loop. This is
   finishable and is what the roadmap below drives to.
 
-Program depth today (rough engineering judgment, not precision): A ~25%,
-B ~20%, C ~15%, D ~10%, E ~10%, G ~15%, I ~20%, M ~10%; F/H 0% (F held —
-overlaps the YC-owned scheduler task); J/K/L 0% (frontier).
+Program depth today (rough engineering judgment, not precision), after Phase 3:
+A ~40% (was 25 — the operational entity family + PostGIS), B ~30%, C ~35%
+(was 15 — RLS, MinIO-backed estate, PostGIS), D ~30% (was 10 — feature store,
+promotion lifecycle, drift), E ~30%, G ~35% (was 15 — machine-checked
+invariants), H ~15%, I ~30%, M ~25%; F ~10% (held — overlaps the YC-owned
+scheduler task); J/K/L 0% (frontier).
 
 ### Phase 1 — pilot-ready — **COMPLETE (2026-07-24)**
 
@@ -139,25 +142,31 @@ checkable, tamper-evident, reproducible), not platform breadth.
    naive baselines into a reproducible leaderboard (Program E / `benchmarks/`).
 4. **Machine-readable evidence manifests** a third party can verify unaided.
 
-### Phase 3 — breadth & defensibility — IN PROGRESS (E + B done, 2026-07-24)
+### Phase 3 — breadth & defensibility — **COMPLETE (2026-07-24)**
 
 | Item | Status | Evidence |
 |---|---|---|
 | **E — Forecast depth**: serve-time conformal intervals + all four real zone-hour models served | **Exists** (Demonstrated) | `packages/forecast/conformal.py`; ADR-0030; 28 tests. Honest finding: committed intervals overcover (AAR 98.1%), isolated to winter→spring shift (exchangeable split recovers ~90%), confirming RND_QUESTIONS Q4 |
-| **B — Connect breadth**: GTFS-Realtime adapter → `Outcome` (real MBTA + Apache-2.0 samples) | **Exists** (Demonstrated) | `packages/connect/gtfs_realtime.py`; ADR-0031; 20 tests |
-| **D** — point-in-time feature store, champion/challenger, drift detection | Specified | not started |
-| **G** — 1-2 machine-checked TLA+/SMT invariants | Specified | needs a TLA+/SMT toolchain installed |
+| **B — Connect breadth**: GTFS-Realtime adapter (real MBTA + Apache-2.0 samples) | **Exists** (Demonstrated) | `packages/connect/gtfs_realtime.py`; ADR-0031, and re-mapped onto the operational entities by ADR-0035 |
+| **D — Adaptive memory**: leakage-safe point-in-time feature store, champion/challenger/canary promotion, drift/change-point detection | **Exists** (Demonstrated) | `packages/core/{feature_store,promotion,drift}.py`; ADR-0034; **52 tests**. Leakage guarantee proved mechanically by future-corruption on the real AAR panel; COVID-2020 collapse detected as a CUSUM change-point |
+| **G — Formal invariants**: 5 machine-checked z3/SMT invariants | **Exists** | `architecture/formal/`, `packages/verify/formal.py`; ADR-0033; **10 tests**. S1 terminal-sinks, S2 irreflexive, S3 acyclic, S4 no-dead-end (state machine) + H1 hash-chain tamper-evidence. Genuine solver verdicts; prover independent of the code it checks; negative controls prove the ties are load-bearing |
 
-Suite after E+B: **509 passed** (461 → 509: +28 forecast, +20 GTFS-RT).
+**Follow-ups that landed in the same push:**
 
-**Canonical gap surfaced by B (a Program A follow-up, flagged):** GTFS-Realtime
-is operational telemetry keyed by `(trip, stop, vehicle)` with **no rider
-request**, but every canonical entity is rider-request-keyed — so GTFS-RT maps
-to `Outcome` only via a synthetic `request_id` placeholder and heavy semantic
-loss. The canonical model **lacks a first-class, request-independent operational/
-telemetry entity** (a `VehicleTelemetry`/`StopTimeObservation`). This is why
-TODS/NeTEx were deferred (Specified) rather than half-built — the same gap-driven
-canonical work should land first. See ADR-0031.
+| Item | Status | Evidence |
+|---|---|---|
+| **A + C — the canonical gap ADR-0031 surfaced, closed**: `VehicleObservation`/`StopTimeObservation` (request-independent) with a **PostGIS** geometry column | **Exists** (Demonstrated) | `packages/canonical/{entities,observation_store}.py`, `sql/postgis_postgres.sql`; ADR-0035; **46 tests**. Base DDL stays SQLite-portable (verified); geometry isolated to a Postgres-only file, exactly the `rls_postgres.sql` split. Spatial round-trip **ran** against the 5433 container |
+| **C — estate raw zone backed by MinIO** (free; no paid cloud) | **Exists** (dev) | `packages/estate/acquire.py`, `catalog.py`; ADR-0036; **7 tests**. Object-store key == the estate's own sha256; local disk still default and unchanged |
+
+Suite after Phase 3: **603 passed, 0 failed** (513 → 603: +52 D, +10 G, +46
+A-ops incl. re-mapped GTFS-RT, +7 estate, and the rest from the re-map's
+expanded fixtures).
+
+**The ADR-0031 canonical gap is now CLOSED (ADR-0035).** GTFS-Realtime no longer
+maps through a synthetic `request_id`: on the real MBTA sample it went from 251
+`Outcome`s + **314 quarantined** to **567/567 `VehicleObservation`s, 0
+quarantined**. TODS remains Specified for a *different* missing family
+(`Block`/`RunCut`/`PieceOfWork` — scheduling, not telemetry).
 
 ### Phase 4 — frontier (lighthouse only)
 
@@ -344,23 +353,34 @@ vendoring decisions:
 1. **TurboVec vendoring** (`architecture/decisions/0005-...md`) — the
    expansion plan explicitly forbids vendoring it without a license/security/
    maturity review. Not started.
-2. ~~**Object storage**~~ — **CLEARED (dev, 2026-07-24, ADR-0032)**. MinIO
+2. ~~**Object storage**~~ — **CLEARED (dev, 2026-07-24, ADR-0032/0036)**. MinIO
    (S3-compatible) runs in the `infra/compose` stack; `packages/estate/
    object_store.py` provides a content-addressed `MinioObjectStore` (key ==
-   sha256, dedup, read-time integrity) with a passing round-trip test against
-   it. **Exists (dev)**. Production still needs real cloud credentials +
-   per-tenant bucket isolation (not the dev MinIO root user).
-3. ~~**PostGIS**~~ — **CLEARED (dev, 2026-07-24, ADR-0032)**. PostGIS 3.4 runs
-   in the compose stack (Postgres container on host port 5433, coexisting with
-   the native PostgreSQL 17 on 5432). No canonical entity uses geometry yet, so
-   wiring a spatial column is a later additive step; the extension is available.
+   sha256, dedup, read-time integrity), and it now **actually backs the estate
+   raw zone** — `acquire()` mirrors each promoted object into MinIO under the
+   same sha256 and records the key in the catalog (ADR-0036). **Exists (dev)**.
+   Production still needs real cloud credentials + per-tenant bucket isolation
+   (not the dev MinIO root user); **no paid cloud until a YC partner is
+   onboard**, per the founder's constraint.
+3. ~~**PostGIS**~~ — **CLEARED (dev, 2026-07-24, ADR-0032/0035)**. PostGIS 3.4
+   runs in the compose stack (Postgres container on host port 5433, coexisting
+   with the native PostgreSQL 17 on 5432), and is now **in real use**: the new
+   `VehicleObservation` entity has a `geometry(Point,4326)` column with a GiST
+   index (`sql/postgis_postgres.sql`, applied by `observation_store.py`), and a
+   spatial `ST_DWithin` round-trip test runs against the container. The portable
+   base DDL stays SQLite-safe (ADR-0002).
 4. **GPU / cloud compute for Forge, Runtime, and hardware programs (J, K, L)**
    — genuinely out of scope for this local machine. These stay Specified
    indefinitely absent a decision to provision (and pay for) real compute.
-5. **Lean/TLA+/SMT toolchains** for Program G's formal-methods layer
-   (`architecture/formal/`) — not installed; `packages/verify` v0.1 is plain
-   Python, a manual precursor to formal verification, not formal verification
-   itself.
+5. ~~**Lean/TLA+/SMT toolchains**~~ — **CLEARED (2026-07-24, ADR-0033).** The
+   free `z3-solver` (5.0.0) is installed and pinned as the `formal` extra, and
+   CI installs it so the proofs **run** there. `architecture/formal/` now holds
+   two z3 models discharging five invariants (state-machine S1–S4, hash-chain
+   H1); `packages/verify/formal.py` runs them and ties the prover's independent
+   transcription to the real contract. Remaining scope (Specified): a full
+   TLA+/Lean specification of the wider system, and unbounded (rather than
+   bounded-model) proofs. H1 is conditional on an explicit collision-freeness
+   axiom — stated in-artifact, not hidden.
 
 Not a blocker, but flagging so it isn't lost: **`DecisionAlternative` has no
 store method** (`packages/canonical/storage.py`/`postgres_storage.py` never
