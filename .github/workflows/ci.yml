@@ -39,7 +39,6 @@ jobs:
   rust:
     name: Rust (fmt/clippy/test)
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('Cargo.toml') != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -54,9 +53,7 @@ jobs:
     name: TypeScript (typecheck/test)
     runs-on: ubuntu-latest
     # npm workspaces (not pnpm): corepack's pnpm shim needs admin to install on
-    # the dev machine (EPERM), so the SDK uses npm -- ADR-0029. Guarded on the
-    # root lockfile so this activates once the TS workspace lands.
-    if: ${{ hashFiles('package-lock.json') != '' }}
+    # the dev machine (EPERM), so the SDK uses npm -- ADR-0029.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
