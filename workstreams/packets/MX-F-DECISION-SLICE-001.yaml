@@ -1,0 +1,28 @@
+id: MX-F-DECISION-SLICE-001
+status: completed
+completed_date: "2026-07-24"
+objective: >
+  Prove the Program F contract: Decision IR + a solver with honest status + an
+  INDEPENDENT feasibility checker (separate from the generator). Additive, not
+  the founder-owned scheduler; no new dependency.
+owned_paths: [packages/decide/, architecture/decisions/0022-decision-program-slice.md]
+read_only_dependencies: [packages/canonical/ (Vehicle, vocab.ReasonCode, ScheduleRunStatus), packages/verify/ (pattern)]
+normative_contracts: [blueprint/06-decide-policy-and-optimisation.md, blueprint/15-risks-and-falsification.md]
+required_outputs:
+  - packages/decide/{ir,solver,feasibility}.py
+  - conformance/property-tests/test_decide_solver.py
+  - conformance/adversarial/test_decide_feasibility.py
+acceptance_commands: ["py -3 -m pytest conformance/property-tests/test_decide_solver.py conformance/adversarial/test_decide_feasibility.py -v"]
+security_and_privacy_invariants:
+  - "feasibility checker imports only canonical.vocab + decide.ir, NEVER the solver (verified in code)"
+  - "solver self-audits via the checker before returning (one-way dep)"
+  - "no accepted result violates a hard constraint"
+failure_injections:
+  - "each hard constraint (capacity/precedence/window/max-ride/shift/wheelchair) rejected with the right ReasonCode on a hand-built solution"
+  - "timeout -> incumbent with NO bound/gap, status never OPTIMAL (proven_optimal cannot be spoofed)"
+  - "must_serve mandate infeasible -> INFEASIBLE, empty assignments"
+  - "50 seeded capacity-overload instances: checker never accepts a breach"
+compatibility_matrix: ["pure Python; ortools NOT added"]
+evidence_to_emit: ["124 tests (65 solver + 59 feasibility, incl. 60+50 seeded random)"]
+upstream_blockers: ["does not persist decision_alternatives (the standing store-method gap); coordinate with founder-owned scheduler + YC OR-Tools task before any 'the scheduler' claim"]
+downstream_consumers: [future ScheduleRun/DecisionAlternative persistence; CP-SAT/MILP portfolio backends]
