@@ -21,6 +21,7 @@ from packages.connect.gtfs_realtime import (
     feed_message_to_rows,
     read_gtfs_realtime_feed,
 )
+from packages.connect.operator_export import OperatorExportAdapter, OperatorTripRecord
 
 __all__ = [
     "AdapterResult",
@@ -35,6 +36,8 @@ __all__ = [
     "GtfsRealtimeAdapter",
     "feed_message_to_rows",
     "read_gtfs_realtime_feed",
+    "OperatorExportAdapter",
+    "OperatorTripRecord",
 ]
 
 CONTRACT_VERSION = "0.1.0"
