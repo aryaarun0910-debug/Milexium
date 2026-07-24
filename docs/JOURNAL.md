@@ -6,6 +6,51 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-24 (later): Phase 2 begins — proof-first (golden-path demo + DARP benchmark)
+
+After Phase 1, Arya raised the real strategic bind: can't get customers to look
+pre-traction, aiming for YC Fall 2026, so the product itself has to be the
+proof — a "Palantir for transport" intelligence layer. Reframed the pitch:
+the differentiator isn't grandiosity, it's **verifiable rigor** (every number
+independently checkable, tamper-evident, reproducible), which is more YC-shaped
+and, unlike "intelligence layer," actually checkable. Reprioritized the roadmap
+so Phase 2 is proof-first — undeniable, stranger-runnable public evidence that
+substitutes for traction — with breadth moved to Phase 3 and frontier to
+Phase 4. Two parallel packets landed:
+
+- **Golden-path demo** (`demo/golden_path.py`, `py -3 -m demo.golden_path`):
+  one command drives the whole loop on REAL public data — ingest 8 real NYC TLC
+  trips → serve a real ~55.5-booking forecast from the hash-verified AAR booster
+  → decide + human override on the hash-chained ledger → build + independently
+  re-verify an EvidencePack → baseline-vs-Milexium replay → export. Labels its
+  own real-vs-synthetic boundaries in-output and does NOT cherry-pick: served
+  +2 / denials −2 favour Milexium while utilization favours the baseline (the
+  service-level/utilization tradeoff, shown). Real: demand + forecast.
+  Synthetic (labelled): fleet + scheduling assumptions. Modelled: replay.
+- **DARP solver benchmark** (`packages/decide/darp_*`, `benchmarks/quality/`):
+  Arya asked to "push for competitive numbers" — honored by building a genuinely
+  stronger solver (pure-Python regret insertion + large-neighbourhood search,
+  v0.2, no ortools) and reporting the REAL measured result. On the published
+  Cordeau instances it **reached the proven optimum on a3-18 (0.00% gap, 18/18
+  served)** and was 7.97% above optimum on a2-16, every solution validated by
+  both the routing-aware and the original independent feasibility checker with
+  an independently recomputed objective. The summary states plainly it is "NOT
+  a state-of-the-art DARP solver" and makes no claim to beat published solvers —
+  the honesty is the credibility.
+
+Integrity verified in code, not just from reports: the new DARP checker leaves
+the original `check_feasibility` untouched (appended only) and imports no
+solver; the benchmark recomputes the objective independently. The benchmark
+agent's own final report was truncated (a ~63-minute run), so I inspected the
+tree, ran the suite (439 passing), and confirmed the honest results + the
+checker independence directly. Wrote ADR-0023 (demo) and 0024 (benchmark).
+
+Honest limitations recorded: the demo's fleet is synthetic; the benchmark
+counted only 2 instances (hit its time budget — a broader sweep is a
+straightforward follow-up). Both remain Demonstrated; the Validated gate still
+needs a consented operator. Phase 2 items 3-4 (forecast leaderboard, evidence
+manifests) are next.
+
 ## 2026-07-24: Phase 1 complete — pilot-ready runtime (5 parallel packets)
 
 After merging the completion roadmap into IMPLEMENTATION_STATUS.md (reachable
