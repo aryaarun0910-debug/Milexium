@@ -6,6 +6,47 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-24 (night): polyglot foundation — Chris's architecture, adopted and phased
+
+Chris sent a detailed brief to evolve Milexium into a three-language platform
+(Rust data plane / TypeScript control plane / Python science, contracts-first,
+full service decomposition with gRPC/Temporal/Kafka/object-storage). My honest
+read: the architecture is genuinely strong as a *destination*, but building the
+whole thing now would re-open the "infrastructure before demand" trap for a
+pre-traction team with a YC deadline and no measured bottleneck. Arya chose the
+**synthesis** (my recommendation): do the cheap, reversible, strategy-advancing
+parts now; defer the heavy rewrite behind a real trigger. Recorded in ADR-0026
+as adopted-and-phased with the full deferred list reasoned out (not rejected),
+so when a trigger fires the decision is already made.
+
+Built and integrated this tranche:
+- **`contracts/` layer** (ADR-0027): JSON Schema (12 canonical entities) +
+  OpenAPI (7 endpoints) generated from the Python source of truth so nothing is
+  hand-duplicated; a proto seed + Buf codegen deferred; a CI drift-check keeps
+  the artifacts from diverging (forced LF for cross-platform stability).
+- **Rust workspace + evidence-verifier crate** (ADR-0028): an independent Rust
+  reimplementation of the hash-chain verifier, **byte-for-byte differential
+  parity with Python** — including a full replication of Python's `ensure_ascii`
+  JSON escaping with UTF-16 surrogate pairs (proven on a `"café 🚌 Ω"` payload).
+  The two verifiers produce identical violations on clean, tampered, non-ASCII,
+  and multi-aggregate chains. Honest limitation recorded: exotic float
+  formatting isn't covered (no float payloads exist in the domain). 11 Rust +
+  6 differential tests; cargo fmt/clippy/test clean.
+- **TypeScript SDK** (`@milexium/sdk`, ADR-0029): a strict-mode client whose
+  types are generated from the OpenAPI contract (not hand-duplicated). Used npm
+  (corepack pnpm hit EPERM without admin) + Node 24 native TS type-stripping;
+  13 tests. Fixed the CI TS job to npm accordingly.
+- **Infra**: a Docker Compose dev stack (Postgres/PostGIS + MinIO + OTel) ready
+  for when Docker/WSL2 is fixed, and a path-aware GitHub Actions CI (Python now;
+  Rust/TS jobs auto-activate via hashFiles guards).
+
+Reviewed both agents' code directly and ran the gates myself: `cargo test` (11)
++ the 6 cross-language parity tests RUN (not skip) and pass; `py -3 -m pytest
+packages/ conformance/` → **461 passed** (455 → 461). The core verifier now has
+two independent implementations that agree byte-for-byte — a real, checkable
+strengthening of the verifiability moat. Python stays first-class and the
+reference; every future migration is gated by differential parity against it.
+
 ## 2026-07-24 (later still): Phase 2 complete — evidence artifacts (leaderboard + registry)
 
 Finished Phase 2 with two parallel packets packaging the repo's real numbers

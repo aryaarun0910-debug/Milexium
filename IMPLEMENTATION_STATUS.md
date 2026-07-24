@@ -14,6 +14,29 @@ No claim in this file, in `docs/`, or in the YC application may use a stronger
 word than what's true here. See `workstreams/DOSSIER_COVERAGE.md` for the
 80-technology/72-project ledger.
 
+## Polyglot evolution (2026-07-24) — adopted, phased
+
+Chris proposed a three-language platform (Rust data plane / TypeScript control
+plane / Python science). Adopted as the destination, sequenced sanely
+(ADR-0026): the cheap/reversible/strategy-advancing parts now, the heavy
+multi-service Rust rewrite deferred behind a real trigger (a user, a measured
+bottleneck, or a second Rust engineer). What Exists now:
+
+| Piece | Status | Evidence |
+|---|---|---|
+| `contracts/` layer — JSON Schema + OpenAPI generated from the Python source of truth (proto seeded, Buf codegen deferred) | **Exists** | `contracts/`; ADR-0027 |
+| Rust workspace + evidence-verifier crate, byte-for-byte differential parity with Python (incl. `ensure_ascii`/emoji) | **Exists** | `crates/verifier/`; ADR-0028; 11 Rust + 6 differential tests |
+| TypeScript SDK generated from the OpenAPI contract | **Exists** | `packages/sdk-typescript/`; ADR-0029; 13 tests |
+| Docker Compose dev stack (Postgres/PostGIS + MinIO + OTel) | **Exists** (config; needs Docker/WSL2) | `infra/compose/` |
+| GitHub Actions CI (Python now; Rust/TS auto-activate; contract-drift check) | **Exists** | `.github/workflows/ci.yml` |
+
+Toolchains: Rust 1.96 + Node 24 installed. **Deferred (recorded in ADR-0026, not
+rejected):** Rust ingestion/state/decision services, the gRPC mesh, Temporal,
+Kafka/Redpanda, ONNX inference, object-storage data plane. Each lands with its
+own ADR when its trigger fires, via the migration ladder (freeze → contract →
+implement → differential-test vs Python → benchmark → challenger → promote on
+parity, keep rollback). Python remains first-class and the reference.
+
 ## Roadmap ahead to a pilot-ready runtime
 
 There are two distinct "done"s, kept deliberately separate:

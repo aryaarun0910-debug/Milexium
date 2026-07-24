@@ -4,6 +4,13 @@ Implementation packages, one per program from `SWARM_MANIFEST.yaml` in the
 expansion plan. Each package owns a disjoint path; cross-package contract
 changes require an ADR in `architecture/decisions/` first.
 
+**Polyglot note (ADR-0026):** most of `packages/` is Python. Two non-Python
+homes now exist: `packages/sdk-typescript/` (`@milexium/sdk`, generated from the
+OpenAPI contract — ADR-0029) and the Rust workspace at `crates/` (the
+evidence-verifier crate, differential-tested against Python — ADR-0028). The
+`contracts/` layer is the language-neutral source; Python remains first-class
+and the reference implementation.
+
 | Package | Program | Status |
 |---|---|---|
 | `canonical/` | A — canonical transport substrate | v0.1 Exists: entities, ids, time, state machine, vocab, event log (in-memory + SQLite), SemanticIndex interface, and (new) a PostgreSQL-backed store (`postgres_storage.py`) — see `IMPLEMENTATION_STATUS.md` |

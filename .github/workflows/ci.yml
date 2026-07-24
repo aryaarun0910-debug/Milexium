@@ -53,17 +53,18 @@ jobs:
   typescript:
     name: TypeScript (typecheck/test)
     runs-on: ubuntu-latest
-    if: ${{ hashFiles('pnpm-workspace.yaml') != '' }}
+    # npm workspaces (not pnpm): corepack's pnpm shim needs admin to install on
+    # the dev machine (EPERM), so the SDK uses npm -- ADR-0029. Guarded on the
+    # root lockfile so this activates once the TS workspace lands.
+    if: ${{ hashFiles('package-lock.json') != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Enable pnpm
-        run: corepack enable pnpm
       - name: Install (frozen)
-        run: pnpm install --frozen-lockfile
+        run: npm ci
       - name: Typecheck
-        run: pnpm -r typecheck
+        run: npm run typecheck -w @milexium/sdk
       - name: Test
-        run: pnpm -r test
+        run: npm test -w @milexium/sdk
