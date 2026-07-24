@@ -18,12 +18,21 @@ individual dispatch decisions -- the runtime records the numbers, it does not
 upgrade their status. Everything here is Demonstrated on public data; nothing
 becomes Validated without consented operator data.
 
-v0.1 scope: batch point-in-time prediction + interval + ForecastVintage
-emission, gated on registry resolution and artifact hash verification. Not
-built (Specified): online/streaming inference, drift/change-point services,
-conformal recalibration at serve time, model routing beyond champion lookup.
+v0.2 scope: batch point-in-time prediction + interval + ForecastVintage
+emission, gated on registry resolution and artifact hash verification, for
+every real model (AAR / Chicago TNP / MTA bus / MTA subway), with serve-time
+split-conformal prediction intervals at a target coverage (packages.forecast.
+conformal). Not built (Specified): online/streaming inference, drift/
+change-point services, model routing beyond champion lookup.
 """
 
+from packages.forecast.conformal import (
+    ConformalCalibration,
+    empirical_coverage,
+    fit_conformal_from_predictions,
+    fit_symmetric_conformal,
+    fit_two_sided_conformal,
+)
 from packages.forecast.features import FEATURE_SCHEMAS, FeatureSchemaError, feature_names_for
 from packages.forecast.runtime import (
     ArtifactIntegrityError,
@@ -40,6 +49,11 @@ __all__ = [
     "ForecastRuntime",
     "ModelArtifact",
     "NoChampionError",
+    "ConformalCalibration",
+    "fit_symmetric_conformal",
+    "fit_two_sided_conformal",
+    "fit_conformal_from_predictions",
+    "empirical_coverage",
 ]
 
-CONTRACT_VERSION = "0.1.0"
+CONTRACT_VERSION = "0.2.0"

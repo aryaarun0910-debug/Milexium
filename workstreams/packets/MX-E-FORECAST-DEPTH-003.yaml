@@ -1,0 +1,25 @@
+id: MX-E-FORECAST-DEPTH-003
+status: completed
+completed_date: "2026-07-24"
+objective: >
+  Serve-time conformal prediction intervals + register/serve all four real
+  zone-hour models through the runtime (Phase 3 forecast depth).
+owned_paths: [packages/forecast/, architecture/decisions/0030-forecast-depth-conformal-all-models.md]
+read_only_dependencies: [packages/core/model_registry.py, packages/canonical/entities.py, realdata/output/*_model.json, realdata/output/*_valid.csv.gz, realdata/train_real_models.py]
+normative_contracts: [blueprint/05-core-model-runtime-and-forecast.md, ADR-0016, docs/RND_QUESTIONS.md Q4]
+required_outputs:
+  - packages/forecast/conformal.py
+  - packages/forecast/{runtime,features,__init__}.py (additive)
+  - conformance/property-tests/test_conformal_uncertainty.py
+  - conformance/property-tests/test_forecast_all_models.py
+acceptance_commands: ["py -3 -m pytest conformance/property-tests/test_conformal_uncertainty.py conformance/property-tests/test_forecast_all_models.py -q"]
+security_and_privacy_invariants:
+  - "conformal quantile index matches realdata/train_real_models.py exactly (reproduces committed half-widths)"
+  - "interval is distribution-free under exchangeability only -- NOT a probability/guarantee; loses guarantee under drift (documented + asserted)"
+failure_injections:
+  - "committed intervals overcover (AAR 98.1%); exchangeable split recovers ~90% -- isolates cause as winter->spring shift (RND Q4 confirmed)"
+  - "both interval paths supplied -> ValueError"
+compatibility_matrix: ["all 4 zone-hour models served with per-feed feature schemas (borough/area/route/station_id)"]
+evidence_to_emit: ["28 tests; measured coverage table per model"]
+upstream_blockers: []
+downstream_consumers: [SDK/API forecast surface; a future serve-time recalibration under drift]

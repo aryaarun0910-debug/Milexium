@@ -61,8 +61,28 @@ _AGENCY_MONTH_DEMAND_V1 = (
     "ntd_id_cat",
 )
 
+# The 15 shared calendar/weather/lag features every zone-hour booster carries;
+# only the trailing zone-identity column differs per feed. Derived from the AAR
+# schema above (its first 15 entries) rather than re-listed, so the "only the
+# last column changes" fact is expressed in code, not just asserted in a comment.
+_ZONE_HOUR_SHARED_15 = _ZONE_HOUR_DEMAND_V1[:-1]
+
+# Chicago TNP: the booster's trailing feature is the community-area id `area`
+# (confirmed against realdata/output/chicago_model.json `.feature_names`), NOT
+# `borough` -- each feed's zone column is its own, so each gets its own schema.
+_ZONE_HOUR_DEMAND_AREA_V1 = _ZONE_HOUR_SHARED_15 + ("area",)
+
+# MTA bus: trailing feature `route` (realdata/output/mta_bus_model.json).
+_ZONE_HOUR_DEMAND_ROUTE_V1 = _ZONE_HOUR_SHARED_15 + ("route",)
+
+# MTA subway: trailing feature `station_id` (realdata/output/mta_subway_model.json).
+_ZONE_HOUR_DEMAND_STATION_V1 = _ZONE_HOUR_SHARED_15 + ("station_id",)
+
 FEATURE_SCHEMAS: dict[str, tuple[str, ...]] = {
-    "zone_hour_demand_v1": _ZONE_HOUR_DEMAND_V1,
+    "zone_hour_demand_v1": _ZONE_HOUR_DEMAND_V1,  # AAR (borough)
+    "zone_hour_demand_area_v1": _ZONE_HOUR_DEMAND_AREA_V1,  # Chicago TNP
+    "zone_hour_demand_route_v1": _ZONE_HOUR_DEMAND_ROUTE_V1,  # MTA bus
+    "zone_hour_demand_station_v1": _ZONE_HOUR_DEMAND_STATION_V1,  # MTA subway
     "agency_month_demand_v1": _AGENCY_MONTH_DEMAND_V1,
 }
 

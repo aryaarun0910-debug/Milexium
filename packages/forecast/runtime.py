@@ -25,6 +25,7 @@ from packages.canonical.entities import ForecastVintage, ModelVersion
 from packages.canonical.ids import ModelVersionId
 from packages.canonical.time import _require_utc
 from packages.core.model_registry import ModelRegistry
+from packages.forecast.conformal import ConformalCalibration
 from packages.forecast.features import feature_names_for
 
 
@@ -120,17 +121,28 @@ class ForecastRuntime:
         horizon_end: datetime,
         issued_at: datetime,
         interval_half_width: float | None = None,
+        calibration: ConformalCalibration | None = None,
     ) -> ForecastVintage:
         """Serve one forecast for `task` from its champion model.
 
         `feature_row` is a point-in-time feature dict; every name in the model's
         feature schema must be present (a missing feature raises, rather than
         being silently defaulted to zero and producing a quietly-wrong number).
-        `interval_half_width`, if given, is applied symmetrically around the
-        point estimate as a declared model interval -- NOT a probability or a
-        guarantee (blueprint 01). None means the vintage carries a point
-        estimate only.
+
+        Two mutually exclusive interval paths (supplying both raises):
+        - `interval_half_width`: the original manual symmetric half-width,
+          applied around the point estimate as a declared model interval.
+        - `calibration`: a fitted `ConformalCalibration` (packages.forecast.
+          conformal), yielding a split-conformal interval at a target coverage.
+          Distribution-free under exchangeability, NOT a probability or a
+          guarantee (blueprint 01); the repo already measured overcoverage.
+
+        None on both means the vintage carries a point estimate only.
         """
+        if interval_half_width is not None and calibration is not None:
+            raise ValueError(
+                "provide either interval_half_width or a conformal calibration, not both"
+            )
         for instant in (horizon_start, horizon_end, issued_at):
             _require_utc(instant)
 
@@ -154,7 +166,9 @@ class ForecastRuntime:
         point = float(artifact.booster.predict(matrix)[0])
 
         low = high = None
-        if interval_half_width is not None:
+        if calibration is not None:
+            low, high = calibration.apply(point)
+        elif interval_half_width is not None:
             if interval_half_width < 0:
                 raise ValueError("interval_half_width must be non-negative")
             low = point - interval_half_width
