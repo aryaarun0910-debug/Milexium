@@ -1,0 +1,14 @@
+# Milexium polyglot workspace root.
+#
+# This is the Rust side of Milexium's polyglot evolution (see the polyglot
+# brief; synthesis subset). It begins with a single crate -- an independent
+# Rust implementation of the evidence hash-chain verifier -- but is kept a
+# workspace with modular crates from day one so later trusted kernels
+# (canonical, evidence, connectors) can be added as sibling crates without
+# restructuring.
+#
+# The Python verifier in packages/verify remains the normative reference;
+# this workspace exists to *differential-test* against it, not to replace it.
+[workspace]
+resolver = "2"
+members = ["crates/verifier"]
