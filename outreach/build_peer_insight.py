@@ -195,6 +195,9 @@ def main() -> None:
         ins["headline"] = headline(ins)
         ins["contact_name"] = r.get("contact_name", "")
         ins["contact_email"] = r.get("contact_email", "")
+        # Carried through so the generator can refuse to write a draft for a
+        # contact nobody has actually laid eyes on (see generate_v3_emails.py).
+        ins["contact_confidence"] = r.get("contact_confidence", "")
         out[r["short_name"]] = ins
         counts[ins["status"]] = counts.get(ins["status"], 0) + 1
 

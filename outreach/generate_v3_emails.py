@@ -128,7 +128,7 @@ def body_for(ins: dict, first_name: str, short_name: str) -> str:
 
 def main() -> None:
     insights = json.loads(INSIGHTS.read_text(encoding="utf-8"))
-    written, manual, skipped, held = 0, [], [], []
+    written, manual, skipped, held, unverified = 0, [], [], [], []
 
     for short_name, ins in sorted(insights.items()):
         if short_name in HOLD_FOR_VERIFICATION:
@@ -143,6 +143,15 @@ def main() -> None:
         email = (ins.get("contact_email") or "").strip()
         if not email:
             skipped.append(short_name)
+            continue
+        # An "unverified" address was reconstructed from a search-engine index
+        # rather than seen on the page (usually because the site 403s automated
+        # fetches). It is not from a data broker, but nobody has actually laid
+        # eyes on the source. Sending to it risks a bounce, and bounces cost
+        # sending reputation on a list we only get one pass at -- so a human
+        # eyeballs the source page before it becomes a draft.
+        if (ins.get("contact_confidence") or "").strip() == "unverified":
+            unverified.append(short_name)
             continue
         first = (ins.get("contact_name") or "").split()[0] if ins.get("contact_name") else ""
         subject = subject_for(ins)
@@ -162,6 +171,11 @@ def main() -> None:
         print(f"\nHELD (no draft generated): {name}\n  reason: {HOLD_FOR_VERIFICATION[name]}")
     if skipped:
         print(f"\nno contact email yet ({len(skipped)}): {', '.join(sorted(skipped))}")
+    if unverified:
+        print(
+            f"\nNEEDS A HUMAN TO EYEBALL THE SOURCE ({len(unverified)}) -- address "
+            f"not seen directly, no draft written:\n  " + ", ".join(sorted(unverified))
+        )
     if manual:
         print(
             f"\nNEEDS A HUMAN-RESEARCHED HOOK ({len(manual)}) -- no honest peer finding, "
