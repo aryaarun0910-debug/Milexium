@@ -23,6 +23,18 @@ even if a test fails mid-way, as long as the caller's teardown runs it.
 Connects only as the `milexium_dev` role (never the Postgres superuser) --
 ADR-0006. The password is read from `%USERPROFILE%\\.milexium_pg_app_password.txt`
 at connection time; it is never hardcoded or logged by this module.
+
+Tenant isolation is enforced at the DATABASE layer, not just by the tenant_id
+WHERE-clauses above. After the portable schema, this store applies
+`sql/rls_postgres.sql`, which ENABLEs and FORCEs row-level security on every
+tenant-scoped table with policies keyed on the `milexium.tenant_id` session
+setting (a GUC). FORCE is essential: `milexium_dev` owns these tables and a
+table owner bypasses RLS by default, so without FORCE the policies would not
+constrain this store's own connection at all. Every operation calls
+`_use_tenant()` to set that GUC (session scope) before it reads or writes, so
+the policy -- not the application code -- is the tenant boundary. See
+architecture/decisions/0018-postgres-row-level-security-tenant-isolation.md and
+conformance/adversarial/test_postgres_rls_isolation.py.
 """
 
 from __future__ import annotations
@@ -41,6 +53,7 @@ from packages.canonical.ids import DecisionEventId, TenantId, new_id
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
+_RLS_PATH = Path(__file__).parent / "sql" / "rls_postgres.sql"
 _DEFAULT_PASSWORD_FILE = Path.home() / ".milexium_pg_app_password.txt"
 
 
@@ -107,7 +120,27 @@ class PostgresCanonicalStore:
             cur.execute(sql.SQL("CREATE SCHEMA {}").format(ident))
             cur.execute(sql.SQL("SET search_path TO {}").format(ident))
             cur.execute(_SCHEMA_PATH.read_text(encoding="utf-8"))
+            # RLS is Postgres-only, so it is a separate file applied only here --
+            # never in the portable schema_v0_1.sql (which must also run on
+            # SQLite). Applied inside the same schema (search_path already set),
+            # so unqualified table names in rls_postgres.sql resolve to it.
+            cur.execute(_RLS_PATH.read_text(encoding="utf-8"))
         self._conn.commit()
+
+    def _use_tenant(self, tenant_id: object) -> None:
+        """Set the session's RLS key (`milexium.tenant_id`) to `tenant_id`.
+
+        Every read/write below runs under the `tenant_isolation` policies in
+        sql/rls_postgres.sql, which key on this GUC. Session scope
+        (`is_local=false`) means the value survives the per-operation commits
+        this store issues -- but each operation re-sets it first, so no
+        operation ever depends on a value left by a previous one, and a wrong or
+        unset GUC denies all rows (the policy's default is deny, not allow).
+        `set_config` takes `tenant_id` as a bound parameter, so the value is
+        never string-interpolated into SQL."""
+        self._conn.execute(
+            "SELECT set_config('milexium.tenant_id', %s, false)", (str(tenant_id),)
+        )
 
     def drop_schema(self) -> None:
         """Test/teardown helper: drops this instance's dedicated schema and
@@ -121,6 +154,9 @@ class PostgresCanonicalStore:
         self._conn.close()
 
     def create_tenant(self, tenant: Tenant) -> None:
+        # A tenant registers itself: the GUC is the new tenant's own id, so the
+        # tenants-table WITH CHECK (tenant_id = GUC) permits exactly this row.
+        self._use_tenant(tenant.tenant_id)
         self._conn.execute(
             "INSERT INTO tenants (tenant_id, name, created_at) VALUES (%s, %s, %s)",
             (str(tenant.tenant_id), tenant.name, tenant.created_at.isoformat()),
@@ -141,6 +177,9 @@ class PostgresCanonicalStore:
         reason_codes: tuple[ReasonCode, ...] = (),
         idempotency_key: str | None = None,
     ) -> DecisionEvent:
+        # Set the RLS key before any read or write: the SELECTs below and the
+        # INSERT are all governed by the decision_events policy keyed on it.
+        self._use_tenant(tenant_id)
         cur = self._conn.cursor()
 
         if idempotency_key is not None:
@@ -225,7 +264,10 @@ class PostgresCanonicalStore:
         )
 
     def history(self, tenant_id: TenantId, aggregate_id: str) -> tuple[DecisionEvent, ...]:
-        """Tenant-scoped read: the WHERE clause is the isolation boundary."""
+        """Tenant-scoped read. Two independent boundaries now hold: the RLS
+        policy (keyed on the GUC set here) enforced by the database, and the
+        WHERE clause below -- defense in depth, either alone sufficient."""
+        self._use_tenant(tenant_id)
         cur = self._conn.execute(
             "SELECT event_id, aggregate_type, sequence, occurred_at, actor_type, actor_id, "
             "event_type, payload_json, reason_codes, idempotency_key, prev_hash, hash "
@@ -260,6 +302,7 @@ class PostgresCanonicalStore:
         adversarial tampering fixtures -- deliberately bypasses the
         `DecisionEvent` reconstruction path above so the verifier is checking
         actual stored bytes, not trusting this class's own round-trip."""
+        self._use_tenant(tenant_id)
         cur = self._conn.execute(
             "SELECT * FROM decision_events WHERE tenant_id = %s ORDER BY aggregate_id, sequence",
             (str(tenant_id),),
@@ -270,7 +313,14 @@ class PostgresCanonicalStore:
     def tamper_with_row(self, event_id: str, **column_overrides: object) -> None:
         """Test-only helper: directly corrupts a stored row to prove the
         verifier (not this class) is what catches it. Never called from
-        non-test code."""
+        non-test code.
+
+        Takes no tenant_id, so this UPDATE runs under whatever tenant the
+        session GUC currently names (FORCE RLS applies to this owning role too).
+        Every caller reaches this after a store read for the target tenant, so
+        the GUC already names that tenant and the row is in scope. If it did
+        not, the UPDATE would simply affect zero rows and the asserting test
+        would fail loudly -- never silently pass."""
         assignments = ", ".join(f"{col} = %s" for col in column_overrides)
         self._conn.execute(
             f"UPDATE decision_events SET {assignments} WHERE event_id = %s",

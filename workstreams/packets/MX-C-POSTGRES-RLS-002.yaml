@@ -1,0 +1,24 @@
+id: MX-C-POSTGRES-RLS-002
+status: completed
+completed_date: "2026-07-24"
+objective: >
+  Enforce tenant isolation at the PostgreSQL layer (row-level security), not
+  just via application WHERE-clauses, and prove it adversarially against the
+  owning role.
+owned_paths: [packages/canonical/postgres_storage.py, packages/canonical/sql/rls_postgres.sql, architecture/decisions/0018-postgres-row-level-security.md]
+read_only_dependencies: [packages/canonical/sql/schema_v0_1.sql]
+normative_contracts: [blueprint/10-security-privacy-and-ai-governance.md]
+required_outputs:
+  - packages/canonical/sql/rls_postgres.sql
+  - conformance/adversarial/test_postgres_rls_isolation.py
+acceptance_commands: ["py -3 -m pytest conformance/adversarial/test_postgres_rls_isolation.py -v"]
+security_and_privacy_invariants:
+  - "FORCE ROW LEVEL SECURITY so the owning role cannot bypass (verified milexium_dev lacks superuser/BYPASSRLS)"
+  - "unset session GUC is deny-all, never allow-all"
+  - "all 12 tenant-scoped tables covered; decision_alternatives scoped transitively; tenants scoped to itself"
+failure_injections:
+  - "raw SELECT under tenant B GUC returns zero of tenant A rows (DB-layer, no Python WHERE)"
+  - "NO FORCE -> owner sees all again (proves FORCE is load-bearing)"
+evidence_to_emit: ["6 adversarial tests; 251 passing when Postgres reachable, else skip clean"]
+upstream_blockers: ["ModelVersion.tenant_id platform-tenant convention still open (ADR-0010) -- guarded, not resolved"]
+downstream_consumers: [any real multi-tenant deployment]
