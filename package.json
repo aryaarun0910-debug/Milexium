@@ -1,0 +1,9 @@
+{
+  "name": "milexium-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "description": "JS/TS workspace root for Milexium. Declares packages/* as npm workspaces; adds no runtime deps and does not affect the Python toolchain (pyproject.toml).",
+  "workspaces": [
+    "packages/*"
+  ]
+}
