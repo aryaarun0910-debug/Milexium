@@ -78,6 +78,20 @@ class DecisionEventId(_TypedId):
     pass
 
 
+class ObservationId(_TypedId):
+    """Identifies one request-INDEPENDENT operational observation (vehicle
+    telemetry or a stop-time observation).
+
+    This is the record's OWN surrogate key, not a reference to any other
+    aggregate. It is the deliberate counterpoint to the synthetic
+    ``Outcome.request_id`` ADR-0031 was forced to mint: that id was a *foreign
+    key to a ServiceRequest that does not exist* (a dishonest placeholder for
+    request-less telemetry); this id is the observation's own primary key and
+    points at nothing it cannot back up. See VehicleObservation /
+    StopTimeObservation in entities.py.
+    """
+
+
 AggregateId = Annotated[str, AfterValidator(_validate_uuid_string)]
 """An id known only to be *some* aggregate's id (used by the generic event log)."""
 

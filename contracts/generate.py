@@ -34,8 +34,10 @@ from packages.canonical import (
     Policy,
     ScheduleRun,
     ServiceRequest,
+    StopTimeObservation,
     Tenant,
     Vehicle,
+    VehicleObservation,
 )
 from packages.canonical import CONTRACT_VERSION
 
@@ -52,6 +54,11 @@ _ENTITIES = {
     "DecisionAlternative": DecisionAlternative,
     "DecisionEvent": DecisionEvent,
     "Outcome": Outcome,
+    # Request-independent operational/telemetry family (ADR-0035). Exported to
+    # the contract layer because external producers (GTFS-Realtime and every
+    # AVL source like it) map onto these, not onto the rider-request entities.
+    "VehicleObservation": VehicleObservation,
+    "StopTimeObservation": StopTimeObservation,
     "OutboxEntry": OutboxEntry,
 }
 

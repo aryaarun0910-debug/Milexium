@@ -165,3 +165,53 @@ CREATE TABLE outbox (
     dispatched_at TEXT,
     PRIMARY KEY (tenant_id, event_id, destination)
 );
+
+-- Operational / telemetry observations (request-INDEPENDENT), added to close the
+-- ADR-0031 gap: (trip,stop,vehicle)-keyed telemetry (GTFS-Realtime and every
+-- AVL/TODS source like it) carries no rider request, so it cannot honestly key on
+-- a ServiceRequest. These tables key on their own observation_id and carry the
+-- operational context (position, occupancy, status, predicted times, delays) that
+-- the rider-request-keyed `outcomes` table had no home for.
+--
+-- PORTABILITY (ADR-0002): vehicle position is stored here as PLAIN lat/lon REAL
+-- columns so this file still runs unmodified on SQLite AND Postgres. There is NO
+-- PostGIS/geometry type here. The geometry(Point,4326) column, its GiST index, and
+-- the population from lat/lon live ONLY in sql/postgis_postgres.sql, applied
+-- separately by observation_store.py -- exactly the split rls_postgres.sql uses.
+-- The BETWEEN/>=0 CHECKs mirror the Python-layer validators in entities.py; the
+-- Python layer remains the source of truth, this schema enforces presence/range.
+CREATE TABLE vehicle_observations (
+    observation_id        TEXT PRIMARY KEY,
+    tenant_id             TEXT NOT NULL REFERENCES tenants(tenant_id),
+    vehicle_ref           TEXT,
+    trip_ref              TEXT,
+    route_ref             TEXT,
+    stop_ref              TEXT,
+    current_status        TEXT,
+    latitude              REAL CHECK (latitude IS NULL OR (latitude BETWEEN -90 AND 90)),
+    longitude             REAL CHECK (longitude IS NULL OR (longitude BETWEEN -180 AND 180)),
+    bearing               REAL,
+    speed                 REAL,
+    occupancy_status      TEXT,
+    occupancy_percentage  INTEGER CHECK (occupancy_percentage IS NULL OR occupancy_percentage >= 0),
+    observed_at           TEXT NOT NULL,
+    recorded_at           TEXT NOT NULL
+);
+
+CREATE TABLE stop_time_observations (
+    observation_id          TEXT PRIMARY KEY,
+    tenant_id               TEXT NOT NULL REFERENCES tenants(tenant_id),
+    trip_ref                TEXT,
+    route_ref               TEXT,
+    stop_ref                TEXT,
+    stop_sequence           INTEGER CHECK (stop_sequence IS NULL OR stop_sequence >= 0),
+    schedule_relationship   TEXT,
+    predicted_arrival_at    TEXT,
+    predicted_departure_at  TEXT,
+    observed_arrival_at     TEXT,
+    observed_departure_at   TEXT,
+    arrival_delay_seconds   INTEGER,
+    departure_delay_seconds INTEGER,
+    observed_at             TEXT NOT NULL,
+    recorded_at             TEXT NOT NULL
+);

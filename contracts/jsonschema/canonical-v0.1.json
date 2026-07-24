@@ -847,6 +847,176 @@
       "title": "ServiceRequest",
       "type": "object"
     },
+    "StopTimeObservation": {
+      "additionalProperties": false,
+      "description": "A request-INDEPENDENT observation/prediction for one stop of one trip.\n\nThe second half of the operational entity family (ADR-0031). A GTFS-Realtime\n``TripUpdate`` ``stop_time_update`` -- which stop, in which trip, its schedule\nrelationship, and predicted arrival/departure with schedule deviations -- has\nno rider request either, so it also could only be squashed onto ``Outcome``\nbefore. Here it keys on its own ``observation_id`` and ``(tenant_id, trip_ref,\nstop_ref/stop_sequence, observed_at)``.\n\nPredicted vs observed are kept as separate fields on purpose: GTFS-Realtime\nsupplies *predictions* (``predicted_arrival_at`` and the delays); the\n``observed_arrival_at``/``observed_departure_at`` fields are the homes a later\nobserved-time source (AVL/TODS) will populate, and stay None for GTFS-RT --\nthe same predicted-vs-actual discipline ``ForecastVintage`` keeps, so a\nprediction is never mistaken for a record of what happened.",
+      "properties": {
+        "arrival_delay_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arrival Delay Seconds"
+        },
+        "departure_delay_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Departure Delay Seconds"
+        },
+        "observation_id": {
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "observed_arrival_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Arrival At"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "observed_departure_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Departure At"
+        },
+        "predicted_arrival_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Arrival At"
+        },
+        "predicted_departure_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Departure At"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "route_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Route Ref"
+        },
+        "schedule_relationship": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SCHEDULED / SKIPPED / NO_DATA / UNSCHEDULED -- the source string.",
+          "title": "Schedule Relationship"
+        },
+        "stop_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Ref"
+        },
+        "stop_sequence": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Sequence"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "trip_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trip Ref"
+        }
+      },
+      "required": [
+        "observation_id",
+        "tenant_id",
+        "observed_at",
+        "recorded_at"
+      ],
+      "title": "StopTimeObservation",
+      "type": "object"
+    },
     "Tenant": {
       "additionalProperties": false,
       "properties": {
@@ -909,6 +1079,172 @@
         "capacity_wheelchair"
       ],
       "title": "Vehicle",
+      "type": "object"
+    },
+    "VehicleObservation": {
+      "additionalProperties": false,
+      "description": "A request-INDEPENDENT operational observation of one vehicle in motion.\n\nThis is the operational/telemetry entity ADR-0031 found the canonical model\nwas missing. GTFS-Realtime (and every AVL/telemetry source like it) is keyed\nby ``(trip, stop, vehicle)`` and carries NO rider request; before this entity,\nsuch data could only be squashed onto ``Outcome`` via a synthetic\n``request_id`` that referenced no ServiceRequest, with position/occupancy/\nstatus all lost. A ``VehicleObservation`` instead keys on its own\n``observation_id`` and the natural key ``(tenant_id, observed_at,\nvehicle_ref)``, and gives real homes to the operational context the feed\nactually carries.\n\n``vehicle_ref``/``trip_ref``/``route_ref``/``stop_ref`` are the *source\nsystem's* identifiers (e.g. a GTFS vehicle/trip/route/stop id), kept as plain\nstrings, NOT canonical typed ids -- they name an external agency's entities,\nnot a Milexium ``Vehicle`` aggregate, so typing them as ``VehicleId`` would be\nthe same category error this entity exists to avoid.\n\nBitemporal: ``observed_at`` is valid time (when the vehicle was observed --\nthe feed/vehicle timestamp, POSIX epoch, unambiguously UTC); ``recorded_at``\nis transaction time (when Milexium ingested it).",
+      "properties": {
+        "bearing": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bearing"
+        },
+        "current_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "INCOMING_AT / STOPPED_AT / IN_TRANSIT_TO -- kept as the source string.",
+          "title": "Current Status"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "observation_id": {
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "occupancy_percentage": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occupancy Percentage"
+        },
+        "occupancy_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Occupancy Status"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "route_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Route Ref"
+        },
+        "speed": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Speed"
+        },
+        "stop_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Ref"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "trip_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trip Ref"
+        },
+        "vehicle_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vehicle Ref"
+        }
+      },
+      "required": [
+        "observation_id",
+        "tenant_id",
+        "observed_at",
+        "recorded_at"
+      ],
+      "title": "VehicleObservation",
       "type": "object"
     }
   },

@@ -1,4 +1,4 @@
-"""Adapter: GTFS-Realtime FeedMessage entities -> Outcome (v0.1).
+"""Adapter: GTFS-Realtime FeedMessage entities -> operational observations (v0.1).
 
 Status: **Demonstrated** only. This maps *open public real-time transit data*
 (GTFS-Realtime, the most widely deployed real-time transit standard) -- the
@@ -9,12 +9,10 @@ architecture/decisions/0001.
 
 This is a deliberately *different-in-kind* adapter against the same
 packages.connect.adapter.SourceAdapter contract as reference_agency_trips.py,
-tlc_trips.py, tides_trips.py, and gtfs_flex.py -- and the reason it is different
-is the whole point of the packet:
-
-The first four adapters all map a *request/booking* record onto ServiceRequest.
-GTFS-Realtime is NOT request-level. It carries **operational** signals about a
-fixed-route (or, increasingly, flex) network in motion:
+tlc_trips.py, tides_trips.py, and gtfs_flex.py. The first four adapters all map a
+*request/booking* record onto ServiceRequest. GTFS-Realtime is NOT request-level;
+it carries **operational** telemetry about a fixed-route (or flex) network in
+motion:
 
 - ``VehiclePosition``: where a vehicle is right now, its status
   (INCOMING_AT / STOPPED_AT / IN_TRANSIT_TO), occupancy, and a timestamp.
@@ -22,87 +20,85 @@ fixed-route (or, increasingly, flex) network in motion:
   deviations (delays) for a trip, plus SKIPPED/added stop decisions.
 - ``Alert``: rider-facing service disruption messaging.
 
-None of these is a rider request, so mapping them onto ServiceRequest would be
-dishonest (there is no rider, no booking, no requested_at). The closest
-canonical *operational* record is ``packages.canonical.entities.Outcome`` -- the
-only canonical entity that models an operational result rather than a request:
-``served``, ``actual_pickup_at``, ``on_time``, ``excess_ride_time_minutes``,
-``deadhead_minutes``. So Outcome is the target here.
+THE GAP -- NOW CLOSED (ADR-0031 -> MX-A-OPS-ENTITY-002)
+------------------------------------------------------
+ADR-0031 recorded this adapter's first cut squashing GTFS-RT onto ``Outcome`` --
+the only operational-*result* entity that then existed. Outcome is
+rider-request-keyed: it references a ``request_id`` (a ServiceRequest). GTFS-RT is
+keyed by ``(trip, stop, vehicle)`` and has **no rider request at all**, so that
+mapping forced two compromises recorded as loss on every row: (1) ``request_id``
+was a *synthetic placeholder referencing no ServiceRequest*; (2) Outcome had **no
+operational-context fields** (no stop_id, vehicle_id, route_id, position,
+occupancy), so almost everything a GTFS-RT entity said was semantic loss.
 
-THE HONEST GAP (flag for the canonical contract, next ADR 0030+)
-----------------------------------------------------------------
-Outcome is a thin, *rider-request-keyed* record: it references a ``request_id``
-(a ServiceRequest) and a ``tenant_id`` and asks "was this request served, on
-time." GTFS-Realtime data is keyed by ``(trip, stop, vehicle)`` and has **no
-rider request at all**. Mapping GTFS-RT onto Outcome therefore forces two
-honest compromises, both recorded as semantic loss on every mapping:
+That gap is now closed. The canonical contract has a first-class,
+request-INDEPENDENT operational entity family --
+``packages.canonical.entities.VehicleObservation`` and ``StopTimeObservation`` --
+keyed by their own ``observation_id`` and ``(tenant, vehicle/trip/stop,
+observed_at)``, NOT by a rider request. This adapter now maps onto them:
 
-1. ``request_id`` must be a *synthetic* per-entity id that references no
-   ServiceRequest in the store -- there is no request to point at. This is the
-   core mismatch.
-2. Outcome carries **no operational context fields** -- no stop_id, no
-   vehicle_id, no route_id, no position, no occupancy. Almost everything a
-   GTFS-RT entity actually says is therefore semantic loss, because the
-   canonical model has nowhere to put it.
+- ``VehiclePosition`` -> ``VehicleObservation``. position (latitude/longitude/
+  bearing/speed), occupancy (status + percentage), current_status, and the
+  stop/vehicle/trip/route refs all have real homes. **Every** vehicle position is
+  now a valid observation -- the STOPPED_AT-only gate is gone, because an
+  in-transit position is exactly what a telemetry entity is for. No synthetic
+  request id is minted: ``observation_id`` is the record's OWN key.
+- ``TripUpdate`` stop_time_update -> ``StopTimeObservation``. stop_ref,
+  stop_sequence, schedule_relationship, predicted arrival/departure times, and
+  the arrival/departure delays all have homes. Each exploded stop_time_update is
+  its own observation (no sibling-stop loss). GTFS-RT carries *predictions*, so
+  they land in ``predicted_arrival_at`` / delays; the ``observed_*`` fields stay
+  None (a prediction is not a record of what happened) -- the predicted-vs-actual
+  discipline is preserved, not coerced away as it was under Outcome.on_time.
+- ``Alert`` -> still **quarantined**: rider/agency service-disruption messaging
+  is not a vehicle or stop-time observation; the operational entity family has no
+  home for it, and inventing one would be the same over-reach this packet exists
+  to avoid.
 
-The useful finding: the canonical contract has **no first-class operational /
-telemetry entity** (a ``VehicleTelemetry`` or ``StopTimeObservation`` keyed by
-trip/stop/vehicle and NOT by a rider request). Until it does, GTFS-Realtime --
-the single most widely deployed transit-integration surface in the world -- can
-only be mapped by squinting at the rider-outcome record. That gap, not this
-adapter, is the real output of this packet.
+RESIDUAL LOSS (honest -- much smaller, not zero)
+------------------------------------------------
+The observation entities model the operational context GTFS-RT centrally carries,
+not every optional field. What remains as recorded semantic loss is genuinely
+homeless detail: trip ``direction_id`` / ``start_date`` / ``start_time`` /
+trip-level schedule_relationship, human vehicle ``label`` / ``license_plate``,
+``odometer``, ``congestion_level``, ``current_stop_sequence`` (on a vehicle),
+trip-level ``delay``, and prediction ``uncertainty``. Every such present field is
+still reported (``dropped``), and any key outside the schema this adapter was
+written against still surfaces as ``unmapped_extension`` -- never a silent drop
+(blueprint/03 mapping discipline). The headline change is that the *synthetic
+request id* and the *whole-of-operational-context* loss are gone.
 
-WHAT MAPS, AND WHAT IS QUARANTINED
-----------------------------------
-An Outcome is an *observed result*. So this adapter emits one only from a
-GTFS-RT signal that carries observed/decided content, and quarantines the rest
-(mapping rule 7: quarantine rather than guess) with a reason that names the
-canonical gap:
+WHAT IS QUARANTINED
+-------------------
+Only signals with no honest observation to emit (mapping rule 7): an ``Alert``; a
+``TripUpdate`` entity carrying no stop_time_update; a stop_time_update with no
+stop identity and no prediction content at all; a VehiclePosition with no
+timestamp (vehicle nor feed) to anchor ``observed_at``; a malformed epoch; and an
+out-of-range latitude/longitude the entity validator rejects. In-transit
+telemetry and content-free-but-identified stops are NO LONGER quarantined -- they
+are exactly what the observation entities record.
 
-- ``VehiclePosition`` with ``current_status == STOPPED_AT`` and a timestamp and
-  a stop_id: an **observed arrival** -- the one genuinely-observed instant a
-  vehicle feed gives. -> Outcome(served=True, actual_pickup_at=timestamp). An
-  in-transit / incoming position is live telemetry with no observed arrival ->
-  quarantined.
-- ``TripUpdate`` stop_time_update with ``schedule_relationship == SKIPPED``: an
-  observed decision the stop will NOT be served -> Outcome(served=False).
-- ``TripUpdate`` stop_time_update that predicts an arrival/departure (a
-  ``time`` or a ``delay``): a *prediction*, not an observation. Outcome is
-  observed-only and has no predicted-time field, so ``actual_pickup_at`` stays
-  None; ``on_time`` is *derived from the predicted delay* as an explicit
-  coercion (|delay| <= _ON_TIME_TOLERANCE_SECONDS) and the predicted time
-  itself is recorded as loss. A stop_time_update that is neither SKIPPED nor
-  carries any time/delay is quarantined (no outcome content).
-- ``Alert``: rider/agency service messaging, not an operational outcome ->
-  quarantined.
-
-GTFS-Realtime timestamps are POSIX epoch seconds, which are unambiguously UTC --
-so, unlike the CSV/naive-local adapters in this repo, no timezone coercion is
-needed here (a small but real fidelity win worth noting).
+GTFS-Realtime timestamps are POSIX epoch seconds, unambiguously UTC -- so, unlike
+the CSV/naive-local adapters in this repo, no timezone coercion is needed here (a
+small but real fidelity win). ``observed_at`` is valid time (the vehicle/feed
+timestamp); ``recorded_at`` is the adapter run's transaction time.
 
 The reader (``read_gtfs_realtime_feed`` / ``feed_message_to_rows``) is the only
 part that needs the protobuf bindings; ``GtfsRealtimeAdapter.parse`` operates on
 plain dicts, so the mapping logic is fully testable without protobuf and the
 real-feed test skips cleanly if the bindings or the acquired sample are absent.
 
-TODS (Transit Operational Data Standard) -- Specified, not built
-----------------------------------------------------------------
-The packet asked whether a TODS mapping was also tractable. It is **deferred as
-Specified**, deliberately, for the same reason this adapter's gap exists. TODS
-describes *operational* structures -- runs, blocks, pieces-of-work, deadhead
-segments, and driver/vehicle assignments -- almost none of which have a
-canonical home today: ``deadhead_minutes`` lives on Outcome and ``ScheduleRun``
-touches solver runs, but there is no canonical ``Block`` / ``RunCut`` /
-``PieceOfWork`` entity, and (as above) no request-independent operational
-entity. Half-building a TODS adapter would mean routing most of TODS straight to
-semantic loss against a canonical model that is not yet shaped for operational
-scheduling data, and no rights-clean TODS sample was acquired into the estate.
-The honest move is to mark it Specified and let the same gap-driven canonical
-work (an operational entity family) land first. See the packet report / ADR.
+TODS (Transit Operational Data Standard) -- still Specified, not built
+---------------------------------------------------------------------
+TODS describes *scheduling* structures -- runs, blocks, pieces-of-work, deadhead
+segments -- which are a different family again (a ``Block`` / ``RunCut`` /
+``PieceOfWork`` entity), still absent, and no rights-clean TODS sample was
+acquired. This packet lands the *telemetry/observation* family it needed; the
+scheduling family remains a later Program A step. See ADR-0031 and the packet
+report.
 
-Not wired into packages/connect/__init__.py by this change (owned-path boundary
-with parallel work); import directly:
-``from packages.connect.gtfs_realtime import GtfsRealtimeAdapter``.
+Wired into packages/connect/__init__.py: import ``GtfsRealtimeAdapter`` from
+``packages.connect`` or directly from this module.
 """
 
 from __future__ import annotations
@@ -111,10 +107,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
+from pydantic import ValidationError
+
 from packages.canonical import (
-    Outcome,
-    RequestId,
+    ObservationId,
+    StopTimeObservation,
     TenantId,
+    VehicleObservation,
     new_id,
 )
 from packages.connect.adapter import AdapterResult, QuarantinedRow, SemanticLossRecord
@@ -133,11 +132,6 @@ except ImportError:  # pragma: no cover - exercised only where the dep is missin
     BINDINGS_AVAILABLE = False
 
 
-# An arrival within this many seconds of schedule is treated as "on time". This
-# is an adapter-chosen threshold, NOT a value carried by the feed, and it is
-# recorded as such in the on_time coercion note below.
-_ON_TIME_TOLERANCE_SECONDS = 60
-
 # Reader-managed context keys attached to every row. They are adapter context,
 # not source fields, so they are never reported as semantic loss (mirrors
 # gtfs_flex._CONTEXT_KEYS).
@@ -154,73 +148,45 @@ _CONTEXT_KEYS = frozenset(
     }
 )
 
-# Per-kind meaning of each GTFS-RT field this adapter surfaces but Outcome v0.1
-# has no home for. Present (non-None) values are reported as `dropped` semantic
-# loss; absent ones carry no signal and are not reported.
-_VEHICLE_UNMAPPED_REASONS = {
-    "trip_id": "GTFS trip the vehicle is running; Outcome has no trip reference field",
-    "route_id": "GTFS route the vehicle is running; Outcome has no route field",
-    "direction_id": "trip direction; no Outcome field",
-    "trip_start_date": "the trip's service date; no Outcome field",
-    "trip_start_time": "frequency-based trip start time; no Outcome field",
-    "trip_schedule_relationship": "trip-level schedule relationship; no Outcome field",
-    "vehicle_id": (
-        "identifies the vehicle observed at the stop; Outcome is keyed to a rider "
-        "request, not a vehicle, so there is nowhere to record which vehicle "
-        "produced this arrival"
+# RESIDUAL loss: GTFS-RT fields that STILL have no home on VehicleObservation /
+# StopTimeObservation (the operational entities model the central operational
+# context, not every optional field). Present (non-None) values are reported as
+# `dropped` semantic loss; absent ones carry no signal and are not reported. Note
+# how much smaller these are than the ADR-0031 Outcome-era lists: position,
+# occupancy, status, stop/vehicle/route/trip refs, predicted times and delays are
+# no longer here -- they now map.
+_VEHICLE_RESIDUAL_REASONS = {
+    "direction_id": "trip direction; VehicleObservation models the vehicle, not the trip's direction",
+    "trip_start_date": "the trip's service date; no VehicleObservation field",
+    "trip_start_time": "frequency-based trip start time; no VehicleObservation field",
+    "trip_schedule_relationship": (
+        "trip-level schedule relationship; VehicleObservation carries the vehicle's "
+        "operational status, not the trip's schedule relationship"
     ),
-    "vehicle_label": "human-readable vehicle label; no Outcome field",
-    "vehicle_license_plate": "vehicle licence plate; no Outcome field",
-    "position_latitude": "live vehicle latitude -- pure telemetry, no canonical home",
-    "position_longitude": "live vehicle longitude -- pure telemetry, no canonical home",
-    "position_bearing": "vehicle bearing; no canonical home",
-    "position_speed": "vehicle speed; no canonical home",
-    "position_odometer": "vehicle odometer; no canonical home",
-    "current_stop_sequence": "index of the stop within the trip; no Outcome field",
-    "stop_id": (
-        "the stop the vehicle is observed at -- the WHERE of this arrival. Outcome "
-        "records only that a (synthetic) request was served, never at which stop, "
-        "so the stop identity is lost"
-    ),
-    "congestion_level": "network congestion around the vehicle; no canonical home",
-    "occupancy_status": (
-        "how full the vehicle is (a genuine demand signal); Outcome has no occupancy "
-        "or load field"
-    ),
-    "occupancy_percentage": "occupancy as a percentage; no canonical home",
+    "vehicle_label": "human-readable vehicle label; VehicleObservation keeps the id (vehicle_ref), not the label",
+    "vehicle_license_plate": "vehicle licence plate; no VehicleObservation field",
+    "position_odometer": "vehicle odometer; VehicleObservation models position, not distance travelled",
+    "current_stop_sequence": "index of the current stop within the trip; no VehicleObservation field",
+    "congestion_level": "network congestion around the vehicle; no VehicleObservation field",
 }
 
-_TRIP_UPDATE_UNMAPPED_REASONS = {
-    "trip_id": "GTFS trip this update is for; Outcome has no trip reference field",
-    "route_id": "GTFS route; no Outcome field",
-    "direction_id": "trip direction; no Outcome field",
-    "trip_start_date": "the trip's service date; no Outcome field",
-    "trip_start_time": "frequency-based trip start time; no Outcome field",
-    "trip_schedule_relationship": "trip-level schedule relationship; no Outcome field",
-    "vehicle_id": "vehicle serving the trip; no Outcome field (Outcome is request-keyed)",
-    "vehicle_label": "human-readable vehicle label; no Outcome field",
-    "trip_update_timestamp": "when this prediction was generated; no Outcome field",
-    "trip_update_delay": "trip-level delay; superseded by the per-stop delay used for on_time",
-    "stop_id": (
-        "the stop this prediction is for -- the WHERE. Outcome has no stop field, so "
-        "the stop identity is lost"
+_TRIP_UPDATE_RESIDUAL_REASONS = {
+    "direction_id": "trip direction; StopTimeObservation is stop-keyed, not direction-keyed",
+    "trip_start_date": "the trip's service date; no StopTimeObservation field",
+    "trip_start_time": "frequency-based trip start time; no StopTimeObservation field",
+    "trip_schedule_relationship": (
+        "trip-level schedule relationship; StopTimeObservation carries the per-STOP "
+        "schedule_relationship, not the trip-level one"
     ),
-    "current_stop_sequence": "index of the stop within the trip; no Outcome field",
-    "stop_sequence": "index of the stop within the trip; no Outcome field",
-    "arrival_uncertainty": "GTFS-RT uncertainty (seconds) on the arrival prediction; no canonical home",
-    "departure_uncertainty": "GTFS-RT uncertainty (seconds) on the departure prediction; no canonical home",
-    "departure_delay": "predicted departure schedule deviation; on_time is derived from arrival where present",
+    "vehicle_id": "vehicle serving the trip; belongs on VehicleObservation, not this stop-keyed record",
+    "vehicle_label": "human-readable vehicle label; no StopTimeObservation field",
+    "trip_update_delay": (
+        "trip-level delay; StopTimeObservation carries the per-stop arrival/departure "
+        "delays, so the trip-level roll-up is not stored"
+    ),
+    "arrival_uncertainty": "GTFS-RT uncertainty (seconds) on the arrival prediction; no StopTimeObservation field",
+    "departure_uncertainty": "GTFS-RT uncertainty (seconds) on the departure prediction; no StopTimeObservation field",
 }
-
-_ALERT_FIELDS = frozenset(
-    {
-        "alert_cause",
-        "alert_effect",
-        "alert_header_text",
-        "alert_description_text",
-        "alert_informed_entity_count",
-    }
-)
 
 
 class _UnmappableValue(ValueError):
@@ -248,20 +214,33 @@ def _epoch_to_utc(column: str, raw_value: object) -> datetime:
     return datetime.fromtimestamp(seconds, tz=timezone.utc)
 
 
-def _synthetic_request_note() -> SemanticLossRecord:
-    return SemanticLossRecord(
-        source_field="<no rider request in GTFS-Realtime>",
-        source_value=None,
-        reason=(
-            "GTFS-Realtime is fixed-route/operational data with no rider request, booking, "
-            "or ServiceRequest of any kind. Outcome.request_id is a mandatory reference to a "
-            "ServiceRequest; here it is a synthetic, non-joinable per-entity placeholder that "
-            "references NO ServiceRequest in the store. This is the core operational-vs-request "
-            "model mismatch: the canonical contract has no request-independent operational entity "
-            "(a VehicleTelemetry / StopTimeObservation) for this data to key on"
-        ),
-        disposition="coerced",
-    )
+def _str_or_none(value: object) -> str | None:
+    """An absent source field -> None; a present one -> its string form. GTFS-RT
+    ids/enums are already strings; this just normalizes empties to None so the
+    observation stores a real ref or nothing, never ''."""
+    return str(value) if _present(value) else None
+
+
+def _as_float(value: object) -> float | None:
+    """A present numeric field -> float, else None. Unparseable -> _UnmappableValue
+    (caught by parse() -> quarantine, never a silent drop)."""
+    if not _present(value):
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise _UnmappableValue(f"unparseable numeric value {value!r}") from exc
+
+
+def _as_int(value: object) -> int | None:
+    """A present integer field -> int, else None. GTFS-RT delay 0 is a real
+    signal (exactly on schedule) and is preserved. Unparseable -> _UnmappableValue."""
+    if not _present(value):
+        return None
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise _UnmappableValue(f"unparseable integer value {value!r}") from exc
 
 
 def _report_unmapped(
@@ -298,15 +277,19 @@ def _report_unmapped(
 
 class GtfsRealtimeAdapter:
     """Maps one GTFS-Realtime signal (a VehiclePosition, or one exploded
-    TripUpdate stop_time_update, produced by ``feed_message_to_rows``) onto an
-    ``Outcome`` -- the closest canonical *operational* record -- or an explicit
-    quarantine where GTFS-RT's operational model has no honest canonical home.
+    TripUpdate stop_time_update, produced by ``feed_message_to_rows``) onto a
+    request-INDEPENDENT operational observation -- a ``VehicleObservation`` or a
+    ``StopTimeObservation`` -- or an explicit quarantine where the signal carries
+    no observation to emit (an Alert, a stop-less TripUpdate, an unanchored or
+    malformed position).
 
-    ``recorded_at`` is the adapter run's own transaction time; it is not read
-    from the feed. The feed's own header/entity timestamps are valid-time.
+    ``observed_at`` is valid time (the vehicle/feed timestamp); ``recorded_at`` is
+    the adapter run's own transaction time, not read from the feed.
+    ``observation_id`` is each record's OWN key -- unlike ADR-0031's synthetic
+    ``request_id``, it references nothing it cannot back up.
     """
 
-    adapter_name = "gtfs-realtime-outcome"
+    adapter_name = "gtfs-realtime-observation"
     adapter_version = "0.1.0"
 
     def __init__(self, tenant_id: TenantId, *, recorded_at: datetime) -> None:
@@ -314,7 +297,7 @@ class GtfsRealtimeAdapter:
         self._recorded_at = recorded_at
 
     # -- entry point -------------------------------------------------------
-    def parse(self, raw_row: dict) -> AdapterResult[Outcome]:
+    def parse(self, raw_row: dict) -> AdapterResult:
         kind = raw_row.get("_gtfs_rt_kind")
         if kind == "vehicle_position":
             return self._parse_vehicle_position(raw_row)
@@ -323,8 +306,8 @@ class GtfsRealtimeAdapter:
         if kind == "alert":
             return self._quarantine(
                 raw_row,
-                "GTFS-Realtime Alert is rider/agency service-disruption messaging, not an "
-                "operational outcome; the canonical contract has no home for it",
+                "GTFS-Realtime Alert is rider/agency service-disruption messaging, not a vehicle "
+                "or stop-time observation; the operational entity family has no home for it",
             )
         return self._quarantine(
             raw_row,
@@ -333,25 +316,11 @@ class GtfsRealtimeAdapter:
             failed_field="_gtfs_rt_kind",
         )
 
-    # -- VehiclePosition ---------------------------------------------------
-    def _parse_vehicle_position(self, raw_row: dict) -> AdapterResult[Outcome]:
-        status = raw_row.get("current_status")
-        if status != "STOPPED_AT":
-            return self._quarantine(
-                raw_row,
-                f"VehiclePosition current_status={status!r} is live in-motion telemetry, not an "
-                "observed arrival; a vehicle that is IN_TRANSIT_TO / INCOMING_AT has produced no "
-                "arrival to record as an Outcome, and its live position has no canonical home",
-                failed_field="current_status",
-            )
-        if not _present(raw_row.get("stop_id")):
-            return self._quarantine(
-                raw_row,
-                "VehiclePosition is STOPPED_AT but carries no stop_id -- a stop arrival with no "
-                "stop is malformed",
-                failed_field="stop_id",
-            )
-
+    # -- VehiclePosition -> VehicleObservation -----------------------------
+    def _parse_vehicle_position(self, raw_row: dict) -> AdapterResult:
+        # Every VehiclePosition is a valid observation now -- an in-transit or
+        # incoming vehicle is exactly what a telemetry entity records, so there is
+        # no STOPPED_AT gate. Only an unanchored/malformed position is quarantined.
         timestamp_raw = raw_row.get("vehicle_timestamp")
         timestamp_source = "vehicle.timestamp"
         if not _present(timestamp_raw):
@@ -360,195 +329,184 @@ class GtfsRealtimeAdapter:
         if not _present(timestamp_raw):
             return self._quarantine(
                 raw_row,
-                "STOPPED_AT VehiclePosition has neither a vehicle timestamp nor a feed header "
-                "timestamp to anchor the arrival instant",
+                "VehiclePosition has neither a vehicle timestamp nor a feed header timestamp to "
+                "anchor observed_at",
                 failed_field="vehicle_timestamp",
             )
         try:
-            actual_pickup_at = _epoch_to_utc(timestamp_source, timestamp_raw)
+            observed_at = _epoch_to_utc(timestamp_source, timestamp_raw)
+            latitude = _as_float(raw_row.get("position_latitude"))
+            longitude = _as_float(raw_row.get("position_longitude"))
+            bearing = _as_float(raw_row.get("position_bearing"))
+            speed = _as_float(raw_row.get("position_speed"))
+            occupancy_percentage = _as_int(raw_row.get("occupancy_percentage"))
         except _UnmappableValue as exc:
             return self._quarantine(raw_row, str(exc), failed_field="vehicle_timestamp")
 
-        semantic_loss = [
-            _synthetic_request_note(),
-            SemanticLossRecord(
-                source_field="current_status",
-                source_value="STOPPED_AT",
-                reason=(
-                    "a STOPPED_AT vehicle is observed servicing this stop now; that observed "
-                    "arrival is mapped to Outcome.actual_pickup_at (from "
-                    f"{timestamp_source}={actual_pickup_at.isoformat()}), the one genuinely-"
-                    "observed instant a vehicle feed provides"
-                ),
-                disposition="coerced",
-            ),
-            SemanticLossRecord(
-                source_field="<Outcome.served has no GTFS-RT source>",
-                source_value=None,
-                reason=(
-                    "GTFS-Realtime carries no rider-level served/no-show status. served=True here "
-                    "encodes 'the vehicle serviced this stop', NOT that any specific rider request "
-                    "was fulfilled -- there is no rider request in the feed"
-                ),
-                disposition="coerced",
-            ),
-            SemanticLossRecord(
-                source_field="<Outcome.on_time has no GTFS-RT source in a VehiclePosition>",
-                source_value=None,
-                reason=(
-                    "a VehiclePosition carries no schedule reference, so on-time-ness cannot be "
-                    "derived; on_time is left None rather than guessed (contrast TripUpdate, which "
-                    "does carry a delay)"
-                ),
-                disposition="dropped",
-            ),
-        ]
-        # current_status and vehicle_timestamp are consumed by the mapping above
-        # (reported via the explicit notes / actual_pickup_at), so they are known,
-        # not vendor extensions.
-        vehicle_known = frozenset(_VEHICLE_UNMAPPED_REASONS) | {"current_status", "vehicle_timestamp"}
-        semantic_loss.extend(_report_unmapped(raw_row, _VEHICLE_UNMAPPED_REASONS, vehicle_known))
+        try:
+            observation = VehicleObservation(
+                observation_id=new_id(ObservationId),
+                tenant_id=self._tenant_id,
+                vehicle_ref=_str_or_none(raw_row.get("vehicle_id")),
+                trip_ref=_str_or_none(raw_row.get("trip_id")),
+                route_ref=_str_or_none(raw_row.get("route_id")),
+                stop_ref=_str_or_none(raw_row.get("stop_id")),
+                current_status=_str_or_none(raw_row.get("current_status")),
+                latitude=latitude,
+                longitude=longitude,
+                bearing=bearing,
+                speed=speed,
+                occupancy_status=_str_or_none(raw_row.get("occupancy_status")),
+                occupancy_percentage=occupancy_percentage,
+                observed_at=observed_at,
+                recorded_at=self._recorded_at,
+            )
+        except ValidationError as exc:
+            err = exc.errors()[0]
+            loc = err.get("loc") or ()
+            # This is where an out-of-range latitude/longitude the entity validator
+            # rejects becomes a quarantine rather than a silent drop.
+            return self._quarantine(
+                raw_row,
+                f"VehiclePosition rejected by VehicleObservation validation: {err.get('msg')}",
+                failed_field=str(loc[0]) if loc else "latitude/longitude",
+            )
 
-        outcome = Outcome(
-            tenant_id=self._tenant_id,
-            request_id=new_id(RequestId),
-            served=True,
-            actual_pickup_at=actual_pickup_at,
-            on_time=None,
-        )
-        return AdapterResult(record=outcome, semantic_loss=tuple(semantic_loss))
+        # trip_id / route_id / vehicle_id / stop_id / current_status / position_* /
+        # occupancy_* and the timestamp are all consumed into the entity above, so
+        # they are `known`, not vendor extensions. Only the genuinely-homeless
+        # residual fields are reported as loss -- far fewer than the Outcome era.
+        vehicle_known = frozenset(_VEHICLE_RESIDUAL_REASONS) | {
+            "trip_id",
+            "route_id",
+            "vehicle_id",
+            "stop_id",
+            "current_status",
+            "vehicle_timestamp",
+            "position_latitude",
+            "position_longitude",
+            "position_bearing",
+            "position_speed",
+            "occupancy_status",
+            "occupancy_percentage",
+        }
+        semantic_loss = _report_unmapped(raw_row, _VEHICLE_RESIDUAL_REASONS, vehicle_known)
+        return AdapterResult(record=observation, semantic_loss=tuple(semantic_loss))
 
-    # -- TripUpdate (one exploded stop_time_update) ------------------------
-    def _parse_trip_update_stop(self, raw_row: dict) -> AdapterResult[Outcome]:
+    # -- TripUpdate stop_time_update -> StopTimeObservation ----------------
+    def _parse_trip_update_stop(self, raw_row: dict) -> AdapterResult:
         if not raw_row.get("_stop_time_update_present", True):
             return self._quarantine(
                 raw_row,
-                "TripUpdate entity carries no stop_time_update to map",
+                "TripUpdate entity carries no stop_time_update to observe",
                 failed_field="_stop_time_update_present",
             )
 
-        sr = raw_row.get("stop_schedule_relationship") or "SCHEDULED"
+        stop_ref = _str_or_none(raw_row.get("stop_id"))
+        schedule_relationship = _str_or_none(raw_row.get("stop_schedule_relationship"))
         arrival_time = raw_row.get("arrival_time")
         arrival_delay = raw_row.get("arrival_delay")
         departure_time = raw_row.get("departure_time")
         departure_delay = raw_row.get("departure_delay")
-        has_prediction = any(
-            _present(v) for v in (arrival_time, arrival_delay, departure_time, departure_delay)
-        )
+        stop_sequence_raw = raw_row.get("stop_sequence")
 
-        if sr == "SKIPPED":
-            served = False
-            on_time = None
-            served_note = SemanticLossRecord(
-                source_field="stop_schedule_relationship",
-                source_value="SKIPPED",
-                reason=(
-                    "an observed decision that this stop will NOT be served -> Outcome(served=False). "
-                    "This is the one TripUpdate signal that maps cleanly and without coercion onto an "
-                    "Outcome field, because SKIPPED is a decision, not a prediction"
-                ),
-                disposition="coerced",
+        # A SKIPPED decision, a predicted time/delay, or even just the stop's
+        # identity+sequence is now real operational content with a home -- only a
+        # row with none of it has no observation to emit.
+        if not any(
+            _present(v)
+            for v in (
+                stop_ref,
+                stop_sequence_raw,
+                schedule_relationship,
+                arrival_time,
+                arrival_delay,
+                departure_time,
+                departure_delay,
             )
-        else:
-            if not has_prediction:
-                return self._quarantine(
-                    raw_row,
-                    f"stop_time_update (schedule_relationship={sr}) carries neither an "
-                    "arrival/departure time nor a delay, and is not SKIPPED -- it has no "
-                    "outcome content to map",
-                    failed_field="stop_schedule_relationship",
-                )
-            served = True
-            delay_used = arrival_delay if _present(arrival_delay) else departure_delay
-            if _present(delay_used):
-                try:
-                    on_time = abs(int(delay_used)) <= _ON_TIME_TOLERANCE_SECONDS
-                except (TypeError, ValueError) as exc:
-                    return self._quarantine(
-                        raw_row, f"unparseable delay {delay_used!r}", failed_field="arrival_delay"
-                    )
-            else:
-                on_time = None
-            served_note = SemanticLossRecord(
-                source_field="<Outcome.served has no GTFS-RT source>",
-                source_value=None,
-                reason=(
-                    "GTFS-Realtime carries no rider-level served status. served=True here encodes "
-                    "'this stop is predicted to be served' (schedule_relationship="
-                    f"{sr}), NOT that any rider request was fulfilled"
-                ),
-                disposition="coerced",
+        ):
+            return self._quarantine(
+                raw_row,
+                "stop_time_update carries no stop identity (stop_id/stop_sequence), schedule "
+                "relationship, or arrival/departure prediction -- no stop observation to emit",
+                failed_field="stop_id",
             )
 
-        semantic_loss = [_synthetic_request_note(), served_note]
+        # observed_at anchor: the prediction's generation time, else the feed's.
+        timestamp_raw = raw_row.get("trip_update_timestamp")
+        timestamp_source = "trip_update.timestamp"
+        if not _present(timestamp_raw):
+            timestamp_raw = raw_row.get("feed_timestamp")
+            timestamp_source = "feed header timestamp"
+        if not _present(timestamp_raw):
+            return self._quarantine(
+                raw_row,
+                "stop_time_update has neither a trip_update timestamp nor a feed header timestamp "
+                "to anchor observed_at",
+                failed_field="trip_update_timestamp",
+            )
+        try:
+            observed_at = _epoch_to_utc(timestamp_source, timestamp_raw)
+            predicted_arrival_at = (
+                _epoch_to_utc("arrival.time", arrival_time) if _present(arrival_time) else None
+            )
+            predicted_departure_at = (
+                _epoch_to_utc("departure.time", departure_time) if _present(departure_time) else None
+            )
+            arrival_delay_seconds = _as_int(arrival_delay)
+            departure_delay_seconds = _as_int(departure_delay)
+            stop_sequence = _as_int(stop_sequence_raw)
+        except _UnmappableValue as exc:
+            return self._quarantine(raw_row, str(exc))
 
-        if served and on_time is not None:
-            delay_used = arrival_delay if _present(arrival_delay) else departure_delay
-            semantic_loss.append(
-                SemanticLossRecord(
-                    source_field="arrival_delay",
-                    source_value=str(delay_used),
-                    reason=(
-                        "Outcome.on_time is DERIVED from a *predicted* schedule deviation (|delay| <= "
-                        f"{_ON_TIME_TOLERANCE_SECONDS}s, an adapter-chosen threshold not carried by the "
-                        "feed). This coerces a prediction into an observed-on-time field: it is an "
-                        "estimate of on-time-ness, not an observed fact, because a TripUpdate is a "
-                        "forecast of arrival, not a record of one"
-                    ),
-                    disposition="coerced",
-                )
+        try:
+            observation = StopTimeObservation(
+                observation_id=new_id(ObservationId),
+                tenant_id=self._tenant_id,
+                trip_ref=_str_or_none(raw_row.get("trip_id")),
+                route_ref=_str_or_none(raw_row.get("route_id")),
+                stop_ref=stop_ref,
+                stop_sequence=stop_sequence,
+                schedule_relationship=schedule_relationship,
+                predicted_arrival_at=predicted_arrival_at,
+                predicted_departure_at=predicted_departure_at,
+                # GTFS-RT carries predictions, not observed times -- these stay
+                # None so a prediction is never mistaken for a record of arrival.
+                observed_arrival_at=None,
+                observed_departure_at=None,
+                arrival_delay_seconds=arrival_delay_seconds,
+                departure_delay_seconds=departure_delay_seconds,
+                observed_at=observed_at,
+                recorded_at=self._recorded_at,
             )
-        if _present(arrival_time) or _present(departure_time):
-            semantic_loss.append(
-                SemanticLossRecord(
-                    source_field="arrival_time/departure_time",
-                    source_value=f"{arrival_time}/{departure_time}",
-                    reason=(
-                        "predicted arrival/departure instants. Outcome is an OBSERVED-result record with "
-                        "no predicted-time field, so these are dropped: actual_pickup_at is left None "
-                        "(a prediction is not an observation). The only predicted-time field in the "
-                        "canonical contract is RequestTimes.predicted_pickup_at, which lives on a "
-                        "ServiceRequest and is request-keyed -- unavailable for request-less GTFS-RT"
-                    ),
-                    disposition="dropped",
-                )
-            )
-        if raw_row.get("_stop_time_update_count", 1) > 1:
-            semantic_loss.append(
-                SemanticLossRecord(
-                    source_field="<sibling stop_time_updates in this TripUpdate>",
-                    source_value=str(raw_row.get("_stop_time_update_count")),
-                    reason=(
-                        "a TripUpdate predicts many stops; the reader explodes it to one row per "
-                        "stop_time_update so each maps to at most one Outcome. This row represents "
-                        f"stop index {raw_row.get('_stop_time_update_index')} of "
-                        f"{raw_row.get('_stop_time_update_count')}"
-                    ),
-                    disposition="dropped",
-                )
+        except ValidationError as exc:
+            err = exc.errors()[0]
+            loc = err.get("loc") or ()
+            return self._quarantine(
+                raw_row,
+                f"stop_time_update rejected by StopTimeObservation validation: {err.get('msg')}",
+                failed_field=str(loc[0]) if loc else None,
             )
 
-        known = frozenset(_TRIP_UPDATE_UNMAPPED_REASONS) | {
-            "arrival_time",
-            "departure_time",
-            "arrival_delay",
+        trip_known = frozenset(_TRIP_UPDATE_RESIDUAL_REASONS) | {
+            "trip_id",
+            "route_id",
+            "stop_id",
+            "stop_sequence",
             "stop_schedule_relationship",
+            "arrival_time",
+            "arrival_delay",
+            "departure_time",
+            "departure_delay",
+            "trip_update_timestamp",
         }
-        semantic_loss.extend(_report_unmapped(raw_row, _TRIP_UPDATE_UNMAPPED_REASONS, known))
-
-        outcome = Outcome(
-            tenant_id=self._tenant_id,
-            request_id=new_id(RequestId),
-            served=served,
-            actual_pickup_at=None,
-            on_time=on_time,
-        )
-        return AdapterResult(record=outcome, semantic_loss=tuple(semantic_loss))
+        semantic_loss = _report_unmapped(raw_row, _TRIP_UPDATE_RESIDUAL_REASONS, trip_known)
+        return AdapterResult(record=observation, semantic_loss=tuple(semantic_loss))
 
     # -- helper ------------------------------------------------------------
     def _quarantine(
         self, raw_row: dict, reason: str, *, failed_field: str | None = None
-    ) -> AdapterResult[Outcome]:
+    ) -> AdapterResult:
         return AdapterResult(
             quarantine=QuarantinedRow(raw_row=dict(raw_row), reason=reason, failed_field=failed_field)
         )
@@ -704,8 +662,8 @@ def feed_message_to_rows(feed) -> Iterator[dict]:
 
     - one row per ``VehiclePosition`` entity,
     - one row per ``TripUpdate`` ``stop_time_update`` (exploded, so each maps to
-      at most one Outcome; a TripUpdate with none yields a single sentinel row
-      that quarantines rather than vanishing),
+      its own StopTimeObservation; a TripUpdate with none yields a single sentinel
+      row that quarantines rather than vanishing),
     - one row per ``Alert`` entity,
     - one ``unknown`` row for an entity with none of the three.
 

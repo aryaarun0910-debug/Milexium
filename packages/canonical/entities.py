@@ -9,12 +9,13 @@ roadmap's table/column intent; types and validation are new.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from packages.canonical.ids import (
     DecisionEventId,
     DriverId,
     ModelVersionId,
+    ObservationId,
     PolicyId,
     RequestId,
     ScheduleRunId,
@@ -166,6 +167,105 @@ class Outcome(_Canonical):
     on_time: bool | None = None
     excess_ride_time_minutes: float | None = None
     deadhead_minutes: float | None = None
+
+
+class VehicleObservation(_Canonical):
+    """A request-INDEPENDENT operational observation of one vehicle in motion.
+
+    This is the operational/telemetry entity ADR-0031 found the canonical model
+    was missing. GTFS-Realtime (and every AVL/telemetry source like it) is keyed
+    by ``(trip, stop, vehicle)`` and carries NO rider request; before this entity,
+    such data could only be squashed onto ``Outcome`` via a synthetic
+    ``request_id`` that referenced no ServiceRequest, with position/occupancy/
+    status all lost. A ``VehicleObservation`` instead keys on its own
+    ``observation_id`` and the natural key ``(tenant_id, observed_at,
+    vehicle_ref)``, and gives real homes to the operational context the feed
+    actually carries.
+
+    ``vehicle_ref``/``trip_ref``/``route_ref``/``stop_ref`` are the *source
+    system's* identifiers (e.g. a GTFS vehicle/trip/route/stop id), kept as plain
+    strings, NOT canonical typed ids -- they name an external agency's entities,
+    not a Milexium ``Vehicle`` aggregate, so typing them as ``VehicleId`` would be
+    the same category error this entity exists to avoid.
+
+    Bitemporal: ``observed_at`` is valid time (when the vehicle was observed --
+    the feed/vehicle timestamp, POSIX epoch, unambiguously UTC); ``recorded_at``
+    is transaction time (when Milexium ingested it).
+    """
+
+    observation_id: ObservationId
+    tenant_id: TenantId
+    vehicle_ref: str | None = None
+    trip_ref: str | None = None
+    route_ref: str | None = None
+    stop_ref: str | None = None
+    current_status: str | None = Field(
+        default=None,
+        description="INCOMING_AT / STOPPED_AT / IN_TRANSIT_TO -- kept as the source string.",
+    )
+    latitude: float | None = None
+    longitude: float | None = None
+    bearing: float | None = None
+    speed: float | None = None
+    occupancy_status: str | None = None
+    occupancy_percentage: int | None = Field(default=None, ge=0)
+    observed_at: UtcDateTime
+    recorded_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def _validate_position(self) -> "VehicleObservation":
+        """A geographic point needs both coordinates and both in range. Invalid
+        or half-present coordinates are rejected here rather than silently stored
+        (they would corrupt the PostGIS geometry populated from them)."""
+        lat, lon = self.latitude, self.longitude
+        if (lat is None) != (lon is None):
+            raise ValueError(
+                "latitude and longitude must be provided together (a point needs both) "
+                "or both omitted"
+            )
+        if lat is not None and not (-90.0 <= lat <= 90.0):
+            raise ValueError(f"latitude {lat} out of range [-90, 90]")
+        if lon is not None and not (-180.0 <= lon <= 180.0):
+            raise ValueError(f"longitude {lon} out of range [-180, 180]")
+        return self
+
+
+class StopTimeObservation(_Canonical):
+    """A request-INDEPENDENT observation/prediction for one stop of one trip.
+
+    The second half of the operational entity family (ADR-0031). A GTFS-Realtime
+    ``TripUpdate`` ``stop_time_update`` -- which stop, in which trip, its schedule
+    relationship, and predicted arrival/departure with schedule deviations -- has
+    no rider request either, so it also could only be squashed onto ``Outcome``
+    before. Here it keys on its own ``observation_id`` and ``(tenant_id, trip_ref,
+    stop_ref/stop_sequence, observed_at)``.
+
+    Predicted vs observed are kept as separate fields on purpose: GTFS-Realtime
+    supplies *predictions* (``predicted_arrival_at`` and the delays); the
+    ``observed_arrival_at``/``observed_departure_at`` fields are the homes a later
+    observed-time source (AVL/TODS) will populate, and stay None for GTFS-RT --
+    the same predicted-vs-actual discipline ``ForecastVintage`` keeps, so a
+    prediction is never mistaken for a record of what happened.
+    """
+
+    observation_id: ObservationId
+    tenant_id: TenantId
+    trip_ref: str | None = None
+    route_ref: str | None = None
+    stop_ref: str | None = None
+    stop_sequence: int | None = Field(default=None, ge=0)
+    schedule_relationship: str | None = Field(
+        default=None,
+        description="SCHEDULED / SKIPPED / NO_DATA / UNSCHEDULED -- the source string.",
+    )
+    predicted_arrival_at: UtcDateTime | None = None
+    predicted_departure_at: UtcDateTime | None = None
+    observed_arrival_at: UtcDateTime | None = None
+    observed_departure_at: UtcDateTime | None = None
+    arrival_delay_seconds: int | None = None
+    departure_delay_seconds: int | None = None
+    observed_at: UtcDateTime
+    recorded_at: UtcDateTime
 
 
 class OutboxEntry(_Canonical):
