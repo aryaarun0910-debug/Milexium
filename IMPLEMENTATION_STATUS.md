@@ -74,7 +74,28 @@ The capabilities that make a real shadow-mode pilot possible:
 
 </details>
 
-### Phase 2 — breadth & defensibility (next)
+### Phase 2 — undeniable public evidence (next; proof-first)
+
+Reprioritized 2026-07-24: for a pre-traction team, the highest-leverage next
+work is not more inward-facing breadth — it is **reproducible, independently
+checkable evidence on real public data** that substitutes for customer
+traction. A reviewer/skeptic can run and verify it without a pilot. The
+differentiator to lead with is verifiable rigor (every number independently
+checkable, tamper-evident, reproducible), not platform breadth.
+
+1. **Golden-path end-to-end demo on REAL public data** — one command:
+   ingest (real TLC/GTFS-Flex/TIDES) → forecast (real registered model) →
+   decide (Program F solver) → evidence pack → baseline-vs-Milexium replay →
+   export. On real data, not the fictional reference agency. The artifact for
+   the application and for a skeptical customer.
+2. **Public optimization benchmark** — run the Program F solver against
+   published dial-a-ride benchmark instances (Cordeau/Ropke) with reported
+   optimality gaps vs known bests. Independently checkable technical credibility.
+3. **Forecast benchmark artifact** — package the real model-card numbers +
+   naive baselines into a reproducible leaderboard (Program E / `benchmarks/`).
+4. **Machine-readable evidence manifests** a third party can verify unaided.
+
+### Phase 3 — breadth & defensibility
 
 - B: GTFS-Realtime streaming, reconciliation, change-data-capture, more
   standards (TODS/NeTEx).
@@ -83,7 +104,7 @@ The capabilities that make a real shadow-mode pilot possible:
 - G: one or two machine-checked formal invariants (TLA+/SMT) on load-bearing
   properties.
 
-### Phase 3 — frontier (lighthouse only)
+### Phase 4 — frontier (lighthouse only)
 
 J (Forge/self-improving), K (silicon/runtime), L (confidential/edge) — only
 once real usage justifies them.
