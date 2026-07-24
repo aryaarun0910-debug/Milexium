@@ -56,6 +56,18 @@ HOLD_FOR_VERIFICATION = {
     "Montebello Bus Lines": "trips/VRH 9.54 vs 2.13 peer median - suspected reporting-model difference",
 }
 
+# Greet these WITHOUT a first name. In each case the person's name is either
+# unconfirmed or (worse) inferred, and the address is usually a departmental
+# inbox -- so opening "Hi <name>," risks greeting someone who has left, which
+# is the single clearest tell of a scraped list. A nameless greeting into a
+# shared inbox is honest; a confidently wrong name is not.
+NO_FIRST_NAME = {
+    "City of Tallahassee": "Angela Baldwin last confirmed Apr-2024; address is a coordinator inbox",
+    "Pinellas Suncoast Transit": "Bonnie Epstein's title rests on a 2023 org chart (now 404); Planning inbox",
+    "Santa Cruz Metropolitan Transit District": "April Warnock not datable to 2025/26; ParaCruz inbox",
+    "The Hop": "'Luis Pino' is INFERRED from the address itself, never confirmed on a source",
+}
+
 
 def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:50]
@@ -73,7 +85,7 @@ def subject_for(ins: dict) -> str:
 
 
 def body_for(ins: dict, first_name: str, short_name: str) -> str:
-    who = first_name or "there"
+    who = first_name or "there"  # nameless greeting for NO_FIRST_NAME targets
     rank = ordinal(ins["deadhead_rank"])
     n = ins["n_peers"]
     dh = ins["deadhead_pct_hours"]
@@ -154,6 +166,8 @@ def main() -> None:
             unverified.append(short_name)
             continue
         first = (ins.get("contact_name") or "").split()[0] if ins.get("contact_name") else ""
+        if short_name in NO_FIRST_NAME:
+            first = ""
         subject = subject_for(ins)
         body = body_for(ins, first, short_name)
 
