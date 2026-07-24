@@ -14,6 +14,64 @@ No claim in this file, in `docs/`, or in the YC application may use a stronger
 word than what's true here. See `workstreams/DOSSIER_COVERAGE.md` for the
 80-technology/72-project ledger.
 
+## Roadmap ahead to a pilot-ready runtime
+
+There are two distinct "done"s, kept deliberately separate:
+
+- **Full blueprint as written** — effectively unbounded (silicon, homomorphic
+  encryption, self-evolving agents, the full 250 GB estate, 152 dossier
+  technologies). A multi-year, multi-team lighthouse; *not* a near-term goal,
+  and building it before demand is the "infrastructure before demand" trap
+  `blueprint/15-risks-and-falsification.md` warns against.
+- **Reachable target** — a demonstrable transport-decision runtime a design
+  partner can integrate against, plus a pilot-ready evidence loop. This is
+  finishable and is what the roadmap below drives to.
+
+Program depth today (rough engineering judgment, not precision): A ~25%,
+B ~20%, C ~15%, D ~10%, E ~10%, G ~15%, I ~20%, M ~10%; F/H 0% (F held —
+overlaps the YC-owned scheduler task); J/K/L 0% (frontier).
+
+### Phase 1 — pilot-ready (the active phase)
+
+The capabilities that make a real shadow-mode pilot possible:
+
+1. **M — HTTP/OpenAPI API** over the SDK, plus `forecast()`/`export_pack()`
+   exposed through `MilexiumClient` — so a partner integrates without writing
+   Python. (The biggest "others integrate" unlock.)
+2. **C — PostgreSQL row-level security + tenant-isolation adversarial tests** —
+   real multi-tenant safety before any customer data is touched.
+3. **H — historical replay + baseline-vs-Milexium metric comparison** — the
+   "prove the decision improved the outcome" surface; pairs with the evidence
+   pack. Labelled a modelled comparison, never causal proof (blueprint 01).
+4. **I — period + incident evidence packs** (not just one trip) and a redacted
+   procurement/evidence bundle.
+5. **F — a Decision program slice** (Decision IR + independent feasibility
+   checker + solver) as an additive `packages/decide/` — coordinated with, not
+   duplicating, the YC-roadmap scheduler; must never touch `reference_agency/`
+   or YC materials.
+
+### Phase 2 — breadth & defensibility
+
+- B: GTFS-Realtime streaming, reconciliation, change-data-capture, more
+  standards (TODS/NeTEx).
+- D: point-in-time feature store, champion/challenger promotion, drift detection.
+- E: serve-time conformal uncertainty; register all real models.
+- G: one or two machine-checked formal invariants (TLA+/SMT) on load-bearing
+  properties.
+
+### Phase 3 — frontier (lighthouse only)
+
+J (Forge/self-improving), K (silicon/runtime), L (confidential/edge) — only
+once real usage justifies them.
+
+### The gate no tranche can cross
+
+**Validated → Production is gated on a consented operator pilot, not on more
+code.** Everything built stays *Demonstrated* until a design partner shares
+data. The true critical path is: finish Phase 1 → land one pilot → only then
+can the status vocabulary move past Demonstrated. Building faster does not
+skip that gate; it makes the pilot easier to win.
+
 ## What this repository already had (Exists, unmodified by the expansion)
 
 This is the product `docs/README.md`, `docs/MASTER_ROADMAP.md`, and
