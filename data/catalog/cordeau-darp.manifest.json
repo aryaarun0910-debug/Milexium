@@ -1,0 +1,37 @@
+{
+  "dataset_id": "cordeau-darp",
+  "owner_and_source": "Cordeau & Laporte dial-a-ride benchmark instances (type-a set, a2-16..a8-96). Origin: J.-F. Cordeau (2006), 'A Branch-and-Cut Algorithm for the Dial-a-Ride Problem', Operations Research 54(3):573-586; instances distributed via HEC Montreal (neumann.hec.ca/chairedistributique/data/). Acquired from the widely-used public mirror github.com/davidrey123/DARP (Instances/Cordeau.zip).",
+  "license_and_commercial_rights": "Academic benchmark instances, published for open research/benchmarking use; no formal software license is attached to the instance files themselves, and none is claimed here. The instances contain only synthetic coordinates/time-windows (no proprietary or personal data). Used here strictly for algorithm benchmarking/comparison against published best-known values, the standard and unrestricted research use for this dataset. Not resold or redistributed as a product; commercial benchmarking/comparison of a solver against them is the established norm in the field.",
+  "decision_tasks_enabled": [
+    "decide.darp_solver_benchmark",
+    "decide.optimality_gap_measurement"
+  ],
+  "geography": "synthetic (Euclidean plane; agency-neutral generated coordinates)",
+  "time_coverage": "n/a (static benchmark instances)",
+  "source_url": "https://raw.githubusercontent.com/davidrey123/DARP/main/Instances/Cordeau.zip",
+  "expected_download_gb": 0.00003,
+  "expected_expanded_gb": 0.0002,
+  "expected_retained_gb": 0.00003,
+  "schema_and_format": "Zip archive of 24 plain-text Cordeau-format DARP instances (Cordeau/aK-N.txt). Each file: header line 'K n T Q L' (K vehicles, n requests, T max route duration, Q vehicle capacity, L max ride time), then 2n+2 node lines 'id x y service_duration load earliest latest' -- node 0 and 2n+1 are the depot, nodes 1..n are pickups (load +q), nodes n+1..2n are the paired drop-offs (load -q). Travel time between nodes equals Euclidean distance; the objective is total routing distance.",
+  "sensitive_fields": [],
+  "update_frequency": "static (a fixed, decades-stable academic benchmark set)",
+  "source_checksum": "2def4d810f14fdcab73c52a90403839d2d37a3d0287bb65e24e20290c90d5f91",
+  "canonical_contract": "packages.decide.darp_ir.DarpInstance (parsed by packages.decide.darp_loader); benchmarked by benchmarks/quality/darp_benchmark.py against published best-known/optimal values",
+  "quality_tests": [
+    {
+      "name": "valid_zip",
+      "description": "retained object is a non-empty zip archive"
+    },
+    {
+      "name": "parses_to_instances",
+      "description": "each member parses to a DarpInstance whose node count equals 2n+2 and whose header K/n/T/Q/L are all positive"
+    }
+  ],
+  "acceptance_threshold": "downloads, sha256 matches the recorded checksum, is a readable zip containing 24 Cordeau-format instance files that parse cleanly",
+  "retention_and_deletion": "retain as part of the solver-quality benchmark corpus; cheaply reproducible (re-fetchable from the upstream mirror) so evictable first",
+  "derived_artifacts": [
+    "benchmarks/quality/darp_results.json",
+    "benchmarks/quality/darp_summary.md"
+  ],
+  "zone": "benchmarks"
+}

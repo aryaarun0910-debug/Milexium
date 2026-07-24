@@ -23,9 +23,15 @@ blueprint 06, not built here.
 """
 
 from packages.decide.feasibility import (
+    DarpViolation,
+    MalformedDarpSolution,
     MalformedSolution,
     Violation,
+    check_darp_feasibility,
     check_feasibility,
+    darp_objective,
+    darp_served_requests,
+    is_darp_feasible,
     is_feasible,
 )
 from packages.decide.ir import (
@@ -38,6 +44,29 @@ from packages.decide.ir import (
     RideRequest,
 )
 from packages.decide.solver import SOLVER_NAME, SOLVER_VERSION, solve
+
+# DARP routing extension (v0.2) -- additive; the v0.1 API above is unchanged.
+from packages.decide.darp_ir import (
+    DarpInstance,
+    DarpNode,
+    DarpRoute,
+    DarpSolution,
+    DarpVisit,
+)
+from packages.decide.darp_loader import (
+    find_benchmark_archive,
+    list_zip_instances,
+    load_instance_file,
+    load_zip_instance,
+    parse_instance,
+)
+from packages.decide.darp_solver import (
+    DARP_SOLVER_NAME,
+    DARP_SOLVER_VERSION,
+    schedule_route,
+    solve_darp,
+)
+from packages.decide.darp_bridge import project_darp_solution
 
 __all__ = [
     "Assignment",
@@ -54,6 +83,28 @@ __all__ = [
     "solve",
     "SOLVER_NAME",
     "SOLVER_VERSION",
+    # DARP routing extension (v0.2)
+    "DarpInstance",
+    "DarpNode",
+    "DarpRoute",
+    "DarpSolution",
+    "DarpVisit",
+    "DarpViolation",
+    "MalformedDarpSolution",
+    "check_darp_feasibility",
+    "is_darp_feasible",
+    "darp_objective",
+    "darp_served_requests",
+    "parse_instance",
+    "load_instance_file",
+    "load_zip_instance",
+    "list_zip_instances",
+    "find_benchmark_archive",
+    "schedule_route",
+    "solve_darp",
+    "project_darp_solution",
+    "DARP_SOLVER_NAME",
+    "DARP_SOLVER_VERSION",
 ]
 
-CONTRACT_VERSION = "0.1.0"
+CONTRACT_VERSION = "0.2.0"

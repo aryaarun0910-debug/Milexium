@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "generated_at": "2026-07-24T14:09:10.721507+00:00",
+    "solver_name": "milexium-decide-darp",
+    "solver_version": "0.2.0",
+    "seed": 1,
+    "instance_selection": "a2-16,a3-18",
+    "best_known_source": "Cordeau (2006), Operations Research 54(3); see best_known.json for citation and per-value proven-optimal flags"
+  },
+  "results": [
+    {
+      "instance": "a2-16",
+      "num_requests": 16,
+      "num_vehicles": 2,
+      "vehicle_capacity": 3,
+      "max_ride_time": 30.0,
+      "max_route_duration": 480.0,
+      "served": 16,
+      "fully_served": true,
+      "our_objective": 317.7105,
+      "best_known": 294.25,
+      "best_known_is_proven_optimal": true,
+      "gap_pct": 7.973,
+      "feasible": true,
+      "darp_checker_violations": 0,
+      "independent_v01_checker_violations": 0,
+      "solve_time_s": 19.171,
+      "seed": 1,
+      "lns_iterations": 200,
+      "solver_name": "milexium-decide-darp",
+      "solver_version": "0.2.0"
+    },
+    {
+      "instance": "a3-18",
+      "num_requests": 18,
+      "num_vehicles": 3,
+      "vehicle_capacity": 3,
+      "max_ride_time": 30.0,
+      "max_route_duration": 360.0,
+      "served": 18,
+      "fully_served": true,
+      "our_objective": 300.4832,
+      "best_known": 300.48,
+      "best_known_is_proven_optimal": true,
+      "gap_pct": 0.0011,
+      "feasible": true,
+      "darp_checker_violations": 0,
+      "independent_v01_checker_violations": 0,
+      "solve_time_s": 12.256,
+      "seed": 1,
+      "lns_iterations": 200,
+      "solver_name": "milexium-decide-darp",
+      "solver_version": "0.2.0"
+    }
+  ]
+}
