@@ -14,6 +14,10 @@ dependencies = [
     "jsonschema==4.26.0",
     "fastapi==0.136.3",
     "matplotlib==3.10.8",
+    # GTFS-Realtime adapter (packages/connect/gtfs_realtime.py): Google's official
+    # protobuf bindings for the FeedMessage schema, plus its protobuf runtime.
+    "gtfs-realtime-bindings==2.1.0",
+    "protobuf==6.33.5",
 ]
 
 [project.optional-dependencies]

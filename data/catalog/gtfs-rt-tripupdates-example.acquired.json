@@ -1,0 +1,12 @@
+{
+  "acquired_at": "2026-07-24T16:37:19.514557+00:00",
+  "dataset_id": "gtfs-rt-tripupdates-example",
+  "free_gb_after": 327.85,
+  "free_gb_before": 327.8,
+  "license_and_commercial_rights": "Apache-2.0 (repository LICENSE); commercial use permitted with attribution and license notice retained",
+  "raw_path": "data\\standards\\gtfs-rt-tripupdates-example.528d910683b153ff.asciipb",
+  "retained_bytes": 2056,
+  "sha256": "528d910683b153ff162335548ad48a18ed4cb9f482bb6ad7dfa2fa45b6e732f5",
+  "source_url": "https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/spec/en/examples/trip-updates-full.asciipb",
+  "zone": "standards"
+}
