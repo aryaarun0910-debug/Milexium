@@ -1,0 +1,34 @@
+# Minimal OpenTelemetry Collector config for local dev (ADR-0026 observability).
+# Receives OTLP from the Rust/TypeScript/Python services and logs to the
+# console. Real exporters (a tracing backend) are a follow-up; this proves the
+# cross-language OTLP path locally.
+#
+# Redaction note (blueprint/10): services must NOT emit rider-identifiable or
+# sensitive payloads as span/metric attributes; the collector is not a
+# substitute for that discipline at the source.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  debug:
+    verbosity: normal
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

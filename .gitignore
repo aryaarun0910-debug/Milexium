@@ -10,6 +10,11 @@ venv/
 node_modules/
 dist/
 .vercel/
+.pnpm-store/
+
+# Rust
+/target/
+**/target/
 
 # Data and models (large artifacts stay out of git)
 *.pkl
@@ -59,6 +64,9 @@ artifacts/golden-path/
 # Environment
 .env
 .env.*
+# ...but keep committed example templates (secrets go in the real .env)
+!.env.example
+!**/.env.example
 
 # OS / editor
 .DS_Store
