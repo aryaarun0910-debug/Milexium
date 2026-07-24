@@ -31,6 +31,11 @@ class CatalogEntry:
     retained_bytes: int
     sha256: str | None
     rights: str
+    # ADR-0032 object-store backing: the content address the raw object is
+    # ALSO stored under in MinIO (== sha256), and its bucket. None for datasets
+    # acquired local-disk-only (older records simply omit these fields).
+    object_store_key: str | None = None
+    object_store_bucket: str | None = None
 
 
 def _acquired_record(dataset_id: str) -> dict | None:
@@ -57,6 +62,8 @@ def inventory(catalog_dir: str | Path = _CATALOG) -> list[CatalogEntry]:
                 retained_bytes=record["retained_bytes"] if record else 0,
                 sha256=record["sha256"] if record else None,
                 rights=manifest.license_and_commercial_rights,
+                object_store_key=record.get("object_store_key") if record else None,
+                object_store_bucket=record.get("object_store_bucket") if record else None,
             )
         )
     return entries

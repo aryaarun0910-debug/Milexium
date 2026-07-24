@@ -1,0 +1,49 @@
+id: MX-C-MINIO-ESTATE-002
+status: completed
+dispatched_date: "2026-07-24"
+completed_date: "2026-07-24"
+# Note: the governance tests live in test_estate_acquisition.py (no file named
+# test_estate_governance.py exists); the acceptance run used the real filename.
+adr: architecture/decisions/0036-minio-backed-estate-raw-zone.md
+objective: >
+  Back the estate raw zone with the FREE, already-running MinIO (ADR-0032) — no
+  paid cloud. When acquire() promotes a validated object to the raw zone, ALSO
+  store it content-addressed in MinIO and record the key in the catalog. Keep the
+  local-disk path working (additive, behind config). Tests round-trip against the
+  running MinIO and skip cleanly when it is absent.
+owned_paths:
+  - packages/estate/acquire.py    # mirror the promoted object into MinIO when a store is provided/available; record object_store_key in the catalog entry
+  - packages/estate/catalog.py    # surface object_store_key/bucket in CatalogEntry + inventory (read from the acquired record if present)
+  - conformance/property-tests/test_estate_minio_backing.py
+read_only_dependencies:
+  - packages/estate/object_store.py (MinioObjectStore — import and use; do NOT modify)
+  - packages/estate/manifest.py
+  - conformance/property-tests/test_object_store.py (skip-pattern reference)
+normative_contracts:
+  - blueprint/17 (governed estate; raw objects immutable + content-addressed)
+  - ADR-0032 (MinioObjectStore, content-addressed; local disk remains default)
+required_outputs:
+  - additive object-store backing in acquire.py (default OFF / local-disk still works)
+  - catalog.py surfacing the object-store key
+  - conformance/property-tests/test_estate_minio_backing.py
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_estate_minio_backing.py conformance/property-tests/test_estate_governance.py -q"
+  - "py -3 -m pytest packages/ conformance/ -q  # whole suite still green, estate governance tests unbroken"
+security_and_privacy_invariants:
+  - "HARD CONSTRAINT: NO paid-cloud SDK (no boto3/aws/gcs/azure) and NO cloud credentials — MinIO only. The `minio` client is the existing optional `objectstore` extra; import lazily, and when it/the container is absent the object-store backing is simply skipped and local disk is authoritative."
+  - "Content-addressed: the MinIO key == the object's sha256 (the same digest acquire already computes), so the estate key and the object-store key are the SAME value — verifiable, dedup-safe, tamper-evident on read."
+  - "Existing local-disk acquire() behavior and its 5 governance tests must remain byte-for-byte unchanged when no object store is configured."
+failure_injections:
+  - "acquire() with MinIO backing enabled: object lands in the raw zone AND in MinIO under its sha256; catalog entry records object_store_key; get(key) round-trips and equals the raw bytes"
+  - "MinIO absent/unreachable: acquire() still succeeds via local disk; catalog entry has no object_store_key; no failure"
+compatibility_matrix:
+  - "round-trip a small real object (or an injected test object via the existing downloader-injection seam) through acquire()->MinIO->get(); skip when minio/container absent"
+evidence_to_emit:
+  - "test counts; a catalog entry showing object_store_key == sha256; confirmation local-disk path is unchanged when the store is off"
+upstream_blockers: []
+downstream_consumers: [production per-tenant object storage (Specified, needs real cloud creds — deferred until a YC partner)]
+notes: >
+  Disjoint from D/G/A-ops — packages/estate only. Do NOT touch pyproject (minio
+  extra already declared), CI, shared docs, or write ADRs/commit. Keep the
+  downloader-injection seam (acquire(..., downloader=...)) so the test never hits
+  the network. Never commit .env or any secret.

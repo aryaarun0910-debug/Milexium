@@ -32,6 +32,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from packages.estate.manifest import AcquisitionManifest, load_manifest
+from packages.estate.object_store import (
+    MinioObjectStore,
+    ObjectStoreConfig,
+    minio_available,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DATA = _REPO_ROOT / "data"
@@ -56,6 +61,7 @@ class AcquisitionResult:
     sha256: str
     retained_bytes: int
     catalog_entry_path: Path
+    object_store_key: str | None = None
 
 
 def _free_gb(path: Path) -> float:
@@ -68,6 +74,25 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _resolve_object_store() -> MinioObjectStore | None:
+    """Build a MinIO-backed store from infra/compose/.env, or return None when
+    the optional `minio` client, its credentials, or the container are absent.
+
+    Returning None keeps local disk authoritative and lets acquisition proceed
+    byte-for-byte unchanged (ADR-0032: local disk is the default; the free,
+    already-running MinIO is an additive backing, never a hard dependency).
+    """
+    if not minio_available():
+        return None
+    config = ObjectStoreConfig.from_compose_env()
+    if not config.secret_key:
+        return None
+    try:
+        return MinioObjectStore(config)
+    except Exception:  # noqa: BLE001 -- unreachable container => skip backing, don't fail acquisition
+        return None
 
 
 def _download(url: str, dest: Path) -> None:
@@ -89,10 +114,19 @@ def acquire(
     *,
     free_floor_gb: float = _DEFAULT_FREE_FLOOR_GB,
     downloader=_download,
+    object_store: MinioObjectStore | None = None,
+    back_with_object_store: bool = False,
 ) -> AcquisitionResult:
     """Acquire one dataset through the full governed sequence. `downloader` is
     injectable so tests can exercise the pipeline (quarantine, checksum,
-    promotion, catalog) without hitting the network."""
+    promotion, catalog) without hitting the network.
+
+    Object-store backing (ADR-0032) is additive and OFF by default: local disk
+    is always authoritative. Pass an explicit `object_store` (a MinioObjectStore
+    -- what tests inject), or `back_with_object_store=True` to auto-resolve the
+    free, already-running MinIO from infra/compose/.env. When neither the client
+    nor the container nor its creds are present, backing is silently skipped and
+    acquisition proceeds byte-for-byte as the local-disk path."""
     manifest = load_manifest(manifest_path)
 
     target_zone = _DATA / manifest.zone
@@ -138,6 +172,28 @@ def acquire(
         "free_gb_before": round(free_before, 2),
         "free_gb_after": round(_free_gb(_DATA), 2),
     }
+
+    # Additive MinIO backing (ADR-0032). The raw zone stays authoritative; if a
+    # store is available we ALSO mirror the just-promoted object into it,
+    # content-addressed. The object-store key IS the sha256 we already computed
+    # -- the estate key and the object-store key are the SAME content address --
+    # so this is dedup-safe and tamper-evident on read. When no store is
+    # configured, the entry below is byte-for-byte the original local-disk path.
+    store = object_store
+    if store is None and back_with_object_store:
+        store = _resolve_object_store()
+    object_store_key: str | None = None
+    if store is not None:
+        object_store_key = store.put(raw_path.read_bytes())
+        if object_store_key != checksum:
+            raise AcquisitionError(
+                f"{manifest.dataset_id}: object-store key {object_store_key} does not "
+                f"equal the estate content address {checksum}; the raw zone key and the "
+                "object-store key must be the same sha256 (blueprint 17 / ADR-0032)"
+            )
+        entry["object_store_key"] = object_store_key
+        entry["object_store_bucket"] = store.bucket
+
     _CATALOG.mkdir(parents=True, exist_ok=True)
     entry_path = _CATALOG / f"{manifest.dataset_id}.acquired.json"
     entry_path.write_text(json.dumps(entry, indent=2, sort_keys=True), encoding="utf-8")
@@ -148,4 +204,5 @@ def acquire(
         sha256=checksum,
         retained_bytes=retained_bytes,
         catalog_entry_path=entry_path,
+        object_store_key=object_store_key,
     )
