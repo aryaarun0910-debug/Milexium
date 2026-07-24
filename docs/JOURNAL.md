@@ -6,6 +6,55 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-24 (night, later): Phase 3 begins — forecast depth + Connect breadth; CI fixed
+
+First fixed the GitHub Actions CI, which had failed: root cause was
+`hashFiles()` in a job-level `if` (invalid — the whole workflow failed to
+compile, 0 jobs), plus two Linux-runner-only test bugs the run surfaced — the
+estate free-space tests tripped the runner's 20 GB floor (passed
+`free_floor_gb=0`), and, more importantly, two committed CSV panels hashed
+differently on Linux (LF) vs Windows (CRLF) so the evidence-registry sha256
+check failed. Fixed that correctly: marked the panels `binary` in
+`.gitattributes` (one canonical LF form everywhere) and recorded the portable
+LF hashes — the registry verifier had caught a genuine cross-platform
+reproducibility defect. Python + Rust jobs now pass; TS passes too.
+
+Then dispatched Phase 3 (Arya's pick: E forecast depth + B Connect breadth):
+
+- **E — forecast depth** (`packages/forecast/conformal.py`): serve-time
+  split-conformal prediction intervals, with the quantile index matching
+  `realdata/train_real_models.py` exactly (so it reproduces the committed
+  model-card half-widths). Global/unconditioned, justified by the repo's own
+  null Mondrian result (RND_QUESTIONS Q4). All four real zone-hour models
+  (AAR/Chicago/MTA bus/MTA subway) now serve forecasts through the runtime,
+  each with its correct per-feed feature schema (only the trailing zone column
+  differs). The honest, diagnostic finding: committed intervals overcover (AAR
+  98.1% vs 90% target), and refitting conformal on a random *exchangeable*
+  split of the same window recovers ~90% — isolating the overcoverage as
+  winter→spring distribution shift, not a method flaw, empirically confirming
+  the repo's own open Q4. A conformal interval is distribution-free only under
+  exchangeability, not a per-forecast guarantee. ADR-0030; 28 tests.
+- **B — Connect breadth** (`packages/connect/gtfs_realtime.py`): a
+  GTFS-Realtime adapter mapping VehiclePosition/TripUpdate → `Outcome`, with
+  real MBTA (.pb, 564 vehicles) and Apache-2.0 google (.asciipb) samples
+  acquired through the estate. The headline output is a genuine **canonical-
+  model gap** it surfaced: GTFS-RT is operational telemetry keyed by
+  (trip,stop,vehicle) with no rider request, but every canonical entity is
+  rider-request-keyed — so it maps only via a synthetic request_id placeholder
+  + heavy semantic loss. Finding: the canonical model lacks a first-class,
+  request-independent operational/telemetry entity (VehicleTelemetry/
+  StopTimeObservation) — a Program A follow-up. TODS/NeTEx deferred for the
+  same reason rather than half-built. Rights handled carefully (Apache-2.0
+  sample as the clean anchor; MBTA flagged with an unverifiable-commercial-
+  clause caveat). ADR-0031; 20 tests.
+
+Wired GtfsRealtimeAdapter into `packages/connect/__init__.py`; the B agent
+added `gtfs-realtime-bindings` + `protobuf` to pyproject. Suite: **509 passed**
+(461 → 509). Phase 3 D (feature store/champion-challenger/drift) and G (formal
+invariants) remain. Also gave Arya the WSL2-fix + Docker-install steps so the
+compose stack (Postgres/PostGIS/MinIO) + first real object-storage path can be
+wired once Docker is up.
+
 ## 2026-07-24 (night): polyglot foundation — Chris's architecture, adopted and phased
 
 Chris sent a detailed brief to evolve Milexium into a three-language platform

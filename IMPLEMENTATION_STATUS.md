@@ -139,14 +139,25 @@ checkable, tamper-evident, reproducible), not platform breadth.
    naive baselines into a reproducible leaderboard (Program E / `benchmarks/`).
 4. **Machine-readable evidence manifests** a third party can verify unaided.
 
-### Phase 3 — breadth & defensibility
+### Phase 3 — breadth & defensibility — IN PROGRESS (E + B done, 2026-07-24)
 
-- B: GTFS-Realtime streaming, reconciliation, change-data-capture, more
-  standards (TODS/NeTEx).
-- D: point-in-time feature store, champion/challenger promotion, drift detection.
-- E: serve-time conformal uncertainty; register all real models.
-- G: one or two machine-checked formal invariants (TLA+/SMT) on load-bearing
-  properties.
+| Item | Status | Evidence |
+|---|---|---|
+| **E — Forecast depth**: serve-time conformal intervals + all four real zone-hour models served | **Exists** (Demonstrated) | `packages/forecast/conformal.py`; ADR-0030; 28 tests. Honest finding: committed intervals overcover (AAR 98.1%), isolated to winter→spring shift (exchangeable split recovers ~90%), confirming RND_QUESTIONS Q4 |
+| **B — Connect breadth**: GTFS-Realtime adapter → `Outcome` (real MBTA + Apache-2.0 samples) | **Exists** (Demonstrated) | `packages/connect/gtfs_realtime.py`; ADR-0031; 20 tests |
+| **D** — point-in-time feature store, champion/challenger, drift detection | Specified | not started |
+| **G** — 1-2 machine-checked TLA+/SMT invariants | Specified | needs a TLA+/SMT toolchain installed |
+
+Suite after E+B: **509 passed** (461 → 509: +28 forecast, +20 GTFS-RT).
+
+**Canonical gap surfaced by B (a Program A follow-up, flagged):** GTFS-Realtime
+is operational telemetry keyed by `(trip, stop, vehicle)` with **no rider
+request**, but every canonical entity is rider-request-keyed — so GTFS-RT maps
+to `Outcome` only via a synthetic `request_id` placeholder and heavy semantic
+loss. The canonical model **lacks a first-class, request-independent operational/
+telemetry entity** (a `VehicleTelemetry`/`StopTimeObservation`). This is why
+TODS/NeTEx were deferred (Specified) rather than half-built — the same gap-driven
+canonical work should land first. See ADR-0031.
 
 ### Phase 4 — frontier (lighthouse only)
 
