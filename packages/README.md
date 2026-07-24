@@ -13,10 +13,17 @@ changes require an ADR in `architecture/decisions/` first.
 | `evidence/` | I — Evidence/Experience IR | v0.1 Exists: `EvidencePacket`/`ExperiencePacket` + independent hash-chain/schema verification, and a portable **evidence-pack export** (`build_evidence_pack`/`verify_evidence_pack`/`redact_pack`) a third party can re-verify without Milexium — see ADR-0009, 0012, 0017 |
 | `core/` | D — Core/adaptive memory | v0.1 Exists (partial): task/model registry (`ModelRegistry`, closed `TASK_REGISTRY`) cataloging this repo's 5 real trained models from `docs/MODEL_CARDS.md`; memory tiers, parameter-delta registry, calibration/drift services all Specified — see ADR-0010 |
 | `estate/` | C — data-estate layer | v0.1 Exists: manifest-gated acquisition (`AcquisitionManifest`, `acquire()` with free-space guard + quarantine + checksum + content-addressed promotion) and catalog inventory/free-space reporting; proves the governed `data/` estate — see ADR-0013 |
-| `forecast/` | E — Forecast runtime | v0.1 Exists: `ForecastRuntime` serves a `ForecastVintage` from the registered champion model, hash-verifying the artifact before predicting; proven end-to-end on the real Access-A-Ride booster — see ADR-0016 |
-| `decide/`, `replay/`, `explain/`, `forge/`, `fabric/`, `runtime/`, `edge/` | F, H, J, K, L | Not created yet — created when their upstream dependency has a versioned stub, per the dependency rules in `blueprint/19-agent-swarm-execution-system.md` |
+| `forecast/` | E — Forecast runtime | v0.1 Exists: `ForecastRuntime` serves a `ForecastVintage` from the registered champion model, hash-verifying the artifact before predicting; proven on the real Access-A-Ride booster — see ADR-0016 |
+| `decide/` | F — Decide/optimization | v0.1 Exists: Decision IR + grid-exact solver with honest optimal/feasible/infeasible/timeout status + an **independent** feasibility checker (one-way solver→checker dep); additive, not the founder-owned scheduler — see ADR-0022 |
+| `replay/` | H — Replay/comparison | v0.1 Exists: info-cutoff-safe historical replay + baseline-vs-Milexium metric comparison, worded as a modelled comparison (not causal proof) — see ADR-0019 |
+| `api/` | M — HTTP surface | v0.1 Exists: FastAPI app mirroring the SDK loop with an auto-generated OpenAPI contract at `/openapi.json` — see ADR-0021 |
+| `explain/`, `forge/`, `fabric/`, `runtime/`, `edge/` | J, K, L | Not created yet — created when their upstream dependency has a versioned stub, per the dependency rules in `blueprint/19-agent-swarm-execution-system.md` |
 
-Also present: `estate/` (Program C data-estate layer — see above).
+Also present: `estate/` (Program C data-estate layer — see above). Program C
+also now enforces **PostgreSQL row-level security** for tenant isolation
+(`packages/canonical/sql/rls_postgres.sql`, ADR-0018), and Program I gained
+**period/incident/procurement evidence bundles** (`packages/evidence/packs.py`,
+ADR-0020).
 
 **Owner:** whoever owns the corresponding workstream packet in `workstreams/`.
 

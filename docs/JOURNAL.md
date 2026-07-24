@@ -6,6 +6,64 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-24: Phase 1 complete — pilot-ready runtime (5 parallel packets)
+
+After merging the completion roadmap into IMPLEMENTATION_STATUS.md (reachable
+pilot-ready target vs unbounded full blueprint; the pilot gate), Arya said to
+finish Phase 1. Dispatched all five Phase-1 capabilities as parallel packets on
+disjoint package paths; all landed, reviewed in code, and integrated at 390
+passing tests (baseline 212 + 178), audit clean:
+
+- **M — HTTP/OpenAPI API + SDK methods** (`packages/api/`, `packages/sdk/`):
+  `MilexiumClient` gained `forecast()` and `export_pack()`; a FastAPI app
+  mirrors the SDK loop over HTTP with an auto-generated OpenAPI contract — the
+  language-neutral surface other software integrates against. Honestly excludes
+  ingestion/forecast from HTTP (adapters/model files don't belong as JSON) and
+  leaves auth/gateway Specified. A tampered chain surfaces verified=false over
+  HTTP; an evidence pack re-verifies from the HTTP response bytes alone.
+- **C — PostgreSQL row-level security** (`sql/rls_postgres.sql`): database-layer
+  tenant isolation with `FORCE ROW LEVEL SECURITY` on all 12 tenant-scoped
+  tables. The crux handled correctly — the `milexium_dev` role owns the tables,
+  and a plain `ENABLE` lets the owner bypass RLS (false green); `FORCE` binds
+  the owner. Proven with a raw `SELECT` under a different tenant's GUC returning
+  zero rows, and `NO FORCE` making the owner see everything again. Unset session
+  is deny-all.
+- **H — replay + comparison** (`packages/replay/`): info-cutoff-safe replay
+  (sole authority = canonical `known_as_of`) + baseline-vs-Milexium metric
+  comparison. "Modelled comparison, not causal proof" enforced three ways in
+  code (single-sourced note, a validator that raises on `causal_proof=True`,
+  structural observed/simulated provenance); no dollar/savings field exists.
+- **I — period/incident/procurement evidence bundles** (`packages/evidence/
+  packs.py`): multi-decision bundles reusing the single-pack machinery; each
+  `verify_*` recomputes the outer checksum AND re-runs every embedded pack's own
+  hash chain, so a re-anchored outer checksum is still caught by the inner
+  chain. Procurement bundle honestly separates available / not-yet-available
+  (needs legal/ops) items with no compliance claims. Cross-tenant bundles
+  refused at build time.
+- **F — Decision program slice** (`packages/decide/`): Decision IR + a pure-
+  Python grid-exact branch-and-bound solver (greedy fallback) with honest
+  status — a timeout incumbent is structurally never labelled OPTIMAL — plus an
+  **independent** feasibility checker. Independence verified in code: the
+  checker imports only `canonical.vocab` + `decide.ir`, never the solver; the
+  solver self-audits via the checker before returning (one-way dep). Adversarial
+  tests hand-build solutions the solver never produced. Strictly additive — does
+  not touch `reference_agency/` or the founder-owned YC scheduler, and
+  `packages/decide/__init__.py` says so explicitly. No `ortools`/new dependency
+  added.
+
+Wrote ADRs 0018-0022 (C kept 0018, which it had baked into its files). All five
+packets stayed within their owned paths — verified the working tree was exactly
+the disjoint packet paths before integrating, and confirmed the two claims that
+mattered most (F's solver→checker one-way import; C's FORCE-RLS blocking the
+owner) directly in code, not just from the reports.
+
+Phase 1 is complete; every capability is **Demonstrated**, none Validated. The
+critical path is now landing a design partner — Phase 1 makes that materially
+easier (HTTP integration, DB-layer isolation, handable verifiable evidence) but
+no further code crosses the Demonstrated→Validated gate. Phase 2 (breadth:
+GTFS-Realtime, feature store, serve-time uncertainty, a formal invariant or two)
+is the next block if/when Arya wants it.
+
 ## 2026-07-23 (night): forecast runtime + evidence-pack export
 
 Finished the two next-unblocked strategic targets, built directly (not via

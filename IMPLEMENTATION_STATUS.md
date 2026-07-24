@@ -31,7 +31,29 @@ Program depth today (rough engineering judgment, not precision): A ~25%,
 B ~20%, C ~15%, D ~10%, E ~10%, G ~15%, I ~20%, M ~10%; F/H 0% (F held —
 overlaps the YC-owned scheduler task); J/K/L 0% (frontier).
 
-### Phase 1 — pilot-ready (the active phase)
+### Phase 1 — pilot-ready — **COMPLETE (2026-07-24)**
+
+All five Phase-1 capabilities built, tested (390 tests total, 0 failed), and
+committed as five parallel packets:
+
+| # | Capability | Program | Status | Evidence |
+|---|---|---|---|---|
+| 1 | HTTP/OpenAPI API + `MilexiumClient.forecast()`/`export_pack()` | M | **Exists** (Demonstrated) | `packages/api/`, `packages/sdk/`; ADR-0021 |
+| 2 | PostgreSQL row-level security (FORCE) + adversarial tenant-isolation proof | C | **Exists** | `packages/canonical/sql/rls_postgres.sql`; ADR-0018 |
+| 3 | Historical replay (info-cutoff safe) + baseline-vs-Milexium comparison | H | **Exists** (Demonstrated, modelled comparison — not causal) | `packages/replay/`; ADR-0019 |
+| 4 | Period + incident evidence packs + honest procurement bundle | I | **Exists** | `packages/evidence/packs.py`; ADR-0020 |
+| 5 | Decision IR + independent feasibility checker + solver (honest status) | F | **Exists** (v0.1, additive — not the founder-owned scheduler) | `packages/decide/`; ADR-0022 |
+
+Program depth after Phase 1: A ~25%, B ~20%, C ~25%, D ~10%, E ~10%, F ~10%
+(was 0), G ~15%, H ~15% (was 0), I ~30%, M ~25% (was 10). J/K/L still 0.
+
+**The pilot gate stands unchanged:** every capability above is Demonstrated;
+none is Validated. The critical path is now *land one design partner* — Phase 1
+made that materially easier (a partner can integrate over HTTP, their data is
+isolated at the DB layer, and they can be handed an independently-verifiable
+evidence bundle) but building more code does not cross the gate.
+
+<details><summary>Original Phase 1 plan (for reference)</summary>
 
 The capabilities that make a real shadow-mode pilot possible:
 
@@ -50,7 +72,9 @@ The capabilities that make a real shadow-mode pilot possible:
    duplicating, the YC-roadmap scheduler; must never touch `reference_agency/`
    or YC materials.
 
-### Phase 2 — breadth & defensibility
+</details>
+
+### Phase 2 — breadth & defensibility (next)
 
 - B: GTFS-Realtime streaming, reconciliation, change-data-capture, more
   standards (TODS/NeTEx).
