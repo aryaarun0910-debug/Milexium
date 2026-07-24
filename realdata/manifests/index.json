@@ -9,7 +9,7 @@
     },
     {
       "panel": "aar_daily.csv",
-      "sha256": "fbad46fea6e530b0d706696e07802038ee71ee220c9c65b9d059c1e8cf44f300",
+      "sha256": "13f2d42c9f261c0caca004ee637bf96a74e1486ec61d7fce3071487c20fb5811",
       "rows": 1776,
       "source": "data.ny.gov ['vxuj-8kew']"
     },
@@ -39,7 +39,7 @@
     },
     {
       "panel": "weather_daily.csv",
-      "sha256": "0005f82388e37bf2d2448f3df7bc2bcf2c88c8627f25baacf7214a524cc1e20f",
+      "sha256": "a12952ef121e85aa2c154931c4cc37120180b5e713a414363c2b83a9436f58a8",
       "rows": 5638,
       "source": "archive-api.open-meteo.com ['ERA5 archive']"
     },

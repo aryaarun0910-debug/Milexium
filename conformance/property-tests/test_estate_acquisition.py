@@ -94,8 +94,10 @@ def test_checksum_mismatch_leaves_object_in_quarantine(tmp_path: Path) -> None:
     def _fake_download(url, dest):
         Path(dest).write_bytes(b"real content that will not match the fake checksum")
 
+    # free_floor_gb=0: this test is about the checksum guard, not free space --
+    # a CI runner with little free disk must not trip the space floor first.
     with pytest.raises(AcquisitionError, match="sha256 mismatch"):
-        acquire(path, downloader=_fake_download)
+        acquire(path, downloader=_fake_download, free_floor_gb=0.0)
 
     repo_root = Path(__file__).resolve().parents[2]
     # object stayed in quarantine, never reached the trusted standards zone
@@ -119,7 +121,8 @@ def test_clean_acquisition_promotes_and_catalogs(tmp_path: Path) -> None:
     def _fake_download(url, dest):
         Path(dest).write_bytes(content)
 
-    result = acquire(path, downloader=_fake_download)
+    # free_floor_gb=0: about promotion/catalog, not free space (see above).
+    result = acquire(path, downloader=_fake_download, free_floor_gb=0.0)
 
     assert result.sha256 == expected
     assert result.retained_bytes == len(content)

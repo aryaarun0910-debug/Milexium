@@ -1,8 +1,8 @@
 {
   "panel": "aar_daily.csv",
-  "built_utc": "2026-07-22T08:36:22+00:00",
-  "sha256": "fbad46fea6e530b0d706696e07802038ee71ee220c9c65b9d059c1e8cf44f300",
-  "bytes": 31855,
+  "built_utc": "2026-07-24T15:56:55+00:00",
+  "sha256": "13f2d42c9f261c0caca004ee637bf96a74e1486ec61d7fce3071487c20fb5811",
+  "bytes": 30078,
   "source": {
     "name": "NYC Access-A-Ride daily scheduled trips",
     "portal": "data.ny.gov",

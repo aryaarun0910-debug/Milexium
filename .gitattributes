@@ -3,3 +3,9 @@
 contracts/jsonschema/*.json text eol=lf
 contracts/openapi/*.json    text eol=lf
 contracts/generate.py       text eol=lf
+
+# Committed data panels are treated as binary -- git must never
+# line-ending-convert them, so their recorded sha256 (realdata/manifests/) is
+# identical on every platform. Previously CRLF-on-Windows vs LF-on-Linux made
+# the evidence-registry hash check fail in CI. LF is the single canonical form.
+realdata/panels/*.csv binary

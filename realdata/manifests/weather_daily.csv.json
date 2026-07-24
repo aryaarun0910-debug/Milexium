@@ -1,8 +1,8 @@
 {
   "panel": "weather_daily.csv",
   "built_utc": "2026-07-22T08:38:10+00:00",
-  "sha256": "0005f82388e37bf2d2448f3df7bc2bcf2c88c8627f25baacf7214a524cc1e20f",
-  "bytes": 201175,
+  "sha256": "a12952ef121e85aa2c154931c4cc37120180b5e713a414363c2b83a9436f58a8",
+  "bytes": 195536,
   "source": {
     "name": "Daily weather (NYC + Chicago)",
     "portal": "archive-api.open-meteo.com",
