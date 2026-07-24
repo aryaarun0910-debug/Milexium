@@ -2,6 +2,31 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-24 (night): infra live — compose stack up, object storage + PostGIS cleared
+
+WSL2 + Docker Desktop came up on the dev machine (Docker Engine 29.6.2). Brought
+up the `infra/compose` stack — PostgreSQL 16 + **PostGIS 3.4**, **MinIO**
+(S3-compatible), and an OpenTelemetry collector, all healthy. The Postgres
+container is on host port 5433 so it coexists with the native PostgreSQL 17
+(5432, ADR-0006); secrets live in a gitignored `infra/compose/.env`.
+
+Wired the **first real object-storage path**: `packages/estate/object_store.py`
+`MinioObjectStore` — content-addressed (key == sha256), so storage dedups and a
+`get` verifies the bytes hash back to the key (tamper/corruption-evident on
+every read, same stance as the event-log hash chain). A round-trip conformance
+test puts/gets/dedups a real object against the running MinIO and proves a
+corrupted object is rejected (4 tests); it skips cleanly when `minio` (the
+optional `objectstore` extra) or the container is absent, so CI stays green.
+
+Two long-standing blockers **cleared at the dev level** (ADR-0032): object
+storage (was "no S3 credentials") is now **Exists (dev)**, and PostGIS (was
+"not installed") is available. Production still needs real cloud credentials +
+per-tenant isolation; pointing `PostgresCanonicalStore` at the containerized
+PostGIS is a later additive step (the native instance still serves the tests).
+
+Also: Phase 3 (E forecast depth + B Connect breadth) landed earlier today —
+committed, pushed, CI green on HEAD.
+
 Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.

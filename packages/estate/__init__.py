@@ -27,6 +27,12 @@ from packages.estate.acquire import (
     acquire,
 )
 from packages.estate.catalog import CatalogEntry, inventory, free_space_report
+from packages.estate.object_store import (
+    MinioObjectStore,
+    ObjectStoreConfig,
+    ObjectStoreError,
+    minio_available,
+)
 
 __all__ = [
     "AcquisitionManifest",
@@ -38,6 +44,10 @@ __all__ = [
     "CatalogEntry",
     "inventory",
     "free_space_report",
+    "MinioObjectStore",
+    "ObjectStoreConfig",
+    "ObjectStoreError",
+    "minio_available",
 ]
 
 CONTRACT_VERSION = "0.1.0"

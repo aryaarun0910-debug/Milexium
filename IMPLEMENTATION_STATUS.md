@@ -344,15 +344,16 @@ vendoring decisions:
 1. **TurboVec vendoring** (`architecture/decisions/0005-...md`) — the
    expansion plan explicitly forbids vendoring it without a license/security/
    maturity review. Not started.
-2. **Object storage** — no S3/GCS/Azure Blob credentials configured anywhere
-   in this environment. Program C's "immutable object and artifact manifests"
-   cannot become Exists without either real cloud credentials or an explicit
-   decision to simulate it with a local content-addressed directory (dev-only,
-   would need to be labeled as such).
-3. **PostGIS** — not installed (ships separately from the PostgreSQL 17
-   engine). No canonical entity currently needs geometry, so this is not
-   urgent, but Program C's "PostgreSQL/PostGIS" non-negotiable is only
-   half-satisfied by the engine install alone.
+2. ~~**Object storage**~~ — **CLEARED (dev, 2026-07-24, ADR-0032)**. MinIO
+   (S3-compatible) runs in the `infra/compose` stack; `packages/estate/
+   object_store.py` provides a content-addressed `MinioObjectStore` (key ==
+   sha256, dedup, read-time integrity) with a passing round-trip test against
+   it. **Exists (dev)**. Production still needs real cloud credentials +
+   per-tenant bucket isolation (not the dev MinIO root user).
+3. ~~**PostGIS**~~ — **CLEARED (dev, 2026-07-24, ADR-0032)**. PostGIS 3.4 runs
+   in the compose stack (Postgres container on host port 5433, coexisting with
+   the native PostgreSQL 17 on 5432). No canonical entity uses geometry yet, so
+   wiring a spatial column is a later additive step; the extension is available.
 4. **GPU / cloud compute for Forge, Runtime, and hardware programs (J, K, L)**
    — genuinely out of scope for this local machine. These stay Specified
    indefinitely absent a decision to provision (and pay for) real compute.

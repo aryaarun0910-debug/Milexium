@@ -30,6 +30,12 @@ dev = [
 postgres = [
     "psycopg[binary]>=3.2,<3.3",
 ]
+# S3-compatible object storage (packages/estate/object_store.py, ADR-0032):
+# the dev MinIO container from infra/compose. Optional -- the object-store test
+# skips when it's absent, so CI (which doesn't install this extra) stays green.
+objectstore = [
+    "minio>=7,<8",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

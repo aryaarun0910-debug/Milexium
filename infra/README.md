@@ -13,12 +13,26 @@ CI lives in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — a
 path-aware matrix: the Python suite runs on every push; the Rust and TypeScript
 jobs activate automatically once `Cargo.toml` / `pnpm-workspace.yaml` exist.
 
-## Prerequisite: Docker is not yet available on the dev machine
+## Status: the stack is up (2026-07-24, ADR-0032)
 
-`docker` is not installed and WSL2 currently errors ("Class not registered").
-The compose stack is written and ready; bringing it up needs WSL2 fixed and
-Docker Desktop installed first. Until then, local dev uses the natively-installed
-PostgreSQL 17 (ADR-0004/0006) and the SQLite path; object storage is Specified.
+WSL2 + Docker Desktop are operational (Docker Engine 29.6.2, WSL2 kernel). The
+compose stack runs:
+
+```
+docker compose -f infra/compose/docker-compose.yml up -d
+```
+
+- **PostgreSQL 16 + PostGIS 3.4** on host port **5433** (not 5432 — the native
+  PostgreSQL 17 from ADR-0006 keeps 5432; the container adds PostGIS and is the
+  preferred dev target per ADR-0004).
+- **MinIO** (S3-compatible object storage) — S3 API on `localhost:9000`, console
+  on `:9001`. Backs `packages/estate/object_store.py` (content-addressed
+  immutable artifacts).
+- **OpenTelemetry collector** — OTLP on `4317`/`4318`.
+
+Copy `compose/.env.example` to `compose/.env` and set local secrets first (the
+real `.env` is gitignored). Both PostGIS and object-storage blockers are now
+cleared at the dev level (see `IMPLEMENTATION_STATUS.md`).
 
 ## Deferred (ADR-0026)
 
