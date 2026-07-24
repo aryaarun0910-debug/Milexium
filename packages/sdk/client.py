@@ -7,6 +7,8 @@ and one stable public surface, not new domain logic. Every method delegates:
 - `ingest`                      -> packages.connect.adapter.parse_batch
 - `record_decision`/`_override` -> SqliteCanonicalStore.append_event
 - `evidence_for`                -> packages.evidence.build_evidence_packet
+- `export_pack`                 -> packages.evidence.build_evidence_pack
+- `forecast`                    -> packages.forecast.ForecastRuntime
 - `verify`                      -> packages.verify.verify_chain
 
 The SDK core never imports a *concrete* adapter (ReferenceAgencyTripsAdapter,
@@ -31,19 +33,23 @@ from packages.canonical import (
     new_id,
 )
 from packages.connect.adapter import parse_batch
-from packages.evidence import build_evidence_packet
+from packages.evidence import build_evidence_pack, build_evidence_packet
 from packages.verify import verify_chain
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
     from pydantic import BaseModel
 
-    from packages.canonical import DecisionEvent, Outcome, ReasonCode
+    from packages.canonical import DecisionEvent, ForecastVintage, ModelVersion, Outcome, ReasonCode
     from packages.connect.adapter import (
         QuarantinedRow,
         SemanticLossRecord,
         SourceAdapter,
     )
-    from packages.evidence import EvidencePacket
+    from packages.core import ModelRegistry
+    from packages.evidence import EvidencePack, EvidencePacket
     from packages.verify import ChainViolation
 
 
@@ -189,6 +195,65 @@ class MilexiumClient:
         events = self._store.history(self._tenant_id, aggregate_id)
         raw_rows = self._store.raw_rows_for_tenant(self._tenant_id)
         return build_evidence_packet(events, raw_rows, outcome=outcome)
+
+    def export_pack(
+        self, aggregate_id: str, outcome: "Outcome | None" = None
+    ) -> "EvidencePack":
+        """Build a portable, independently-verifiable EvidencePack for one
+        aggregate -- the shareable sibling of `evidence_for`.
+
+        Pulls the same history + raw rows as `evidence_for`, but wraps the
+        packet with its own raw event bytes and a bundle checksum so a third
+        party can re-verify the hash chain WITHOUT Milexium and without a live
+        store (packages.evidence.build_evidence_pack). Use `evidence_for` for an
+        in-process packet, `export_pack` to hand a partner a self-contained file.
+
+        Raises ValueError (from the builder) if the aggregate has no history."""
+        events = self._store.history(self._tenant_id, aggregate_id)
+        raw_rows = self._store.raw_rows_for_tenant(self._tenant_id)
+        return build_evidence_pack(events, raw_rows, outcome=outcome)
+
+    def forecast(
+        self,
+        task: str,
+        feature_row: dict,
+        *,
+        horizon_start: datetime,
+        horizon_end: datetime,
+        issued_at: datetime,
+        interval_half_width: float | None = None,
+        registry: "ModelRegistry",
+        artifact_resolver: "Callable[[ModelVersion], str | Path]",
+    ) -> "ForecastVintage":
+        """Serve one point-in-time forecast for `task` from its champion model.
+
+        `registry` and `artifact_resolver` are taken per call rather than held
+        on the client: the canonical loop (ingest/decide/evidence) needs no ML
+        infrastructure at all, so requiring a model registry + artifact resolver
+        just to construct a client -- or to record a decision -- would couple the
+        ten-minute `in_memory` path to xgboost and a model catalog it does not
+        need. They are the same two dependencies `ForecastRuntime` itself is
+        constructed from, threaded straight through. A caller making many
+        forecasts and wanting the runtime's per-artifact load cache should hold a
+        `ForecastRuntime` directly (this facade builds a fresh one per call).
+
+        Demonstrated on real *aggregate* public data with a declared model
+        interval -- `interval_half_width`, if given, is a symmetric model
+        interval, not a probability or guarantee, and an aggregate forecast does
+        not validate an individual dispatch (blueprint 01)."""
+        # Lazy import: keeps xgboost/pandas off the SDK's import path for callers
+        # that only drive the canonical loop.
+        from packages.forecast import ForecastRuntime
+
+        runtime = ForecastRuntime(registry, artifact_resolver)
+        return runtime.forecast(
+            task,
+            feature_row,
+            horizon_start=horizon_start,
+            horizon_end=horizon_end,
+            issued_at=issued_at,
+            interval_half_width=interval_half_width,
+        )
 
     def verify(self, aggregate_id: str) -> "tuple[ChainViolation, ...]":
         """Run the independent hash-chain verifier over this aggregate's raw

@@ -16,10 +16,12 @@ lets an external developer drive the whole loop without knowing which internal
 package (`canonical`, `connect`, `evidence`, `verify`) each capability lives in.
 It adds no new domain logic.
 
-Deliberately **not** in this v0.1 slice (all Specified, see
-blueprint/08-sdk-api-and-developer-experience.md): the HTTP/OpenAPI server, the
-CLI, plugin certification, auth, and the multi-tenant API gateway. The value
-here is narrow and honest -- one import, one client, the whole loop reachable.
+The HTTP/OpenAPI surface over this same client lives in a separate package,
+`packages.api` (a FastAPI backend), so non-Python software can integrate the
+loop. Still Specified (all per blueprint/08-sdk-api-and-developer-experience.md):
+the CLI, plugin certification, auth, the multi-tenant API gateway, and the
+TypeScript/Rust SDKs. The value here is narrow and honest -- one import, one
+client, the whole loop reachable, including `forecast` and `export_pack`.
 
 Not wired into a top-level `packages/__init__.py`; import directly as above.
 """

@@ -1,0 +1,23 @@
+"""Program M (v0.1 HTTP surface): the Milexium HTTP/OpenAPI API.
+
+A FastAPI backend over `packages.sdk.MilexiumClient` that lets non-Python
+software integrate the decision loop. This is an API package, not a website:
+it serves JSON and an OpenAPI schema, no rendered pages.
+
+Public surface:
+
+    from packages.api import app                # the ASGI app (uvicorn packages.api:app)
+    from packages.api import create_app         # build a fresh app over an injected client
+    from packages.api import in_memory_client   # the demo store-backing seam
+
+The machine-readable API contract is the OpenAPI document FastAPI serves at
+`/openapi.json` (browsable at `/docs`). See `packages.api.app` for the endpoint
+set and the explicit v0.1 scope boundaries (no ingestion/forecast over HTTP; no
+auth/multi-tenant gateway/rate limiting -- all Specified).
+"""
+
+from packages.api.app import app, create_app, in_memory_client
+
+__all__ = ["app", "create_app", "in_memory_client"]
+
+__version__ = "0.1.0"

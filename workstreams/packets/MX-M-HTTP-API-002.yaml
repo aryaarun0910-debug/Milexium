@@ -1,0 +1,25 @@
+id: MX-M-HTTP-API-002
+status: completed
+completed_date: "2026-07-24"
+objective: >
+  Expose the Milexium loop over HTTP (FastAPI + OpenAPI) and add forecast()/
+  export_pack() to the SDK, so non-Python software integrates against a
+  language-neutral, machine-readable contract.
+owned_paths: [packages/api/, packages/sdk/, architecture/decisions/0021-http-api-and-sdk-forecast-export.md]
+read_only_dependencies: [packages/canonical/, packages/evidence/, packages/forecast/, packages/core/]
+normative_contracts: [blueprint/08-sdk-api-and-developer-experience.md]
+required_outputs:
+  - packages/api/{app,__init__}.py
+  - packages/sdk/client.py (forecast, export_pack)
+  - conformance/fixtures/test_sdk_forecast_export.py
+  - conformance/property-tests/test_api_endpoints.py
+acceptance_commands: ["py -3 -m pytest conformance/property-tests/test_api_endpoints.py conformance/fixtures/test_sdk_forecast_export.py -v"]
+security_and_privacy_invariants:
+  - "auth/multi-tenant gateway/rate-limiting are Specified, not faked"
+  - "verify checks history first (404 unknown aggregate), never verified=true over zero rows"
+failure_injections:
+  - "tampered chain -> verified=false surfaced over HTTP"
+  - "unknown body field / bad reason code / naive datetime -> 422"
+evidence_to_emit: ["17 tests; evidence pack re-verifies from HTTP response bytes alone"]
+upstream_blockers: []
+downstream_consumers: [external non-Python integrators; future CLI, TS/Rust SDKs]
