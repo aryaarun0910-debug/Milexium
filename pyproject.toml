@@ -36,6 +36,13 @@ postgres = [
 objectstore = [
     "minio>=7,<8",
 ]
+# Formal methods (Program G, architecture/formal/): the free z3 SMT solver used
+# to machine-check the ServiceRequest state-machine and hash-chain invariants
+# (ADR-0033). The conformance test importorskip's z3 so a machine without it
+# skips cleanly; CI installs this extra so the proofs actually RUN there.
+formal = [
+    "z3-solver==5.0.0.0",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

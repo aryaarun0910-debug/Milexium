@@ -28,6 +28,10 @@ jobs:
           # clean runner (Postgres/API/TLC test modules import these; the tests
           # themselves skip cleanly when the DB/data/artifacts are absent).
           pip install "psycopg[binary]" httpx duckdb
+          # Program G formal-methods extra (z3): installed so the machine-checked
+          # state-machine + hash-chain proofs (conformance/property-tests/
+          # test_formal_smt.py) RUN on CI rather than importorskip-skipping.
+          pip install -e ".[formal]"
       - name: Test (platform suite)
         run: python -m pytest packages/ conformance/ -q
       - name: Contract drift check
