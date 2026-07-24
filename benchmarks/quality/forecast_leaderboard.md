@@ -1,5 +1,5 @@
 # Forecast demand leaderboard -- honest results
-_Generated 2026-07-24T14:52:21.499551+00:00 by `benchmarks/quality/build_forecast_leaderboard.py`. Every value is copied verbatim from a committed metrics file and carries its source file + JSON-path in `forecast_leaderboard.json`._
+_Generated 2026-07-24T22:09:16.414641+00:00 by `benchmarks/quality/build_forecast_leaderboard.py`. Every value is copied verbatim from a committed metrics file and carries its source file + JSON-path in `forecast_leaderboard.json`._
 
 Real demand forecasts on real AGGREGATE public data under strict temporal (forward) evaluation. Demonstrated, NOT operator-validated dispatch. A metric is not a probability. Every model is shown against its own seasonal-naive baseline.
 

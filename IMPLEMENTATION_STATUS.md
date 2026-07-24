@@ -168,10 +168,49 @@ maps through a synthetic `request_id`: on the real MBTA sample it went from 251
 quarantined**. TODS remains Specified for a *different* missing family
 (`Block`/`RunCut`/`PieceOfWork` — scheduling, not telemetry).
 
-### Phase 4 — frontier (lighthouse only)
+### Phase 4 — pilot conversion, NOT frontier (2026-07-24)
 
-J (Forge/self-improving), K (silicon/runtime), L (confidential/edge) — only
-once real usage justifies them.
+The blueprint's Phase 4 is J/K/L (Forge, silicon, confidential/edge). Those stay
+**lighthouse-only** — they need GPU/cloud compute (blocker #4) and a demand
+signal that does not exist. Building them pre-traction is exactly the
+"infrastructure before demand" trap `blueprint/15-risks-and-falsification.md`
+warns about.
+
+What actually came next is **converting attention into data** — and it is not a
+detour from the roadmap, it is depth in existing programs, sequenced by demand:
+
+| Item | Program | Status | Evidence |
+|---|---|---|---|
+| **Deadhead teardown** — localises empty vehicle-time to hour, day and run from trip-level records | H (was ~15%, the weakest spine program) | **Exists** (Demonstrated) | `packages/replay/teardown.py`; ADR-0039; **35 tests**. Real TLC week: 8.89% of vehicle time empty. Backs the sentence already sent to 15 operators — NTD is annual aggregate and could not |
+| **Operator data intake** — field list, formats, retention/deletion, and a fail-closed-on-PII adapter | C + B | **Exists** (v0.1, synthetic exports only) | `packages/connect/operator_export.py`, `docs/OPERATOR_DATA_INTAKE.md`; ADR-0038; **107 tests** |
+| **Canonical debt cleared** — `DecisionAlternative` storage, `StopTimeObservation` persistence, **RLS on the observation tables** | A + C | **Exists** | `packages/canonical/`; ADR-0037; **36 tests, 0 skipped** — RLS *ran* against PostgreSQL 17 |
+| **Platform-tenant convention decided** | A | **Specified** (decision recorded, implementation scoped) | ADR-0040 |
+
+Suite: **781 passed, 0 failed** (603 → 781). Audit clean.
+
+**A security defect was found and fixed:** `vehicle_observations` and
+`stop_time_observations` shipped in ADR-0035 with **no RLS policy at all** —
+they were added to `schema_v0_1.sql` after `rls_postgres.sql` was written. A
+tenant-scoped table with no policy is precisely the false assurance ADR-0018
+exists to prevent, and vehicle position/occupancy is the most sensitive
+operational data in the schema. Now `ENABLE` + `FORCE`, with a test that lifts
+FORCE to prove it is load-bearing.
+
+Program depth after this tranche: A ~45%, B ~35%, C ~40%, D ~30%, E ~30%,
+G ~35%, **H ~30%** (was 15), I ~30%, M ~25%; F ~10% (held); J/K/L 0%.
+
+#### Known gaps this tranche surfaced (flagged, not papered over)
+
+- **`vehicle_ref`/`run_ref` has no canonical home** (ADR-0038). It lives on the
+  Connect-layer record only, so the exact field deadhead measurement depends on
+  survives to the teardown in memory but **cannot be persisted to MilexiumDB**.
+  Program A follow-up.
+- **The 5433 PostGIS container store is not policy-enforced** (ADR-0037).
+  `rls_postgres.sql` is applied only by `PostgresCanonicalStore` on 5432;
+  `PostgisObservationStore` filters by tenant in SQL but has no RLS. Stated in
+  that file's header rather than left to be assumed.
+- **The intake adapter is a backstop, not a PII scanner** (ADR-0038). The
+  document is the contract; the code is the seatbelt.
 
 ### The gate no tranche can cross
 

@@ -2,7 +2,64 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
-## 2026-07-24 (night, latest): Phase 3 COMPLETE — D + G gate cleared, canonical gap closed, estate on MinIO
+## 2026-07-24 (latest): outreach went out, then built what it promised
+
+Two halves to this session. First, outreach: rebuilt the cold-email approach
+around a **peer-relative** hook (an agency's national rank among operators its
+own size) instead of reciting their own filed deadhead figure back at them —
+they already know that number; what they can't see is where they sit against
+185 peers. Researched 58 verified contacts (every address read off a primary
+source, nothing pattern-guessed, broker-only addresses rejected). Sent 15:
+4 startup/integrator and the 11 strongest agency findings, ranks 1st–12th.
+Anne Arundel County auto-replied in 11 seconds promising a human within two
+business days — which also settled the deliverability question, since
+auto-responders only fire on delivered mail.
+
+Then the part that mattered more. Those emails contain the sentence *"I can
+show you which hours and which runs."* **NTD is annual aggregate and cannot
+answer that.** We had made a promise with nothing behind it, so three packets:
+
+- **H — deadhead teardown** (ADR-0039, 35 tests). Localises empty vehicle-time
+  to hour-of-day, day-of-week and run. Demonstrated on a real TLC week: 66,940
+  segments, **8.89% of vehicle time empty**. Two findings justify the whole
+  thing: the highest-*rate* and highest-*volume* empty hours are **different
+  hours** (04:00 at 10.98% vs 22:00 with the biggest absolute pile) — the exact
+  distinction an annual percentage destroys — and *correlated missingness* is
+  real: re-keying on a nullable id put 10,918 segments into `unattributable`
+  whose empty time is **exactly zero**, because operators omitting the base also
+  omit the on-scene timestamp. Dropping null-id rows would have silently removed
+  real vehicle minutes from every denominator. The refusals matter more than the
+  number: `avoidable_share` has no default, `is_guaranteed_saving=True` raises,
+  `causal_proof=True` raises, and `DataProvenance` has **no "operator" value**.
+- **C+B — operator intake** (ADR-0038, 107 tests). The path from "yes" to data:
+  field list, formats, retention, and an adapter that **fails closed on PII
+  before any other validation**. `docs/OPERATOR_DATA_INTAKE.md` opens by telling
+  the agency plainly that we have no customers and *"you would be the first"*.
+  It surfaced a genuine canonical gap: `vehicle_ref`/`run_ref` — the field
+  deadhead measurement depends on — has no canonical home and cannot be
+  persisted to MilexiumDB.
+- **A+C — canonical debt** (ADR-0037, 36 tests, 0 skipped). `DecisionAlternative`
+  had a table since v0.1 that neither store ever touched; `StopTimeObservation`
+  was unpersistable. And a **security defect I shipped in ADR-0035 and missed in
+  review**: both observation tables were tenant-scoped with **no RLS policy at
+  all**, because they were added to the schema after `rls_postgres.sql` was
+  written. Now ENABLE + FORCE, with a test that lifts FORCE to watch the
+  boundary collapse. The RLS tests ran against real Postgres — proven, not
+  assumed.
+
+Also decided the long-open `ModelVersion.tenant_id` question (ADR-0040):
+a **reserved platform tenant**, rejecting nullable `tenant_id` because a
+nullable tenant column is invisible to `tenant_id = GUC` and the first consumer
+that forgets the special case gets a silently wrong answer. The policy is
+deliberately asymmetric — any tenant may *read* platform models, none may write
+one. Decision recorded; implementation deliberately left as its own packet
+rather than half-landed.
+
+Suite **603 → 781**, audit clean. Phase 4-as-written (J/K/L) stays parked:
+it needs compute and a demand signal we don't have, and the honest next move was
+backing the promise we'd already made.
+
+## 2026-07-24 (night): Phase 3 COMPLETE — D + G gate cleared, canonical gap closed, estate on MinIO
 
 Finished Phase 3 by dispatching the remaining work as four parallel packets on
 disjoint owned paths (`packages/core` / `packages/verify`+`architecture/formal` /
