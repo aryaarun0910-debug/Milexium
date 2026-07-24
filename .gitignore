@@ -52,6 +52,9 @@ realdata/panels/nyc_fhvhv_zone_hour.parquet
 artifacts/knowledge-graph/**/cache/
 artifacts/knowledge-graph/**/.obsidian/
 artifacts/audit/
+# Golden-path demo output: regenerated with fresh UUIDs/timestamps each run
+# (py -3 -m demo.golden_path). The demo code is committed; its output is not.
+artifacts/golden-path/
 
 # Environment
 .env
