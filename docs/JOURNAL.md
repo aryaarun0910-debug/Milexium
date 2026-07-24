@@ -6,6 +6,44 @@ Renamed from TransitPulse to Milexium on 2026-07-22 (see entry below). Entries
 dated before the rename refer to the company as TransitPulse throughout,
 unchanged, because this file is an append-only historical record.
 
+## 2026-07-24 (later still): Phase 2 complete — evidence artifacts (leaderboard + registry)
+
+Finished Phase 2 with two parallel packets packaging the repo's real numbers
+into reproducible, third-party-checkable artifacts:
+
+- **Forecast leaderboard** (`benchmarks/quality/forecast_leaderboard.*`): real
+  R² vs each model's seasonal-naive baseline (AAR 0.986 vs 0.923 naive, −64%
+  MAE; Chicago/MTA in the 0.95-0.97 range), every value traced to its source
+  json-path (the test re-reads the source and compares, proving traceability
+  not hand-copying). Does NOT hide losses: the NTD temporal split loses to
+  naive on R² (0.885 vs 0.972), shown as `beats_naive_on_headline: false`; the
+  weather-barely-helps and calendar-only-ties-naive findings are recorded. No
+  cross-model ranking (R² not comparable across grains). Transformer excluded
+  (mirrors MODEL_CARDS "not shipped").
+- **Evidence registry** (`tools/build_evidence_registry.py`,
+  `artifacts/evidence-registry/`): 20 claims + 8 provenance manifests, each
+  value pinned to source + baseline + limitation + status label; a
+  `verify_evidence_registry()` re-checks that every source exists and every
+  recorded panel sha256 matches. Generated, never authored — anti-fabrication.
+
+Doing its job, the registry surfaced real cross-document drift a hostile
+reviewer could pick at (none a fabrication): `realdata/README.md` prose
+headlines a different conformal variant (97.8% Mondrian) than MODEL_CARDS
+(98.11% decile) and a rounded MAE (20.4 vs the committed 20.12); NTD MAPE units
+differ (fraction vs ×100). Flagged for a doc-reconciliation pass (README →
+committed metrics as single source of truth) and recorded in IMPLEMENTATION_
+STATUS as a recommended follow-up — left to the product owner since it's a
+which-variant-to-headline judgment. Wrote ADR-0025.
+
+`py -3 -m pytest packages/ conformance/` → **455 passed** (439 → 455: +7
+leaderboard, +9 registry); registry self-verifies clean; audit clean.
+
+Phase 2 (undeniable public evidence) is complete: a runnable real-data demo, a
+published-benchmark solver result (proven optimum reached), a traceable
+forecast leaderboard, and a machine-checkable evidence registry — the checkable
+proof-without-traction set. Everything Demonstrated; the Validated gate still
+needs a consented operator.
+
 ## 2026-07-24 (later): Phase 2 begins — proof-first (golden-path demo + DARP benchmark)
 
 After Phase 1, Arya raised the real strategic bind: can't get customers to look

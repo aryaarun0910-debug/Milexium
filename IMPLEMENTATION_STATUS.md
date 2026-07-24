@@ -74,20 +74,26 @@ The capabilities that make a real shadow-mode pilot possible:
 
 </details>
 
-### Phase 2 — undeniable public evidence — **IN PROGRESS (2/4, 2026-07-24)**
+### Phase 2 — undeniable public evidence — **COMPLETE (4/4, 2026-07-24)**
 
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | Golden-path end-to-end demo on REAL public data | **Exists** (Demonstrated) | `demo/golden_path.py`; ADR-0023 — real TLC ingest → real AAR forecast (55.5) → decide → verified evidence pack → replay; real-vs-synthetic labelled in-output |
 | 2 | Public dial-a-ride solver benchmark | **Exists** (Demonstrated) | `packages/decide/darp_*`, `benchmarks/quality/`; ADR-0024 — reached the **proven optimum on Cordeau a3-18 (0.00% gap)**, 7.97% on a2-16, every solution independently checker-validated; explicitly not SOTA |
-| 3 | Forecast benchmark / leaderboard artifact | Specified | not yet built |
-| 4 | Machine-readable evidence manifests for third-party verification | Partial | evidence packs (ADR-0017/0020) + the demo run-manifest are a start |
+| 3 | Forecast leaderboard artifact | **Exists** (Demonstrated) | `benchmarks/quality/forecast_leaderboard.*`; ADR-0025 — real R² vs seasonal-naive per model, every value traced to its source json-path; does not hide the NTD-temporal loss to naive |
+| 4 | Machine-readable evidence registry for third-party verification | **Exists** | `tools/build_evidence_registry.py`, `artifacts/evidence-registry/`; ADR-0025 — 20 claims + 8 provenance manifests, each value pinned to source + limitation; a `verify_evidence_registry()` re-checks files + hashes |
 
-Test evidence: `py -3 -m pytest packages/ conformance/` → **439 passed, 0
-failed** (390 → 439: +4 demo, +45 DARP/solver). Audit clean. Both items are
-credible, checkable proof a skeptic can run without a pilot — and both label
-their limits honestly (synthetic fleet in the demo; a 2-instance benchmark
-sample, not a full sweep). Still Demonstrated, not Validated.
+Test evidence: `py -3 -m pytest packages/ conformance/` → **455 passed, 0
+failed** (439 → 455: +7 leaderboard, +9 registry). Audit clean. All four are
+credible, checkable proof a skeptic can run without a pilot; all label their
+limits honestly. Still Demonstrated, not Validated.
+
+**Recommended follow-up (surfaced by the registry):** reconcile
+`realdata/README.md` prose to the committed `metrics_real.json` — the README
+headlines a different conformal variant (97.8% Mondrian) than the model card
+(98.11% decile) and a rounded MAE (20.4 vs 20.12). Not fabrication, but a
+hostile reviewer could pick at it; the metrics JSON is the single source of
+truth. Left to the product owner (it involves a which-variant-to-headline call).
 
 ### Phase 2 — undeniable public evidence (detail; proof-first)
 
