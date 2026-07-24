@@ -10,7 +10,9 @@ counterpart to `postgres_storage.py`, and deliberately ADDITIVE to it:
 - This store targets the *containerized PostGIS* on host port 5433 (ADR-0004/0032),
   reading its credentials from `infra/compose/.env` (gitignored), because that is
   the only instance in the estate with the PostGIS extension. It exists to prove
-  the spatial round-trip for `VehicleObservation`, nothing more.
+  the round-trip for the operational entity family: `VehicleObservation` (with
+  geometry) and `StopTimeObservation` (without -- a stop-time observation has no
+  position of its own), nothing more.
 
 It applies the PORTABLE `sql/schema_v0_1.sql` (lat/lon as REAL, SQLite-safe) and
 THEN the Postgres-only `sql/postgis_postgres.sql` extension (a geometry(Point,4326)
@@ -33,12 +35,13 @@ Never called from non-test code; it is a conformance/round-trip harness.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 import psycopg
 from psycopg import sql
 
-from packages.canonical.entities import Tenant, VehicleObservation
+from packages.canonical.entities import StopTimeObservation, Tenant, VehicleObservation
 from packages.canonical.ids import TenantId
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
@@ -60,6 +63,17 @@ def _read_compose_env() -> dict[str, str]:
             k, _, v = line.partition("=")
             out[k.strip()] = v.strip()
     return out
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    """Nullable timestamps are stored as ISO-8601 UTC TEXT (schema_v0_1.sql's
+    portable convention) and stay SQL NULL when absent -- an unknown time is
+    never written as an empty string or an epoch-zero placeholder."""
+    return value.isoformat() if value is not None else None
+
+
+def _parse_or_none(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value is not None else None
 
 
 def is_reachable(
@@ -187,6 +201,85 @@ class PostgisObservationStore:
             (str(obs.observation_id),),
         )
         self._conn.commit()
+
+    def insert_stop_time_observation(self, obs: StopTimeObservation) -> None:
+        """Insert the other half of the operational entity family (ADR-0031/0035).
+
+        Deliberately simpler than `insert_vehicle_observation`: there is NO
+        geometry step. A stop-time observation has no position of its own -- the
+        position belongs to the stop it names, not to the observation -- so
+        `postgis_postgres.sql` adds no geometry column to this table and the row
+        is complete after this single INSERT. Portable columns only, exactly the
+        set schema_v0_1.sql defines.
+
+        Predicted and observed times are written to their own separate columns,
+        preserving the entity's predicted-vs-observed discipline through storage:
+        a GTFS-Realtime prediction never lands in an observed-time column.
+        """
+        self._conn.execute(
+            "INSERT INTO stop_time_observations (observation_id, tenant_id, trip_ref, "
+            "route_ref, stop_ref, stop_sequence, schedule_relationship, "
+            "predicted_arrival_at, predicted_departure_at, observed_arrival_at, "
+            "observed_departure_at, arrival_delay_seconds, departure_delay_seconds, "
+            "observed_at, recorded_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (
+                str(obs.observation_id),
+                str(obs.tenant_id),
+                obs.trip_ref,
+                obs.route_ref,
+                obs.stop_ref,
+                obs.stop_sequence,
+                obs.schedule_relationship,
+                _iso_or_none(obs.predicted_arrival_at),
+                _iso_or_none(obs.predicted_departure_at),
+                _iso_or_none(obs.observed_arrival_at),
+                _iso_or_none(obs.observed_departure_at),
+                obs.arrival_delay_seconds,
+                obs.departure_delay_seconds,
+                obs.observed_at.isoformat(),
+                obs.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def stop_time_observations(self, tenant_id: TenantId) -> tuple[StopTimeObservation, ...]:
+        """Tenant-scoped read: every stop-time observation of `tenant_id`, in
+        valid-time then stop order. The `tenant_id` filter is applied in SQL,
+        never in Python after an unfiltered fetch -- the same discipline
+        storage.py and postgres_storage.py state. Reconstructs the entity, so a
+        successful round-trip proves the stored columns still validate against
+        `StopTimeObservation` rather than merely being present."""
+        cur = self._conn.execute(
+            "SELECT observation_id, tenant_id, trip_ref, route_ref, stop_ref, stop_sequence, "
+            "schedule_relationship, predicted_arrival_at, predicted_departure_at, "
+            "observed_arrival_at, observed_departure_at, arrival_delay_seconds, "
+            "departure_delay_seconds, observed_at, recorded_at "
+            "FROM stop_time_observations WHERE tenant_id = %s "
+            "ORDER BY observed_at, stop_sequence, observation_id",
+            (str(tenant_id),),
+        )
+        rows = cur.fetchall()
+        self._conn.commit()
+        return tuple(
+            StopTimeObservation(
+                observation_id=r[0],
+                tenant_id=r[1],
+                trip_ref=r[2],
+                route_ref=r[3],
+                stop_ref=r[4],
+                stop_sequence=r[5],
+                schedule_relationship=r[6],
+                predicted_arrival_at=_parse_or_none(r[7]),
+                predicted_departure_at=_parse_or_none(r[8]),
+                observed_arrival_at=_parse_or_none(r[9]),
+                observed_departure_at=_parse_or_none(r[10]),
+                arrival_delay_seconds=r[11],
+                departure_delay_seconds=r[12],
+                observed_at=datetime.fromisoformat(r[13]),
+                recorded_at=datetime.fromisoformat(r[14]),
+            )
+            for r in rows
+        )
 
     def observations_within(
         self,

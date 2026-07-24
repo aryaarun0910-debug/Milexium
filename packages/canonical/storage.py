@@ -19,12 +19,25 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from packages.canonical.entities import DecisionEvent, Tenant
+from packages.canonical.entities import DecisionAlternative, DecisionEvent, Tenant
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
-from packages.canonical.ids import DecisionEventId, TenantId, new_id
+from packages.canonical.ids import DecisionEventId, ScheduleRunId, TenantId, new_id
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
+
+
+class CrossTenantWriteError(Exception):
+    """A write named a parent aggregate that does not belong to the acting tenant.
+
+    `decision_alternatives` carries no `tenant_id` column of its own -- it is
+    tenant-scoped transitively through `schedule_runs`. Both stores therefore
+    resolve the parent run *under the acting tenant* before inserting, and raise
+    this if it is not there, so "which tenant owns this alternative" is never
+    inferred from the caller's word alone. Defined here (not per-engine) so the
+    SQLite and PostgreSQL stores raise the identical error type, per the mirrored
+    method contract in architecture/decisions/0004-sqlite-now-postgres-production.md.
+    """
 
 
 class SqliteCanonicalStore:
@@ -176,6 +189,83 @@ class SqliteCanonicalStore:
                 )
             )
         return tuple(events)
+
+    def append_decision_alternative(
+        self, *, tenant_id: TenantId, alternative: DecisionAlternative
+    ) -> None:
+        """Persist one considered-and-usually-rejected candidate assignment.
+
+        `decision_alternatives` has existed in schema_v0_1.sql since v0.1 but had
+        no store behind it, so "why not the alternatives?" -- a load-bearing
+        explainability claim -- had nowhere to live. This does NOT replace the
+        v0.1 convention of embedding alternatives in a RECOMMENDATION event
+        payload (architecture/decisions/0009-...): both coexist, and nothing here
+        migrates or invalidates an existing embedded payload.
+
+        The table has no `tenant_id` of its own, so the acting tenant is resolved
+        against the parent `schedule_runs` row FIRST; a run belonging to another
+        tenant (or to no one) is a `CrossTenantWriteError`, never a silently
+        accepted row.
+        """
+        cur = self._conn.cursor()
+        cur.execute(
+            "SELECT 1 FROM schedule_runs WHERE schedule_run_id = ? AND tenant_id = ?",
+            (str(alternative.schedule_run_id), str(tenant_id)),
+        )
+        if cur.fetchone() is None:
+            raise CrossTenantWriteError(
+                f"schedule run {alternative.schedule_run_id!s} does not belong to "
+                f"tenant {tenant_id!s}"
+            )
+        cur.execute(
+            "INSERT INTO decision_alternatives (schedule_run_id, request_id, "
+            "candidate_vehicle_id, feasible, failed_constraints, objective_delta) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                str(alternative.schedule_run_id),
+                str(alternative.request_id),
+                str(alternative.candidate_vehicle_id)
+                if alternative.candidate_vehicle_id is not None
+                else None,
+                1 if alternative.feasible else 0,
+                canonical_json([rc.value for rc in alternative.failed_constraints]),
+                alternative.objective_delta,
+            ),
+        )
+        self._conn.commit()
+
+    def decision_alternatives(
+        self, tenant_id: TenantId, schedule_run_id: ScheduleRunId
+    ) -> tuple[DecisionAlternative, ...]:
+        """Tenant-scoped read of the alternatives considered by one schedule run.
+
+        The JOIN to `schedule_runs` is the isolation boundary: the tenant filter
+        is applied in SQL against the parent run, never in Python after an
+        unfiltered fetch. Ordered by `request_id`, then candidates before the
+        no-vehicle alternative -- expressed portably (`IS NULL` sorts as 0/1 on
+        SQLite and false/true on PostgreSQL, both non-null first) so both stores
+        return the same sequence, not merely the same set.
+        """
+        cur = self._conn.execute(
+            "SELECT a.schedule_run_id, a.request_id, a.candidate_vehicle_id, a.feasible, "
+            "a.failed_constraints, a.objective_delta "
+            "FROM decision_alternatives a "
+            "JOIN schedule_runs r ON r.schedule_run_id = a.schedule_run_id "
+            "WHERE r.tenant_id = ? AND a.schedule_run_id = ? "
+            "ORDER BY a.request_id, (a.candidate_vehicle_id IS NULL), a.candidate_vehicle_id",
+            (str(tenant_id), str(schedule_run_id)),
+        )
+        return tuple(
+            DecisionAlternative(
+                schedule_run_id=row[0],
+                request_id=row[1],
+                candidate_vehicle_id=row[2],
+                feasible=bool(row[3]),
+                failed_constraints=tuple(ReasonCode(x) for x in json.loads(row[4])),
+                objective_delta=row[5],
+            )
+            for row in cur.fetchall()
+        )
 
     def raw_rows_for_tenant(self, tenant_id: TenantId) -> list[dict]:
         """Unmapped raw rows for the independent verifier (packages/verify) and

@@ -47,9 +47,10 @@ from pathlib import Path
 import psycopg
 from psycopg import sql
 
-from packages.canonical.entities import DecisionEvent, Tenant
+from packages.canonical.entities import DecisionAlternative, DecisionEvent, Tenant
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
-from packages.canonical.ids import DecisionEventId, TenantId, new_id
+from packages.canonical.ids import DecisionEventId, ScheduleRunId, TenantId, new_id
+from packages.canonical.storage import CrossTenantWriteError
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
@@ -296,6 +297,82 @@ class PostgresCanonicalStore:
                 )
             )
         return tuple(events)
+
+    def append_decision_alternative(
+        self, *, tenant_id: TenantId, alternative: DecisionAlternative
+    ) -> None:
+        """Persist one considered-and-usually-rejected candidate assignment.
+
+        Same contract, same error type, same semantics as
+        `SqliteCanonicalStore.append_decision_alternative` -- including that it
+        does NOT replace the ADR-0009 embedded-payload convention; both coexist.
+
+        Two independent boundaries hold here. The parent-run lookup below runs
+        under the acting GUC, so RLS has already hidden other tenants' runs
+        before the Python check sees them; and `decision_alternatives`' own
+        `tenant_isolation` WITH CHECK (keyed on the parent run's tenant, see
+        sql/rls_postgres.sql) would reject the INSERT at the database layer even
+        if this method's check were removed.
+        """
+        self._use_tenant(tenant_id)
+        cur = self._conn.cursor()
+        cur.execute(
+            "SELECT 1 FROM schedule_runs WHERE schedule_run_id = %s AND tenant_id = %s",
+            (str(alternative.schedule_run_id), str(tenant_id)),
+        )
+        if cur.fetchone() is None:
+            raise CrossTenantWriteError(
+                f"schedule run {alternative.schedule_run_id!s} does not belong to "
+                f"tenant {tenant_id!s}"
+            )
+        cur.execute(
+            "INSERT INTO decision_alternatives (schedule_run_id, request_id, "
+            "candidate_vehicle_id, feasible, failed_constraints, objective_delta) "
+            "VALUES (%s,%s,%s,%s,%s,%s)",
+            (
+                str(alternative.schedule_run_id),
+                str(alternative.request_id),
+                str(alternative.candidate_vehicle_id)
+                if alternative.candidate_vehicle_id is not None
+                else None,
+                1 if alternative.feasible else 0,
+                canonical_json([rc.value for rc in alternative.failed_constraints]),
+                alternative.objective_delta,
+            ),
+        )
+        self._conn.commit()
+
+    def decision_alternatives(
+        self, tenant_id: TenantId, schedule_run_id: ScheduleRunId
+    ) -> tuple[DecisionAlternative, ...]:
+        """Tenant-scoped read of the alternatives considered by one schedule run.
+
+        Defense in depth, as `history()` above: the RLS policy (keyed on the GUC
+        set here) and the JOIN's `tenant_id` filter are both boundaries, either
+        alone sufficient. The ORDER BY is written identically to the SQLite
+        store's so both engines return the same sequence, not merely the same set.
+        """
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            "SELECT a.schedule_run_id, a.request_id, a.candidate_vehicle_id, a.feasible, "
+            "a.failed_constraints, a.objective_delta "
+            "FROM decision_alternatives a "
+            "JOIN schedule_runs r ON r.schedule_run_id = a.schedule_run_id "
+            "WHERE r.tenant_id = %s AND a.schedule_run_id = %s "
+            "ORDER BY a.request_id, (a.candidate_vehicle_id IS NULL), a.candidate_vehicle_id",
+            (str(tenant_id), str(schedule_run_id)),
+        )
+        return tuple(
+            DecisionAlternative(
+                schedule_run_id=row[0],
+                request_id=row[1],
+                candidate_vehicle_id=row[2],
+                feasible=bool(row[3]),
+                failed_constraints=tuple(ReasonCode(x) for x in json.loads(row[4])),
+                objective_delta=row[5],
+            )
+            for row in cur.fetchall()
+        )
 
     def raw_rows_for_tenant(self, tenant_id: TenantId) -> list[dict]:
         """Unmapped raw rows for the independent verifier (packages/verify) and

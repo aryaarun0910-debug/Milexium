@@ -129,3 +129,32 @@ ALTER TABLE outbox FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON outbox
     USING (tenant_id = current_setting('milexium.tenant_id', true))
     WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+-- The request-INDEPENDENT operational observation tables (ADR-0031/0035). Both
+-- carry tenant_id directly, so they take the plain policy -- but they were added
+-- to schema_v0_1.sql AFTER this file was written and so sat here unguarded: a
+-- tenant-scoped table with no policy is precisely the false assurance ADR-0018
+-- exists to prevent, and vehicle position/occupancy is the most sensitive
+-- operational data in the schema (SensitivityClass.PRECISE_LOCATION).
+--
+-- ENABLE *and* FORCE for the reason stated at the top of this file: milexium_dev
+-- OWNS these tables, so ENABLE alone would leave the owning credential
+-- unconstrained and every isolation test would pass for the wrong reason.
+--
+-- SCOPE NOTE: this file is applied by PostgresCanonicalStore (the native
+-- PostgreSQL 17 on 5432) only. PostgisObservationStore targets the containerized
+-- PostGIS on 5433 and applies the portable schema plus postgis_postgres.sql, not
+-- this file -- its reads are tenant-filtered in SQL but not policy-enforced.
+-- Extending RLS to that container store is a separate decision (it would require
+-- the store to set the GUC per operation) and is deliberately NOT assumed here.
+ALTER TABLE vehicle_observations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicle_observations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON vehicle_observations
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+ALTER TABLE stop_time_observations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stop_time_observations FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON stop_time_observations
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
