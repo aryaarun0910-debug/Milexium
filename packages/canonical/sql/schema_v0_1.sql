@@ -307,3 +307,70 @@ CREATE TABLE deadhead_segments (
     ended_at            TEXT NOT NULL,
     recorded_at         TEXT NOT NULL
 );
+
+-- THE DURABLE LIFECYCLE RECORD (MX-A-LIFECYCLE-RECORD-010).
+--
+-- `service_requests` above stores WHAT a request currently looks like, one row
+-- per version. It does not store the MOVE: that request R went
+-- requested -> negotiated at 09:14:03 because the 08:00 window had no accessible
+-- capacity, then negotiated -> scheduled at 09:14:07. That move -- with its
+-- decision instant, its actor and its reason codes -- is what this table holds,
+-- and it is the thing the phrase "recorded at the moment of the decision rather
+-- than reconstructed afterwards" actually refers to.
+--
+-- APPEND-ONLY. There is no UPDATE and no DELETE statement against this table
+-- anywhere in packages/canonical, deliberately, and no test-only tamper helper
+-- either (`decision_events` has one; this table does not, so "append-only" needs
+-- no exception clause). A correction is a further transition, never an edit.
+--
+-- TWO CLOCKS. `decided_at` is valid time (when the decision was made);
+-- `recorded_at` is transaction time (when this row was written). Note what is
+-- NOT here: neither column has a DEFAULT. That absence is the schema-level half
+-- of the decision-time guarantee -- the database itself cannot stamp a row -- and
+-- conformance/property-tests/test_lifecycle_record.py reads it back out of
+-- information_schema rather than trusting this comment.
+--
+-- THE CHECK AND WHY THE FORMAT MATTERS. `recorded_at >= decided_at` is a TEXT
+-- comparison, and on PostgreSQL a TEXT comparison runs under the database
+-- collation rather than byte order. Under this repository's dev collation
+-- (English_United Kingdom.1252) '...T09:14:03.500000+00:00' compares as LESS
+-- than '...T09:14:03+00:00' -- the wrong way round -- because punctuation and
+-- digits are weighted differently. packages/canonical/lifecycle.py therefore
+-- writes FIXED-WIDTH timestamps (always six fractional digits, always the
+-- literal +00:00), so every value has identical punctuation in identical
+-- positions and the comparison reduces to a digit-by-digit one that is correct
+-- under any collation. The counterexample is pinned in the conformance suite.
+-- This is the only table here whose timestamps are compared in SQL, which is why
+-- it is the only one with the fixed-width convention; no existing column changes.
+--
+-- UNIQUE (tenant_id, request_id, sequence) makes a duplicate or a re-used chain
+-- position a constraint violation rather than an application bug, exactly as the
+-- same clause does on decision_events.
+--
+-- PORTABLE SUBSET (ADR-0002): TEXT ids, ISO-8601 UTC strings, CHECK ... IN (...)
+-- instead of ENUM. The state vocabulary is spelled out twice in this file (here
+-- and on service_requests.status) because that is what CHECK constraints cost;
+-- a conformance test pins both against ServiceRequestState in both directions.
+-- Row-level security is Postgres-only and lands in sql/rls_postgres.sql in the
+-- SAME packet as this table -- ADR-0037's unguarded-table defect is not repeated.
+CREATE TABLE request_state_transitions (
+    transition_id           TEXT PRIMARY KEY,
+    tenant_id               TEXT NOT NULL REFERENCES tenants(tenant_id),
+    request_id              TEXT NOT NULL,
+    sequence                INTEGER NOT NULL CHECK (sequence >= 1),
+    from_state              TEXT NOT NULL CHECK (from_state IN
+        ('requested','negotiated','scheduled','in_progress','completed','denied','cancelled','no_show')),
+    to_state                TEXT NOT NULL CHECK (to_state IN
+        ('requested','negotiated','scheduled','in_progress','completed','denied','cancelled','no_show')),
+    decided_at              TEXT NOT NULL,
+    recorded_at             TEXT NOT NULL,
+    actor_type              TEXT NOT NULL CHECK (actor_type IN ('system','human')),
+    actor_id                TEXT NOT NULL,
+    reason_codes            TEXT NOT NULL DEFAULT '[]',
+    requested_window_start  TEXT,
+    requested_window_end    TEXT,
+    negotiated_window_start TEXT,
+    negotiated_window_end   TEXT,
+    CHECK (recorded_at >= decided_at),
+    UNIQUE (tenant_id, request_id, sequence)
+);

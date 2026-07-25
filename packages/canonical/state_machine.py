@@ -42,6 +42,35 @@ SERVICE_REQUEST_TRANSITIONS: dict[ServiceRequestState, frozenset[ServiceRequestS
 """Terminal states (empty transition sets): COMPLETED, DENIED, CANCELLED, NO_SHOW."""
 
 
+def _derive_initial_state() -> ServiceRequestState:
+    """The one state no legal transition can ever ARRIVE at.
+
+    DERIVED from the table above rather than declared beside it, so the two can
+    never disagree. A second declaration would be a second place for the same
+    fact to drift, and the durable lifecycle record (`lifecycle.py`) anchors
+    every request's chain on this value -- if it silently stopped matching the
+    table, every chain would start in the wrong place and still look legal.
+    """
+    reachable = {
+        target for targets in SERVICE_REQUEST_TRANSITIONS.values() for target in targets
+    }
+    roots = [state for state in SERVICE_REQUEST_TRANSITIONS if state not in reachable]
+    if len(roots) != 1:  # pragma: no cover - guarded by test_state_machine_anchors.py
+        raise AssertionError(
+            f"the transition table must have exactly one entry state, found {roots!r}"
+        )
+    return roots[0]
+
+
+SERVICE_REQUEST_INITIAL_STATE: ServiceRequestState = _derive_initial_state()
+"""The state every ServiceRequest begins in (REQUESTED), derived from the table."""
+
+SERVICE_REQUEST_TERMINAL_STATES: frozenset[ServiceRequestState] = frozenset(
+    state for state, targets in SERVICE_REQUEST_TRANSITIONS.items() if not targets
+)
+"""The states with no outgoing transition, derived from the table."""
+
+
 class TransitionError(ValueError):
     """Raised when a requested state transition is not in the contract table."""
 

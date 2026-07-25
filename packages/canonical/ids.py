@@ -118,6 +118,19 @@ class DeadheadSegmentId(_TypedId):
     """
 
 
+class RequestTransitionId(_TypedId):
+    """Identifies one row of a ServiceRequest's durable lifecycle record -- a
+    single `from_state -> to_state` move, with the instant it was DECIDED.
+
+    Its own surrogate key, never a reference: a transition belongs to exactly one
+    request (`RequestId`) and to exactly one position in that request's chain
+    (`sequence`), and both of those are carried as separate, typed fields. A
+    distinct id kind is what stops a `RequestId` being passed where a transition's
+    own key belongs -- the same reason the scheduling family has three id kinds
+    rather than one (see `DeadheadSegmentId`).
+    """
+
+
 AggregateId = Annotated[str, AfterValidator(_validate_uuid_string)]
 """An id known only to be *some* aggregate's id (used by the generic event log)."""
 

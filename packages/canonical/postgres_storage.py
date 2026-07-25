@@ -58,8 +58,27 @@ from packages.canonical.entities import (
     platform_tenant,
 )
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
-from packages.canonical.ids import BlockId, DecisionEventId, ScheduleRunId, TenantId, new_id
-from packages.canonical.storage import CrossTenantWriteError
+from packages.canonical.ids import (
+    BlockId,
+    DecisionEventId,
+    RequestId,
+    ScheduleRunId,
+    TenantId,
+    new_id,
+)
+from packages.canonical.lifecycle import (
+    OutcomeExplanation,
+    RequestTransition,
+    TimeWindow,
+    explain,
+    next_transition,
+)
+from packages.canonical.state_machine import ServiceRequestState
+from packages.canonical.storage import (
+    CrossTenantWriteError,
+    _transition_from_row,
+    _transition_row_values,
+)
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
@@ -664,6 +683,128 @@ class PostgresCanonicalStore:
                 recorded_at=datetime.fromisoformat(row[11]),
             )
             for row in cur.fetchall()
+        )
+
+    # -- the durable lifecycle record ---------------------------------------
+    #
+    # The same three methods `SqliteCanonicalStore` exposes, with the same names,
+    # the same signatures, the same ORDER BY and the same error types -- and both
+    # engines delegate the chain rules and the explain view to the pure functions
+    # in `lifecycle.py`, so neither the legality rules nor the view a regulator
+    # would be shown can differ by engine.
+    #
+    # Two independent boundaries hold, as everywhere else in this store: the
+    # `request_state_transitions` tenant_isolation policy (ENABLE + FORCE, keyed
+    # on the GUC set here) and the tenant filter in the SQL itself.
+    #
+    # NO CLOCK IS READ ON THIS PATH. `decided_at` is a required argument, the
+    # column carries no SQL DEFAULT, and there is no `datetime.now()` in this
+    # module -- all three asserted in the conformance suite.
+
+    def _lifecycle_head(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> RequestTransition | None:
+        """The request's last recorded transition, or None. Runs under the acting
+        GUC, so another tenant's chain is invisible here rather than merely
+        filtered out."""
+        cur = self._conn.execute(
+            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
+            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
+            "negotiated_window_start, negotiated_window_end "
+            "FROM request_state_transitions WHERE tenant_id = %s AND request_id = %s "
+            "ORDER BY sequence DESC LIMIT 1",
+            (str(tenant_id), str(request_id)),
+        )
+        row = cur.fetchone()
+        return None if row is None else _transition_from_row(tenant_id, request_id, row)
+
+    def record_transition(
+        self,
+        *,
+        tenant_id: TenantId,
+        request_id: RequestId,
+        from_state: ServiceRequestState,
+        to_state: ServiceRequestState,
+        decided_at: datetime,
+        recorded_at: datetime,
+        actor_type: str,
+        actor_id: str,
+        reason_codes: tuple[ReasonCode, ...] = (),
+        requested_window: TimeWindow | None = None,
+        negotiated_window: TimeWindow | None = None,
+    ) -> RequestTransition:
+        """Append one transition to a request's lifecycle record.
+
+        Identical contract, identical error types and identical refusal order to
+        `SqliteCanonicalStore.record_transition` -- `BackdatedRecordError`,
+        `LifecycleOrderError`, `TransitionError` -- because both call the same
+        `next_transition`.
+
+        `decided_at` and `recorded_at` are REQUIRED keyword arguments with no
+        defaults. On this engine the guarantee is doubled: the `decided_at`
+        column has no SQL DEFAULT either, so the database cannot stamp a row even
+        for a caller that reached it with raw SQL, and the table's
+        `recorded_at >= decided_at` CHECK refuses a backdated row at the database
+        layer rather than only in Python.
+        """
+        self._use_tenant(tenant_id)
+        head = self._lifecycle_head(tenant_id, request_id)
+        transition = next_transition(
+            tenant_id=tenant_id,
+            request_id=request_id,
+            head=head,
+            from_state=from_state,
+            to_state=to_state,
+            decided_at=decided_at,
+            recorded_at=recorded_at,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            reason_codes=reason_codes,
+            requested_window=requested_window,
+            negotiated_window=negotiated_window,
+        )
+        self._conn.execute(
+            "INSERT INTO request_state_transitions (transition_id, tenant_id, request_id, "
+            "sequence, from_state, to_state, decided_at, recorded_at, actor_type, actor_id, "
+            "reason_codes, requested_window_start, requested_window_end, "
+            "negotiated_window_start, negotiated_window_end) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            _transition_row_values(transition),
+        )
+        self._conn.commit()
+        return transition
+
+    def request_lifecycle(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> tuple[RequestTransition, ...]:
+        """The ordered transition history for one request.
+
+        Ordered by `sequence`, an INTEGER. That is not a stylistic match with the
+        SQLite store: ordering by `decided_at` would order by the DATABASE
+        COLLATION here, which for the fractional-second case is demonstrably not
+        chronological order (see the note in schema_v0_1.sql)."""
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
+            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
+            "negotiated_window_start, negotiated_window_end "
+            "FROM request_state_transitions WHERE tenant_id = %s AND request_id = %s "
+            "ORDER BY sequence ASC",
+            (str(tenant_id), str(request_id)),
+        )
+        return tuple(
+            _transition_from_row(tenant_id, request_id, row) for row in cur.fetchall()
+        )
+
+    def explain_outcome(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> OutcomeExplanation | None:
+        """Why this request ended the way it did -- the same view the SQLite store
+        returns, built by the same pure function from the same ordered history."""
+        return explain(
+            tenant_id=tenant_id,
+            request_id=request_id,
+            transitions=self.request_lifecycle(tenant_id, request_id),
         )
 
     def raw_rows_for_tenant(self, tenant_id: TenantId) -> list[dict]:

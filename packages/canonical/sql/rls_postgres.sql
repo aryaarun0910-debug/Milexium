@@ -277,3 +277,37 @@ ALTER TABLE deadhead_segments FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON deadhead_segments
     USING (tenant_id = current_setting('milexium.tenant_id', true))
     WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+-- The durable LIFECYCLE RECORD (MX-A-LIFECYCLE-RECORD-010). Carries tenant_id
+-- directly, so it takes the plain symmetric policy -- read what you may write.
+--
+-- LANDED IN THE SAME PACKET AS THE TABLE, as the scheduling family above was and
+-- for the same reason (ADR-0037: a tenant-scoped table with no policy is the
+-- exact false assurance ADR-0018 exists to prevent).
+--
+-- ENABLE *and* FORCE: milexium_dev OWNS this table, and a table owner bypasses
+-- RLS by default, so ENABLE alone would leave the owning credential entirely
+-- unconstrained and every isolation test would pass for the wrong reason. The
+-- conformance suite lifts FORCE and watches the boundary collapse rather than
+-- asserting the bit because this file sets it.
+--
+-- WHAT IS SENSITIVE HERE. This is the most sensitive table in the schema after
+-- the observation family, and for a different reason: it is a per-rider record of
+-- refusals. A row saying request R was DENIED for NO_ACCESSIBLE_CAPACITY, or
+-- negotiated ninety minutes away from what the rider asked for, is exactly the
+-- evidence an agency would be examined on -- and `request_id` links it to a
+-- tokenised rider. Cross-tenant visibility here would expose one operator's
+-- service-denial history to another.
+--
+-- THE EMPTY-STRING TRAP (see the note above the model_versions policy): like
+-- every other symmetric policy in this file, this one survives a RESET session
+-- only INCIDENTALLY -- `current_setting(name, true)` returns '' rather than NULL
+-- after a RESET, and `tenant_id = ''` is false for any real UUID. The conformance
+-- test therefore asserts the reset GUC reads back as the EMPTY STRING and that
+-- zero rows come back, so the deny is proven rather than assumed from a NULL
+-- case that does not actually occur here.
+ALTER TABLE request_state_transitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE request_state_transitions FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON request_state_transitions
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));

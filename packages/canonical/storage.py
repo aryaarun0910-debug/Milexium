@@ -30,10 +30,105 @@ from packages.canonical.entities import (
     platform_tenant,
 )
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
-from packages.canonical.ids import BlockId, DecisionEventId, ScheduleRunId, TenantId, new_id
+from packages.canonical.ids import (
+    BlockId,
+    DecisionEventId,
+    RequestId,
+    ScheduleRunId,
+    TenantId,
+    new_id,
+)
+from packages.canonical.lifecycle import (
+    OutcomeExplanation,
+    RequestTransition,
+    TimeWindow,
+    explain,
+    iso_fixed_utc,
+    next_transition,
+    parse_fixed_utc,
+)
+from packages.canonical.state_machine import ServiceRequestState
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
+
+
+# --- lifecycle-record row mapping, shared by BOTH stores -------------------
+#
+# The column ORDER lives here once and both engines' INSERT/SELECT statements are
+# written against it, so a column added to `request_state_transitions` cannot be
+# wired up on one engine and forgotten on the other -- the failure mode ADR-0004's
+# mirrored contract exists to prevent, and the one a reader of two near-identical
+# store modules is least likely to spot.
+
+
+def _window_columns(window: TimeWindow | None) -> tuple[str | None, str | None]:
+    return (None, None) if window is None else (iso_fixed_utc(window.start), iso_fixed_utc(window.end))
+
+
+def _window_from_columns(start: str | None, end: str | None) -> TimeWindow | None:
+    """A window is present or absent as a WHOLE. A half-present pair is a
+    corrupted row, not a window with a missing edge, and saying so here is what
+    stops a later delta computation quietly reading one bound as zero."""
+    if start is None and end is None:
+        return None
+    if start is None or end is None:
+        raise ValueError(
+            "a stored time window has exactly one of its two bounds; a window is "
+            "written and read as a whole, so this row is corrupt"
+        )
+    return TimeWindow(start=parse_fixed_utc(start), end=parse_fixed_utc(end))
+
+
+def _transition_row_values(transition: RequestTransition) -> tuple:
+    """The INSERT tuple, in the column order both stores' statements declare."""
+    requested_start, requested_end = _window_columns(transition.requested_window)
+    negotiated_start, negotiated_end = _window_columns(transition.negotiated_window)
+    return (
+        str(transition.transition_id),
+        str(transition.tenant_id),
+        str(transition.request_id),
+        transition.sequence,
+        transition.from_state.value,
+        transition.to_state.value,
+        iso_fixed_utc(transition.decided_at),
+        iso_fixed_utc(transition.recorded_at),
+        transition.actor_type,
+        transition.actor_id,
+        canonical_json([rc.value for rc in transition.reason_codes]),
+        requested_start,
+        requested_end,
+        negotiated_start,
+        negotiated_end,
+    )
+
+
+def _transition_from_row(
+    tenant_id: TenantId, request_id: RequestId, row: tuple
+) -> RequestTransition:
+    """Reconstruct a `RequestTransition` from a stored row.
+
+    Reconstruction is not a formality: the model's validators re-run here, so a
+    row whose stored states form an illegal pair, or whose `recorded_at` precedes
+    its `decided_at`, or whose denial carries no reason code, fails on READ as
+    well as on write. Raw SQL that got past the database's own CHECK constraints
+    still cannot be read back as a valid record and passed off as evidence.
+    """
+    return RequestTransition(
+        transition_id=row[0],
+        tenant_id=tenant_id,
+        request_id=request_id,
+        sequence=row[1],
+        from_state=ServiceRequestState(row[2]),
+        to_state=ServiceRequestState(row[3]),
+        decided_at=parse_fixed_utc(row[4]),
+        recorded_at=parse_fixed_utc(row[5]),
+        actor_type=row[6],
+        actor_id=row[7],
+        reason_codes=tuple(ReasonCode(x) for x in json.loads(row[8])),
+        requested_window=_window_from_columns(row[9], row[10]),
+        negotiated_window=_window_from_columns(row[11], row[12]),
+    )
 
 
 class CrossTenantWriteError(Exception):
@@ -556,6 +651,128 @@ class SqliteCanonicalStore:
                 recorded_at=datetime.fromisoformat(row[11]),
             )
             for row in cur.fetchall()
+        )
+
+    # -- the durable lifecycle record ---------------------------------------
+    #
+    # MX-A-LIFECYCLE-RECORD-010. The append-only per-request transition history:
+    # what moved, when it was DECIDED, when it was written down, by whom, and on
+    # what stated grounds. `PostgresCanonicalStore` exposes the same three methods
+    # with identical signatures and identical ordering (ADR-0004's mirrored
+    # contract), and both delegate the rules and the view to the pure functions in
+    # `lifecycle.py` so the two engines cannot diverge on either.
+    #
+    # NO CLOCK IS READ ON THIS PATH, in either store. `decided_at` and
+    # `recorded_at` are required arguments with no default, and there is no
+    # `datetime.now()` anywhere in this module -- asserted by AST in the
+    # conformance suite, not left as a convention.
+
+    def _lifecycle_head(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> RequestTransition | None:
+        """The request's last recorded transition, or None. Tenant-scoped: the
+        WHERE clause is the isolation boundary, as everywhere else here."""
+        cur = self._conn.execute(
+            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
+            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
+            "negotiated_window_start, negotiated_window_end "
+            "FROM request_state_transitions WHERE tenant_id = ? AND request_id = ? "
+            "ORDER BY sequence DESC LIMIT 1",
+            (str(tenant_id), str(request_id)),
+        )
+        row = cur.fetchone()
+        return None if row is None else _transition_from_row(tenant_id, request_id, row)
+
+    def record_transition(
+        self,
+        *,
+        tenant_id: TenantId,
+        request_id: RequestId,
+        from_state: ServiceRequestState,
+        to_state: ServiceRequestState,
+        decided_at: datetime,
+        recorded_at: datetime,
+        actor_type: str,
+        actor_id: str,
+        reason_codes: tuple[ReasonCode, ...] = (),
+        requested_window: TimeWindow | None = None,
+        negotiated_window: TimeWindow | None = None,
+    ) -> RequestTransition:
+        """Append one transition to a request's lifecycle record.
+
+        `decided_at` and `recorded_at` are REQUIRED keyword arguments with no
+        defaults: the caller states when the decision was made, and this method
+        has no way to invent it. That is the whole claim, expressed as a
+        signature rather than as documentation.
+
+        Refuses, before anything is written:
+          * `BackdatedRecordError` -- `recorded_at` precedes `decided_at`;
+          * `LifecycleOrderError`  -- the chain does not continue from what is
+            stored (including a first transition not starting at REQUESTED);
+          * `TransitionError`      -- the contract forbids the move, INCLUDING any
+            move out of a terminal state. This is `check_transition` refusing at
+            the RECORD layer: an illegal path cannot be persisted, not merely
+            cannot be checked.
+        """
+        head = self._lifecycle_head(tenant_id, request_id)
+        transition = next_transition(
+            tenant_id=tenant_id,
+            request_id=request_id,
+            head=head,
+            from_state=from_state,
+            to_state=to_state,
+            decided_at=decided_at,
+            recorded_at=recorded_at,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            reason_codes=reason_codes,
+            requested_window=requested_window,
+            negotiated_window=negotiated_window,
+        )
+        self._conn.execute(
+            "INSERT INTO request_state_transitions (transition_id, tenant_id, request_id, "
+            "sequence, from_state, to_state, decided_at, recorded_at, actor_type, actor_id, "
+            "reason_codes, requested_window_start, requested_window_end, "
+            "negotiated_window_start, negotiated_window_end) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            _transition_row_values(transition),
+        )
+        self._conn.commit()
+        return transition
+
+    def request_lifecycle(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> tuple[RequestTransition, ...]:
+        """The ordered transition history for one request.
+
+        Ordered by `sequence`, an INTEGER -- deliberately not by `decided_at`,
+        which is TEXT and would therefore be ordered by the database collation
+        rather than by time (see the note in schema_v0_1.sql). Two decisions made
+        in the same millisecond still come back in the order they were recorded.
+        """
+        cur = self._conn.execute(
+            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
+            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
+            "negotiated_window_start, negotiated_window_end "
+            "FROM request_state_transitions WHERE tenant_id = ? AND request_id = ? "
+            "ORDER BY sequence ASC",
+            (str(tenant_id), str(request_id)),
+        )
+        return tuple(
+            _transition_from_row(tenant_id, request_id, row) for row in cur.fetchall()
+        )
+
+    def explain_outcome(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> OutcomeExplanation | None:
+        """Why this request ended the way it did: the terminal state, the reason
+        codes that produced it, and the negotiated-vs-requested window delta.
+
+        None for a request with no recorded history -- absence, not an invented
+        starting state for a request this record has never seen."""
+        return explain(
+            tenant_id=tenant_id,
+            request_id=request_id,
+            transitions=self.request_lifecycle(tenant_id, request_id),
         )
 
     def raw_rows_for_tenant(self, tenant_id: TenantId) -> list[dict]:
