@@ -43,17 +43,42 @@ SENDER = "Arya"
 
 MAX_WORDS = 80
 
-# HARD BLOCK. These targets produce a striking-looking number that we do not
-# yet trust, so no draft is generated for them at all -- a note in a file is
-# not a safeguard, an empty drafts folder is.
+# HARD BLOCK. No draft is generated for these targets at all, and any draft
+# left on disk by an earlier run is DELETED -- a note in a file is not a
+# safeguard, an empty drafts folder is.
 #
+# Two kinds of hold live here, and both are temporary pending a human decision.
+# Neither is `do_not_contact`: that column is permanent and structural (see
+# outreach/README.md), and downgrading a reversible hold into a permanent
+# opt-out would silently burn a valid target forever.
+#
+# (a) NUMBERS WE DO NOT TRUST
 # Montebello: ranks 3rd of 185 at 44.3% empty vehicle-hours, but reports 9.54
 # trips per vehicle-hour against a 2.13 peer median (4.5x). That combination
 # points to a reporting-model difference rather than an idle fleet. Leading
 # with "3rd worst in the country" to a director who knows his own books, on a
 # filing artifact, is unrecoverable. Verify the filing by hand to release.
+#
+# (b) RELATIONSHIP CONFLICT
+# PSTA and CCCTA are both named, published clients of Christian Kent
+# (ctktmc.com customer list; see outreach/research/christian_kent_brief.md
+# section 5.1), the consultant whose unprompted reply to our cold outreach is
+# the reason the panel-findings work exists at all. Cold-emailing two of a
+# man's own clients while his warm thread is open is the kind of thing that
+# reads badly in hindsight and costs us nothing to sequence properly -- and if
+# it did cost us the relationship, we would never find out why. PSTA is doubly
+# connected: his client AND the employer of his TCRP SB-38 panel co-member.
+# Release only on an explicit human decision about sequencing.
 HOLD_FOR_VERIFICATION = {
     "Montebello Bus Lines": "trips/VRH 9.54 vs 2.13 peer median - suspected reporting-model difference",
+    "Pinellas Suncoast Transit": (
+        "RELATIONSHIP HOLD - published client of Christian Kent, whose warm "
+        "reply is open; sequencing is a human decision, NOT a do_not_contact"
+    ),
+    "County Connection": (
+        "RELATIONSHIP HOLD - published client of Christian Kent, whose warm "
+        "reply is open; sequencing is a human decision, NOT a do_not_contact"
+    ),
 }
 
 # Greet these WITHOUT a first name. In each case the person's name is either

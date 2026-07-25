@@ -72,20 +72,34 @@ Two hard framing constraints with him:
 
 ## Data findings that must not be re-derived wrongly
 
-**`ntd/agency_economics.csv` is ALL MODES COMBINED** — one row per agency per
-report year, **no mode column**. Its deadhead columns describe an agency's entire
-service. Any demand-response-specific claim from that file is invalid.
+**`ntd/agency_economics.csv` is DEMAND-RESPONSE ONLY.** Verified by measurement:
+its `vrh` matches the mode-tagged DR-only total for **100.0%** of 2024 agencies
+and the all-mode total for only **50.1%** (exactly the single-mode operators).
+`actual_hours − deadhead_hours == vrh` within 1% for 86.5% of deadhead filers,
+carrying that scope onto the deadhead columns. OmniRide: 40,140 − 27,778 =
+12,362 = its DR-only VRH exactly.
 
-This was caught only because a draft email named OmniRide (69%) and TANK (61%)
-as demand-response deadhead outliers. They are not — OmniRide is a Virginia
-commuter-express operator where high deadhead is simply what peak commuter
-service looks like, and the recipient is based in Virginia Beach. Restricted to
-genuinely DR-dominant agencies the finding collapses: n=45, median 16.9%, p90
-25.9%, one agency above 40%. **The dramatic tail was never demand-response.**
+⚠️ **An earlier version of this file said the opposite.** The orchestrator saw no
+mode column and one row per agency, inferred "all modes", and "corrected" a
+finding that was already right. Two compounding errors, both worth avoiding
+again: **inferring scope from schema shape instead of measuring it** (one join
+settles it), and **a subgroup-rate error presented as evidence** — arguing that a
+tail of 9-in-406 collapsing to 1-in-45 proved mode contamination, when both are
+**2.22%**, the identical rate. Only ~11% of filers are DR-dominant, so one
+survivor is exactly what subgroup size predicts.
 
-**Deadhead by mode is NOT COMPUTABLE from anything currently held.** The
-mode-tagged `ntd-service-opex-by-mode-timeseries` file carries only Vehicle
-Revenue Hours/Miles — no actual hours, no deadhead.
+The extreme deadhead tail is still **rejected** for outreach, on the honest
+grounds: effect size (2.2% of operators, 1.37% above a 10,000-hour floor) and
+concentration (two of the nine run 232 and 36 vehicle-hours *a year*).
+
+**Deadhead does NOT predict cost per trip** — Spearman **+0.024** over 406
+operators (cost *per hour* ranks +0.738). **This undercuts the hook the v3 peer
+engine leads with, and is unresolved.**
+
+**Deadhead is 2024-only, with no time series** — the by-mode file has no
+total-hours column. 13.5% of deadhead filings are internally inconsistent. There
+is **no `DT` mode** in the current vintage; taxi/TNC are `Mode=DR` with
+`TOS=TX/TN`.
 
 ### What survives (mode-tagged, balanced panel, inflation-adjusted)
 
