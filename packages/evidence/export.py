@@ -4,6 +4,15 @@ The strategic artifact: a self-contained, portable bundle for one decision that
 a third party can verify WITHOUT Milexium's code trusting itself and WITHOUT a
 live database connection -- the "machine-verifiable export" of blueprint 07.
 
+**An honest correction to the sentence above.** `verify_evidence_pack` imports
+`packages.canonical`, `packages.verify` and Pydantic, so for as long as it was
+the only verifier, "a third party can verify this" meant "a third party can
+install our code and run our verifier". Re-derivation was real; independence was
+not. `packages/evidence/standalone_verifier.py` is the verifier that owes this
+repository nothing, and `packages/evidence/pack_file.py` ships it -- and the
+algorithm it implements -- inside the artifact. This module remains the in-repo
+path and the two are cross-checked against each other.
+
 An `EvidencePack` embeds the reconstructed `EvidencePacket`, the raw event rows
 it was built from (so re-verification recomputes the hash chain from source
 bytes, not a claim), the optional outcome, and a manifest carrying a bundle
@@ -40,6 +49,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -160,7 +170,22 @@ def build_evidence_pack(events, raw_rows, outcome=None, teardown=None) -> Eviden
     """
     packet: EvidencePacket = build_evidence_packet(events, raw_rows, outcome=outcome)
     aggregate_id = packet.aggregate_id
-    own_rows = tuple(row for row in raw_rows if row.get("aggregate_id") == aggregate_id)
+    # WHY sorted: the bundle checksum is taken over these rows in the order they
+    # are embedded, so a caller who happened to hand over the same history in a
+    # different row order produced a DIFFERENT pack and a different
+    # bundle_sha256 for identical facts. Determinism is a precondition of
+    # verification, not a nicety -- if the same inputs can yield two artifacts, a
+    # recipient cannot tell "re-exported" from "altered". Sorting by sequence
+    # matches what build_evidence_packet already does to `events` and what
+    # verify_chain already does before checking. Python's sort is stable, so
+    # duplicate sequences (a real tamper case) keep their relative order and
+    # remain detectable rather than being silently reconciled.
+    own_rows = tuple(
+        sorted(
+            (row for row in raw_rows if row.get("aggregate_id") == aggregate_id),
+            key=lambda row: row.get("sequence", 0),
+        )
+    )
 
     evidence = packet.model_dump(mode="json")
     outcome_dump = outcome.model_dump(mode="json") if outcome is not None else None
@@ -320,6 +345,145 @@ def _residual_value_paths(node: object, values: frozenset[str]) -> tuple[str, ..
     return tuple(found)
 
 
+# --------------------------------------------------------------------------- #
+# The manifest and the narrative are claims too, so they are re-derived         #
+# --------------------------------------------------------------------------- #
+
+
+def _manifest_problems(pack: "EvidencePack") -> tuple[str, ...]:
+    """Every manifest claim that does not follow from the body it summarizes.
+
+    The bundle checksum deliberately EXCLUDES the manifest -- it is where the
+    checksum lives -- so at the pack layer no hash covers `event_count`,
+    `aggregate_id`, `tenant_id` or `integrity_verified_at_export`. Reading them
+    back left a whole surface unchecked, which is the same shape of defect
+    ADR-0045 fixed for the redaction claim: a claim a verifier repeats is not a
+    claim a verifier checked. Each is recomputed from `evidence` and
+    `raw_events` instead.
+    """
+    manifest = pack.manifest
+    evidence = pack.evidence if isinstance(pack.evidence, dict) else {}
+    problems: list[str] = []
+
+    if manifest.event_count != len(pack.raw_events):
+        problems.append(
+            f"manifest claims {manifest.event_count} events, the pack carries "
+            f"{len(pack.raw_events)}"
+        )
+    if manifest.aggregate_id != evidence.get("aggregate_id"):
+        problems.append(
+            f"manifest aggregate_id {manifest.aggregate_id!r} does not match the "
+            f"embedded narrative's {evidence.get('aggregate_id')!r}"
+        )
+    stray = sorted(
+        {
+            str(row.get("aggregate_id"))
+            for row in pack.raw_events
+            if row.get("aggregate_id") != manifest.aggregate_id
+        }
+    )
+    if stray:
+        problems.append(f"rows for other aggregates rode into this pack: {stray}")
+    if manifest.tenant_id != str(evidence.get("tenant_id")):
+        problems.append(
+            f"manifest tenant_id {manifest.tenant_id!r} does not match the embedded "
+            f"narrative's {evidence.get('tenant_id')!r}"
+        )
+    if manifest.integrity_verified_at_export != evidence.get("integrity_verified"):
+        problems.append(
+            "manifest integrity_verified_at_export disagrees with the embedded "
+            "narrative's own integrity_verified"
+        )
+
+    # `integrity_verified` is itself derived: true exactly when every applicable
+    # check the packet records found nothing.
+    rederived = (
+        not evidence.get("chain_violations")
+        and not evidence.get("schema_violations")
+        and (not evidence.get("state_check_applicable") or not evidence.get("state_violations"))
+    )
+    if bool(evidence.get("integrity_verified")) != bool(rederived):
+        problems.append(
+            "the narrative's integrity_verified does not follow from the violations "
+            "it records"
+        )
+    return tuple(problems)
+
+
+_NARRATIVE_SOURCES = ("known_inputs", "proposed", "approved_or_overridden", "outcome_events")
+
+
+def _narrative_problems(pack: "EvidencePack") -> tuple[str, ...]:
+    """Every place the reconstructed narrative does not follow from the ledger
+    rows carried beside it.
+
+    `evidence` is a reorganization of the ledger, so each event it cites must be
+    one of the embedded rows. Every field the embedded record happens to carry
+    is compared against that row -- following the data rather than a remembered
+    list of fields, for the reason ADR-0045 gives.
+
+    This is the only check that can see an edit to `occurred_at`: it is not an
+    input to the per-event hash, so an attacker who changes it in the rows and
+    re-anchors the bundle checksum passes chain re-verification and fails here,
+    unless they change it identically in both places.
+    """
+    evidence = pack.evidence if isinstance(pack.evidence, dict) else {}
+    by_event_id = {row.get("event_id"): row for row in pack.raw_events if row.get("event_id")}
+
+    cited: list[tuple[str, dict]] = []
+    for key in _NARRATIVE_SOURCES:
+        value = evidence.get(key)
+        if isinstance(value, list):
+            cited.extend((f"evidence.{key}[{i}]", item) for i, item in enumerate(value))
+    if isinstance(evidence.get("executed"), dict):
+        cited.append(("evidence.executed", evidence["executed"]))
+
+    problems: list[str] = []
+    for where, record in cited:
+        if not isinstance(record, dict):
+            continue
+        row = by_event_id.get(record.get("event_id"))
+        if row is None:
+            problems.append(f"{where} cites an event the carried ledger rows do not contain")
+            continue
+        for name, claimed in record.items():
+            if name == "payload":
+                actual = _parsed_payload(row)
+            elif name in row:
+                actual = row[name]
+            else:
+                continue
+            if name == "occurred_at":
+                if _instant(claimed) != _instant(actual):
+                    problems.append(f"{where}.{name} disagrees with its ledger row")
+                continue
+            if isinstance(actual, str) and not isinstance(claimed, str):
+                try:
+                    actual = json.loads(actual)
+                except json.JSONDecodeError:
+                    pass
+            if actual != claimed:
+                problems.append(f"{where}.{name} disagrees with its ledger row")
+
+    if pack.outcome != evidence.get("observed"):
+        problems.append(
+            "the pack's `outcome` and the narrative's `observed` are not the same record"
+        )
+    return tuple(sorted(set(problems)))
+
+
+def _instant(text: object) -> datetime | None:
+    """`+00:00` and `Z` are the same moment, and the ledger row and the
+    reconstructed narrative legitimately spell UTC differently, so instants are
+    compared as instants and never as strings."""
+    if not isinstance(text, str):
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 class PackVerification(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -328,6 +492,16 @@ class PackVerification(BaseModel):
     chain_reverified: bool
     chain_violations: tuple[str, ...]
     reasons: tuple[str, ...]
+
+    manifest_consistent: bool = True
+    """RE-DERIVED: every manifest claim recomputed from the body it summarizes.
+    False when the manifest describes a pack other than the one it is attached
+    to -- which no checksum at the pack layer would otherwise catch, because the
+    bundle hash deliberately excludes the manifest."""
+
+    narrative_consistent: bool = True
+    """RE-DERIVED: the reconstructed `evidence` narrative agrees with the raw
+    ledger rows carried beside it, field by field."""
 
     masking_complete: bool | None = None
     """RE-DERIVED, never read from the manifest: True when every payload key the
@@ -454,6 +628,14 @@ def verify_evidence_pack(pack: EvidencePack) -> PackVerification:
         for path in unmasked_paths
     )
 
+    manifest_problems = _manifest_problems(pack)
+    manifest_consistent = not manifest_problems
+    reasons.extend(f"manifest: {problem}" for problem in manifest_problems)
+
+    narrative_problems = _narrative_problems(pack)
+    narrative_consistent = not narrative_problems
+    reasons.extend(f"narrative: {problem}" for problem in narrative_problems)
+
     if not pack.manifest.independently_verifiable:
         reasons.append(
             "pack is marked non-independently-verifiable (redacted); chain "
@@ -474,6 +656,8 @@ def verify_evidence_pack(pack: EvidencePack) -> PackVerification:
             reasons=tuple(reasons),
             masking_complete=masking_complete,
             unmasked_paths=unmasked_paths,
+            manifest_consistent=manifest_consistent,
+            narrative_consistent=narrative_consistent,
             teardown_present=pack.teardown is not None,
             teardown_figures_rederived=teardown.figures_rederived,
             teardown_fingerprint_rederived=teardown.fingerprint_rederived,
@@ -493,6 +677,10 @@ def verify_evidence_pack(pack: EvidencePack) -> PackVerification:
             # A pack claiming a redaction it did not perform is not re-verified,
             # whatever else holds: the claim is part of what the pack asserts.
             and masking_complete is not False
+            # ...and neither is one whose manifest or narrative describes
+            # something other than what it carries.
+            and manifest_consistent
+            and narrative_consistent
         ),
         bundle_hash_matches=bundle_hash_matches,
         chain_reverified=chain_reverified,
@@ -500,6 +688,8 @@ def verify_evidence_pack(pack: EvidencePack) -> PackVerification:
         reasons=tuple(reasons),
         masking_complete=masking_complete,
         unmasked_paths=unmasked_paths,
+        manifest_consistent=manifest_consistent,
+        narrative_consistent=narrative_consistent,
         teardown_present=pack.teardown is not None,
         teardown_figures_rederived=teardown.figures_rederived,
         teardown_fingerprint_rederived=teardown.fingerprint_rederived,
@@ -599,7 +789,11 @@ def redact_pack(pack: EvidencePack, sensitive_payload_keys: tuple[str, ...]) -> 
 
     teardown = None if pack.teardown is None else redact_teardown_evidence(pack.teardown)
     teardown_dump = teardown.model_dump(mode="json") if teardown is not None else None
-    redacted_fields = tuple(sensitive_payload_keys)
+    # WHY sorted: masking a set of keys is order-independent, but recording them
+    # in the caller's argument order was not -- redact_pack(pack, ("a","b")) and
+    # redact_pack(pack, ("b","a")) produced byte-different packs with different
+    # checksums for identical masking. Same inputs, same artifact.
+    redacted_fields = tuple(sorted(set(sensitive_payload_keys)))
     note = _REDACTED_NOTE + _REDACTED_EVERYWHERE_CLAUSE
     if teardown is not None:
         redacted_fields += ("teardown.top_runs[].run_ref", "teardown.segments[].run_ref")

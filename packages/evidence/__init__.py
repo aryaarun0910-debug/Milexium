@@ -33,6 +33,20 @@ from packages.evidence.teardown_evidence import (
     TeardownSegmentRow,
     rederive_teardown,
 )
+from packages.evidence.pack_file import (
+    ALGORITHM,
+    ATTESTS,
+    DOES_NOT_ATTEST,
+    PACK_FILE_VERSION,
+    AlgorithmRule,
+    AttestationScope,
+    EmbeddedVerifier,
+    VerifiablePackFile,
+    build_pack_file,
+    verifier_source,
+    verify_pack_file_document,
+    write_verifier_script,
+)
 from packages.evidence.packs import (
     AggregateHistory,
     IncidentEvidencePack,
@@ -87,6 +101,18 @@ __all__ = [
     "ProcurementBundle",
     "ProcurementItem",
     "build_procurement_bundle",
+    "ALGORITHM",
+    "ATTESTS",
+    "DOES_NOT_ATTEST",
+    "PACK_FILE_VERSION",
+    "AlgorithmRule",
+    "AttestationScope",
+    "EmbeddedVerifier",
+    "VerifiablePackFile",
+    "build_pack_file",
+    "verifier_source",
+    "verify_pack_file_document",
+    "write_verifier_script",
 ]
 
 CONTRACT_VERSION = "0.1.0"
