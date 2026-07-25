@@ -23,6 +23,16 @@ from packages.evidence.export import (
     redact_pack,
     verify_evidence_pack,
 )
+from packages.evidence.teardown_capture import TeardownCaptureError, capture_teardown
+from packages.evidence.teardown_evidence import (
+    TeardownBucketRow,
+    TeardownEvidence,
+    TeardownFigures,
+    TeardownRederivation,
+    TeardownRunRow,
+    TeardownSegmentRow,
+    rederive_teardown,
+)
 from packages.evidence.packs import (
     AggregateHistory,
     IncidentEvidencePack,
@@ -53,6 +63,15 @@ __all__ = [
     "build_evidence_pack",
     "redact_pack",
     "verify_evidence_pack",
+    "TeardownBucketRow",
+    "TeardownCaptureError",
+    "TeardownEvidence",
+    "TeardownFigures",
+    "TeardownRederivation",
+    "TeardownRunRow",
+    "TeardownSegmentRow",
+    "capture_teardown",
+    "rederive_teardown",
     "AggregateHistory",
     "PeriodEvidencePack",
     "PeriodManifest",
