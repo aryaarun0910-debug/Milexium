@@ -108,11 +108,12 @@ CREATE POLICY tenant_isolation ON policies
 -- platform seeds its own models, and it is the same trust model every other
 -- policy in this file has. What is excluded is a session acting as a customer.
 --
--- Deny-all-by-default is preserved for CUSTOMER rows (an unset GUC yields NULL
--- and `tenant_id = NULL` is never true). Platform rows remain visible with the
--- GUC unset, which is the deliberate consequence of the OR above: they are
--- readable by every tenant by construction, so this exposes nothing that any
--- tenant could not already read, and it exposes no customer's data.
+-- Deny-all-by-default is preserved for EVERY row of this table, platform rows
+-- included -- see the ADR-0043 note on the policy below, which is what makes
+-- that true. (An earlier revision of this block said platform rows stayed
+-- visible to an unset session and called it a deliberate consequence; that was
+-- superseded by ADR-0043 and the sentence is corrected here rather than left to
+-- contradict the policy it sits above.)
 ALTER TABLE model_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE model_versions FORCE ROW LEVEL SECURITY;
 -- The platform-read branch requires the session to be SCOPED (ADR-0043,
@@ -193,12 +194,30 @@ CREATE POLICY tenant_isolation ON outbox
 -- OWNS these tables, so ENABLE alone would leave the owning credential
 -- unconstrained and every isolation test would pass for the wrong reason.
 --
--- SCOPE NOTE: this file is applied by PostgresCanonicalStore (the native
--- PostgreSQL 17 on 5432) only. PostgisObservationStore targets the containerized
--- PostGIS on 5433 and applies the portable schema plus postgis_postgres.sql, not
--- this file -- its reads are tenant-filtered in SQL but not policy-enforced.
--- Extending RLS to that container store is a separate decision (it would require
--- the store to set the GUC per operation) and is deliberately NOT assumed here.
+-- SCOPE NOTE (updated by MX-C-CONTAINER-RLS-005; this file previously recorded
+-- the container as deliberately NOT policy-enforced -- it now is):
+-- BOTH Postgres-backed stores apply this file, and both apply THIS file rather
+-- than a copy of it, so neither can drift away from the other's boundary:
+--   * PostgresCanonicalStore -- the native PostgreSQL 17 on port 5432.
+--   * PostgisObservationStore -- the containerized PostgreSQL 16 + PostGIS 3.4
+--     on host port 5433. It applies the portable schema, then
+--     postgis_postgres.sql, then this file, and sets the GUC per operation as
+--     the native store does. Its observation reads are therefore policy-enforced,
+--     not merely tenant-filtered in SQL -- INCLUDING the ST_DWithin spatial path,
+--     which is proven tenant-scoped with the WHERE clause removed in
+--     conformance/property-tests/test_postgis_rls.py.
+--
+-- ONE THING DIFFERS IN THE CONTAINER, and it is the reason that store needs more
+-- than an `ALTER TABLE`: the owner-bypass problem above has a superuser-bypass
+-- problem stacked on top of it. RLS binds neither superusers nor BYPASSRLS roles,
+-- and FORCE does not help, because that check is made first. The native
+-- `milexium_dev` is deliberately an ordinary role (ADR-0006), but the postgis
+-- image bootstraps POSTGRES_USER as the container cluster's SUPERUSER, so the
+-- credential in infra/compose/.env holds rolsuper and rolbypassrls. Installing
+-- these policies under it would bind nobody. PostgisObservationStore therefore
+-- provisions an unprivileged `milexium_rls` role (NOSUPERUSER, NOBYPASSRLS,
+-- NOLOGIN), makes it the OWNER of its disposable schema, and SET ROLEs to it --
+-- owner, so FORCE below is load-bearing there exactly as it is here.
 ALTER TABLE vehicle_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicle_observations FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON vehicle_observations

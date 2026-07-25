@@ -14,13 +14,45 @@ counterpart to `postgres_storage.py`, and deliberately ADDITIVE to it:
   geometry) and `StopTimeObservation` (without -- a stop-time observation has no
   position of its own), nothing more.
 
-It applies the PORTABLE `sql/schema_v0_1.sql` (lat/lon as REAL, SQLite-safe) and
+It applies the PORTABLE `sql/schema_v0_1.sql` (lat/lon as REAL, SQLite-safe),
 THEN the Postgres-only `sql/postgis_postgres.sql` extension (a geometry(Point,4326)
-column + GiST index), exactly the separation `rls_postgres.sql` uses -- the
-geometry never touches the portable base DDL (ADR-0002). It inserts a
-`VehicleObservation`, DERIVES its geometry from the stored lat/lon columns (the
-geometry is never passed in from Python, so the REAL -> geometry derivation itself
-is under test), and a spatial query (`ST_DWithin`) reads it back.
+column + GiST index), THEN the Postgres-only `sql/rls_postgres.sql` -- exactly the
+separation those two files describe: the geometry and the policies never touch the
+portable base DDL (ADR-0002). It inserts a `VehicleObservation`, DERIVES its
+geometry from the stored lat/lon columns (the geometry is never passed in from
+Python, so the REAL -> geometry derivation itself is under test), and a spatial
+query (`ST_DWithin`) reads it back.
+
+TENANT ISOLATION IS POLICY-ENFORCED HERE, NOT JUST WHERE-CLAUSE FILTERED
+(MX-C-CONTAINER-RLS-005, closing the scope gap ADR-0037 recorded as open). Until
+this packet, this store applied the portable schema plus the geometry extension
+and nothing else: its reads filtered on `tenant_id` in the SQL text, so the
+boundary was application code. A WHERE clause is application code; a policy is a
+boundary. This store now applies the SAME `sql/rls_postgres.sql` the native store
+applies -- the file itself, not a copy, so the container store cannot drift away
+from the policies the native store enforces -- and calls `_use_tenant()` before
+every read and write to set the `milexium.tenant_id` GUC those policies key on,
+exactly as `PostgresCanonicalStore` does. The tenant_id WHERE clauses stay: two
+independent boundaries, either alone sufficient.
+
+WHY THIS STORE HAS TO `SET ROLE` (and the native store does not)
+RLS binds neither superusers nor `BYPASSRLS` roles -- `FORCE` does not help,
+because FORCE only subjects the table OWNER, and the bypass check is made first.
+On the native PostgreSQL 17 that is a non-issue: `milexium_dev` there is
+deliberately a plain, non-superuser role (ADR-0006). In the CONTAINER it is not:
+the postgres/postgis image bootstraps `POSTGRES_USER` as the cluster's superuser,
+so the credential in `infra/compose/.env` holds both `rolsuper` and
+`rolbypassrls`. Applying the policies while connected as that role would install
+a boundary that binds nobody, and every isolation test would pass for the wrong
+reason -- the same false green `rls_postgres.sql`'s header warns about, one level
+up. So construction creates (idempotently) a deliberately unprivileged
+`milexium_rls` role -- NOSUPERUSER, NOBYPASSRLS, NOLOGIN, reachable only via
+`SET ROLE` -- makes it the OWNER of the disposable schema and everything in it,
+and acts as it for the rest of the session. Owner, not merely user, so `FORCE` is
+genuinely load-bearing here too rather than being masked by a plain permission
+failure; `conformance/property-tests/test_postgis_rls.py` asserts the acting role
+is unprivileged before it asserts anything else, and lifts FORCE to watch the
+boundary collapse.
 
 Test-isolation follows `postgres_storage.py`: a disposable per-run schema
 `mx_<uuid>` created at construction and torn down with `DROP SCHEMA ... CASCADE`,
@@ -46,8 +78,15 @@ from packages.canonical.ids import TenantId
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
 _POSTGIS_PATH = Path(__file__).parent / "sql" / "postgis_postgres.sql"
+_RLS_PATH = Path(__file__).parent / "sql" / "rls_postgres.sql"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _COMPOSE_ENV = _REPO_ROOT / "infra" / "compose" / ".env"
+
+# The deliberately unprivileged role this store acts as, so the policies it
+# installs actually bind it. See "WHY THIS STORE HAS TO SET ROLE" above. NOLOGIN:
+# it is never a connection identity, only a `SET ROLE` target, so it needs no
+# password and cannot be logged into if it leaks.
+_RLS_ROLE = "milexium_rls"
 
 
 def _read_compose_env() -> dict[str, str]:
@@ -108,6 +147,10 @@ class PostgisObservationStore:
     def __init__(self, connection: psycopg.Connection, *, schema: str | None = None) -> None:
         self._conn = connection
         self._schema = schema or f"mx_{uuid.uuid4().hex}"
+        #: The role this store's statements actually run as, and the OWNER of the
+        #: disposable schema. `None` means the connecting credential was already
+        #: unprivileged enough to be bound by RLS, so no `SET ROLE` was needed.
+        self._acting_role: str | None = None
         self._create_schema_and_apply_ddl()
 
     @classmethod
@@ -130,27 +173,111 @@ class PostgisObservationStore:
         )
         return cls(connection, schema=schema)
 
+    def _ensure_unprivileged_role(self) -> str | None:
+        """Return the role this store should act as, creating it if necessary.
+
+        Returns `None` when the connecting credential is ALREADY subject to RLS
+        (neither superuser nor `BYPASSRLS`) -- then it can own and act on the
+        schema directly, as `PostgresCanonicalStore` does against the native
+        instance, and no role switch is warranted.
+
+        Otherwise the credential bypasses every policy this store is about to
+        install, so it provisions `milexium_rls`: NOSUPERUSER, NOBYPASSRLS,
+        NOLOGIN. Creation is idempotent AND race-safe -- two conformance runs
+        starting together would both see the role missing, so the `duplicate_object`
+        handler, not a check-then-create, is what makes the loser survive. It runs
+        in its own committed transaction so losing that race cannot abort the DDL
+        that follows.
+        """
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user"
+            )
+            row = cur.fetchone()
+            if row is not None and row[0] is False:
+                return None
+            cur.execute(
+                sql.SQL(
+                    "DO $$ BEGIN CREATE ROLE {} NOLOGIN NOSUPERUSER NOBYPASSRLS "
+                    "NOCREATEDB NOCREATEROLE; "
+                    "EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+                ).format(sql.Identifier(_RLS_ROLE))
+            )
+        self._conn.commit()
+        return _RLS_ROLE
+
     def _create_schema_and_apply_ddl(self) -> None:
         ident = sql.Identifier(self._schema)
+        self._acting_role = self._ensure_unprivileged_role()
         with self._conn.cursor() as cur:
-            cur.execute(sql.SQL("CREATE SCHEMA {}").format(ident))
+            if self._acting_role is None:
+                cur.execute(sql.SQL("CREATE SCHEMA {}").format(ident))
+            else:
+                # AUTHORIZATION *before* SET ROLE: the unprivileged role must OWN
+                # the schema and therefore every table created in it below. Owner
+                # rather than merely grantee is deliberate -- it is what makes
+                # FORCE ROW LEVEL SECURITY the thing standing between tenants,
+                # instead of an ordinary permission failure masking an absent
+                # policy.
+                cur.execute(
+                    sql.SQL("CREATE SCHEMA {} AUTHORIZATION {}").format(
+                        ident, sql.Identifier(self._acting_role)
+                    )
+                )
             # public is on the search_path so the geometry type + ST_* functions
             # (postgis is installed in public on the container) resolve, while
             # unqualified table names land in the disposable schema.
             cur.execute(sql.SQL("SET search_path TO {}, public").format(ident))
+            if self._acting_role is not None:
+                # Session-scoped, so it survives this store's per-operation
+                # commits: every statement after this one -- DDL and DML alike --
+                # runs as a role the policies below can actually constrain.
+                cur.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(self._acting_role)))
             cur.execute(_SCHEMA_PATH.read_text(encoding="utf-8"))
             # The geometry column/index/population is Postgres-only, so it is a
             # separate file applied only here -- never in the portable
             # schema_v0_1.sql (which must also run on SQLite). Exactly the
             # rls_postgres.sql pattern.
+            #
+            # `CREATE EXTENSION IF NOT EXISTS postgis` inside it needs no
+            # privilege when postgis is already installed (the postgis image
+            # installs it into `public` at initdb): the IF NOT EXISTS short-circuit
+            # is checked before the ownership check, so it is a NOTICE and a
+            # no-op for the unprivileged role above.
             cur.execute(_POSTGIS_PATH.read_text(encoding="utf-8"))
+            # THE SAME FILE the native store applies -- read, not copied. A
+            # second, hand-maintained copy of these policies would be free to
+            # drift from the ones the native store enforces, and a tenant
+            # boundary that is only mostly the same boundary is not one.
+            # Applied last so the geometry column exists before any policy is
+            # evaluated against this table, and so postgis_postgres.sql's
+            # back-fill UPDATE is not itself filtered by a not-yet-set GUC.
+            cur.execute(_RLS_PATH.read_text(encoding="utf-8"))
         self._conn.commit()
+
+    def _use_tenant(self, tenant_id: object) -> None:
+        """Set the session's RLS key (`milexium.tenant_id`) to `tenant_id`.
+
+        Identical contract to `PostgresCanonicalStore._use_tenant`, and required
+        for the same reason: every policy in sql/rls_postgres.sql keys on this
+        GUC, so without it the store would be acting as no tenant and the
+        policies would (correctly) deny it everything. Session scope
+        (`is_local=false`) means the value survives this store's per-operation
+        commits, but every operation re-sets it first, so none depends on a value
+        another left behind. `set_config` binds `tenant_id` as a parameter, so it
+        is never string-interpolated into SQL."""
+        self._conn.execute("SELECT set_config('milexium.tenant_id', %s, false)", (str(tenant_id),))
 
     def drop_schema(self) -> None:
         """Test/teardown helper: drops this instance's dedicated schema and
-        everything in it. Never called from non-test code."""
+        everything in it. Never called from non-test code.
+
+        `RESET ROLE` first: teardown must not be the one operation that can fail
+        for want of privilege, and a test that deliberately left the acting role
+        mid-experiment (lifted FORCE, say) still has to clean up completely."""
         ident = sql.Identifier(self._schema)
         with self._conn.cursor() as cur:
+            cur.execute("RESET ROLE")
             cur.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(ident))
         self._conn.commit()
 
@@ -158,6 +285,11 @@ class PostgisObservationStore:
         self._conn.close()
 
     def create_tenant(self, tenant: Tenant) -> None:
+        # A tenant registers itself: the GUC is the new tenant's own id, so the
+        # `tenants` policy's WITH CHECK (tenant_id = GUC) permits exactly this
+        # row and no other -- the same self-registration PostgresCanonicalStore
+        # performs.
+        self._use_tenant(tenant.tenant_id)
         self._conn.execute(
             "INSERT INTO tenants (tenant_id, name, created_at) VALUES (%s, %s, %s)",
             (str(tenant.tenant_id), tenant.name, tenant.created_at.isoformat()),
@@ -170,7 +302,14 @@ class PostgisObservationStore:
         with the same ST_SetSRID(ST_MakePoint(lon,lat),4326) expression as
         postgis_postgres.sql. The geometry is computed from the base columns, not
         passed in as a geometry, so the REAL -> geometry derivation is what the
-        spatial round-trip proves."""
+        spatial round-trip proves.
+
+        Runs under the observation's OWN tenant as the acting GUC, so the
+        `vehicle_observations` WITH CHECK admits this row -- and the geometry
+        UPDATE that follows is governed by the same policy's USING clause, which
+        is the point: the spatial column can only ever be populated on a row the
+        acting tenant may already see."""
+        self._use_tenant(obs.tenant_id)
         self._conn.execute(
             "INSERT INTO vehicle_observations (observation_id, tenant_id, vehicle_ref, "
             "trip_ref, route_ref, stop_ref, current_status, latitude, longitude, bearing, "
@@ -216,6 +355,7 @@ class PostgisObservationStore:
         preserving the entity's predicted-vs-observed discipline through storage:
         a GTFS-Realtime prediction never lands in an observed-time column.
         """
+        self._use_tenant(obs.tenant_id)
         self._conn.execute(
             "INSERT INTO stop_time_observations (observation_id, tenant_id, trip_ref, "
             "route_ref, stop_ref, stop_sequence, schedule_relationship, "
@@ -244,11 +384,17 @@ class PostgisObservationStore:
 
     def stop_time_observations(self, tenant_id: TenantId) -> tuple[StopTimeObservation, ...]:
         """Tenant-scoped read: every stop-time observation of `tenant_id`, in
-        valid-time then stop order. The `tenant_id` filter is applied in SQL,
-        never in Python after an unfiltered fetch -- the same discipline
-        storage.py and postgres_storage.py state. Reconstructs the entity, so a
-        successful round-trip proves the stored columns still validate against
-        `StopTimeObservation` rather than merely being present."""
+        valid-time then stop order. Reconstructs the entity, so a successful
+        round-trip proves the stored columns still validate against
+        `StopTimeObservation` rather than merely being present.
+
+        Two independent boundaries hold, as in `postgres_storage.py`: the
+        `stop_time_observations` RLS policy, keyed on the GUC set here and
+        enforced by PostgreSQL itself, and the `tenant_id` WHERE clause below --
+        applied in SQL, never in Python after an unfiltered fetch. Either alone
+        is sufficient; the WHERE clause is kept precisely so it is not the only
+        one."""
+        self._use_tenant(tenant_id)
         cur = self._conn.execute(
             "SELECT observation_id, tenant_id, trip_ref, route_ref, stop_ref, stop_sequence, "
             "schedule_relationship, predicted_arrival_at, predicted_departure_at, "
@@ -293,7 +439,21 @@ class PostgisObservationStore:
         `radius_meters` of (latitude, longitude), nearest first. Casting to
         geography makes ST_DWithin/ST_Distance a true metric-distance test on the
         WGS84 sphere -- proving the geometry populated from lat/lon is spatially
-        queryable, not just stored."""
+        queryable, not just stored.
+
+        THE GEOMETRY PATH IS NOT A WAY AROUND THE POLICY. This is the one read on
+        this store that could plausibly have become one: a spatial predicate is
+        evaluated by PostGIS over a GiST index, and it is easy to assume an index
+        scan sees rows a sequential scan would not. It does not. The policy's
+        USING clause becomes part of the scan's own qualification, so the result
+        is the INTERSECTION however the rows are reached; and because it is a
+        security-barrier qual, a non-leakproof user predicate like ST_DWithin
+        cannot even be evaluated ahead of it. The GUC set here is what gives that
+        clause a tenant to match, and
+        `conformance/property-tests/test_postgis_rls.py` proves the outcome
+        empirically by running this very predicate with the `tenant_id` filter
+        DELETED, rather than resting on the reasoning above."""
+        self._use_tenant(tenant_id)
         cur = self._conn.execute(
             "SELECT observation_id, vehicle_ref, latitude, longitude, "
             "ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint(%s,%s),4326)::geography) AS dist_m "
