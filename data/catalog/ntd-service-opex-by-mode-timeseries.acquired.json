@@ -1,0 +1,14 @@
+{
+  "acquired_at": "2026-07-25T08:39:29.119457+00:00",
+  "dataset_id": "ntd-service-opex-by-mode-timeseries",
+  "free_gb_after": 317.44,
+  "free_gb_before": 317.51,
+  "license_and_commercial_rights": "Public Domain U.S. Government (portal licenceId=USGOV_WORKS, termsLink https://www.usa.gov/government-works; DCAT Common Core License http://www.usa.gov/publicdomain/label/1.0/). A federal government work, not subject to domestic copyright (17 U.S.C. Sec. 105). COMMERCIAL USE IS PERMITTED without restriction, fee, attribution obligation or share-alike.",
+  "object_store_bucket": "milexium-artifacts",
+  "object_store_key": "e6e821f63751d429b3101d383c5efe51228ecafbc9fb5d98c175ceb7da5a1724",
+  "raw_path": "data\\raw\\public\\ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv",
+  "retained_bytes": 73167312,
+  "sha256": "e6e821f63751d429b3101d383c5efe51228ecafbc9fb5d98c175ceb7da5a1724",
+  "source_url": "https://data.transportation.gov/api/views/npsm-38gk/rows.csv",
+  "zone": "raw/public"
+}

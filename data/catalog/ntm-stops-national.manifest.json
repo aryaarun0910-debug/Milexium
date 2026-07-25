@@ -1,0 +1,38 @@
+{
+  "dataset_id": "ntm-stops-national",
+  "owner_and_source": "USDOT Bureau of Transportation Statistics (BTS), National Transportation Atlas Database (NTAD) -- 'National Transit Map: Stops', a nationwide stop inventory BTS compiles by ingesting the GTFS Schedule feeds of participating US transit agencies. Served from the NGDA Transportation GeoPlatform ArcGIS hub, item 959b4adc3ff94bc6a46f2c1d515d09aa. No API key, no registration.",
+  "license_and_commercial_rights": "U.S. Public Domain -- the data.gov catalogue record for this dataset carries an explicit machine-readable licence field of http://www.usa.gov/publicdomain/label/1.0/ (USA.gov Public Domain Label 1.0) with Access Level 'public'. A federal government work, not subject to domestic copyright (17 U.S.C. Sec. 105). COMMERCIAL USE IS PERMITTED without restriction, fee, attribution obligation, share-alike or revocation clause. This matters specifically because it is the rights-clean route to a nationwide stop inventory: the SAME underlying stop geometry, obtained directly from individual agency GTFS downloads, would arrive under ~800 separate and often restrictive agency developer licence agreements (see data/US_OPEN_DATA_SURVEY.md). BTS's federal republication launders the rights question that per-agency acquisition does not.",
+  "decision_tasks_enabled": [
+    "networks.transit_stop_inventory",
+    "forecast.demand"
+  ],
+  "geography": "United States, nationwide -- every fixed-guideway and fixed-route stop in the agency GTFS feeds BTS ingested (~270 participating agencies at the last BTS statement)",
+  "time_coverage": "snapshot; each row carries its own download_date recording when BTS ingested that agency's feed (the acquired vintage carries 2026-03-09 dates)",
+  "source_url": "https://ngda-transportation-geoplatform.hub.arcgis.com/api/download/v1/items/959b4adc3ff94bc6a46f2c1d515d09aa/csv?layers=0",
+  "expected_download_gb": 0.11,
+  "expected_expanded_gb": 0.11,
+  "expected_retained_gb": 0.11,
+  "schema_and_format": "CSV (UTF-8 with BOM), ~109 MB, columns: OBJECTID, ntd_id, feed_id, stop_id, stop_name, stop_desc, stop_lat, stop_lon, zone_id, stop_url, stop_code, location_type, parent_station, stop_timezone, wheelchair_boarding, level_id, platform_code, stop_type, stop_type_text, download_date, x, y. The ntd_id column is the load-bearing one: it joins every stop directly to the NTD ridership and service panels acquired in this same packet. FORMAT NOTE: the download URL carries a query string, so packages/estate/acquire.py's suffix derivation yields no extension and the object is promoted with a .bin extension. The retained bytes are plain CSV; the extension is cosmetic and the sha256 content address is authoritative.",
+  "sensitive_fields": [],
+  "update_frequency": "periodic BTS republication (NTAD is refreshed seasonally). source_checksum is null -- trust-on-first-use; a later BTS vintage will differ.",
+  "source_checksum": null,
+  "canonical_contract": "none-yet, and this acquisition surfaces the gap deliberately. The natural canonical target is the stop identity that packages.canonical.entities.StopTimeObservation already references by stop_id, but Milexium has NO canonical Stop entity -- stop_id is currently an opaque string with no entity behind it. This is the same class of operational-entity gap that ADR-0035 recorded for vehicle observations, and it is recorded here rather than invented.",
+  "quality_tests": [
+    {
+      "name": "header_has_ntd_id_and_coordinates",
+      "description": "first line carries ntd_id, stop_id, stop_lat and stop_lon -- the join key and the geometry"
+    },
+    {
+      "name": "national_scale_row_count",
+      "description": "more than 500,000 data rows, i.e. a national inventory rather than a single agency"
+    },
+    {
+      "name": "coordinates_in_us_bounds",
+      "description": "sampled stop_lat/stop_lon values fall within plausible US bounds (lat 15..72, lon -180..-64), catching a truncated or mis-projected export"
+    }
+  ],
+  "acceptance_threshold": "downloads, is CSV, > 50 MB, > 500,000 data rows, header contains ntd_id and stop_lat, and sampled coordinates are within US bounds.",
+  "retention_and_deletion": "retain: this is the rights-clean national stop substrate and there is no equivalent that does not require per-agency licence review. Reproducible from BTS, but a re-pull yields a different vintage, so the retained object is the reference for anything that cites it.",
+  "derived_artifacts": [],
+  "zone": "raw/public"
+}

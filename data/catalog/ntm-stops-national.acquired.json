@@ -1,0 +1,14 @@
+{
+  "acquired_at": "2026-07-25T08:39:48.250674+00:00",
+  "dataset_id": "ntm-stops-national",
+  "free_gb_after": 317.23,
+  "free_gb_before": 317.34,
+  "license_and_commercial_rights": "U.S. Public Domain -- the data.gov catalogue record for this dataset carries an explicit machine-readable licence field of http://www.usa.gov/publicdomain/label/1.0/ (USA.gov Public Domain Label 1.0) with Access Level 'public'. A federal government work, not subject to domestic copyright (17 U.S.C. Sec. 105). COMMERCIAL USE IS PERMITTED without restriction, fee, attribution obligation, share-alike or revocation clause. This matters specifically because it is the rights-clean route to a nationwide stop inventory: the SAME underlying stop geometry, obtained directly from individual agency GTFS downloads, would arrive under ~800 separate and often restrictive agency developer licence agreements (see data/US_OPEN_DATA_SURVEY.md). BTS's federal republication launders the rights question that per-agency acquisition does not.",
+  "object_store_bucket": "milexium-artifacts",
+  "object_store_key": "44cfd4970cf2402541eed161c884baa0d0f2ce4c09806751a5f49811c668b5ac",
+  "raw_path": "data\\raw\\public\\ntm-stops-national.44cfd4970cf24025.bin",
+  "retained_bytes": 109387568,
+  "sha256": "44cfd4970cf2402541eed161c884baa0d0f2ce4c09806751a5f49811c668b5ac",
+  "source_url": "https://ngda-transportation-geoplatform.hub.arcgis.com/api/download/v1/items/959b4adc3ff94bc6a46f2c1d515d09aa/csv?layers=0",
+  "zone": "raw/public"
+}

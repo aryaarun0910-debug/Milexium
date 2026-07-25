@@ -1,0 +1,34 @@
+{
+  "dataset_id": "ntm-routes-national",
+  "owner_and_source": "USDOT Bureau of Transportation Statistics (BTS), National Transportation Atlas Database (NTAD) -- 'National Transit Map: Routes', the nationwide route-alignment companion to the Stops layer, compiled by BTS from agency GTFS routes.txt, trips.txt and shapes.txt. Served from the NGDA Transportation GeoPlatform ArcGIS hub, item 985bf490e9fa462f80b1cb8ad5f6e139. No API key, no registration.",
+  "license_and_commercial_rights": "U.S. Public Domain -- the data.gov catalogue record carries an explicit machine-readable licence field of http://www.usa.gov/publicdomain/label/1.0/ (USA.gov Public Domain Label 1.0). A federal government work, not subject to domestic copyright (17 U.S.C. Sec. 105). COMMERCIAL USE IS PERMITTED without restriction, fee, attribution obligation or share-alike. Same rights-laundering rationale as ntm-stops-national: BTS republication is clean where the ~800 upstream agency GTFS licences are not.",
+  "decision_tasks_enabled": [
+    "networks.transit_route_inventory",
+    "forecast.demand"
+  ],
+  "geography": "United States, nationwide -- fixed-guideway and fixed-route service in the agency GTFS feeds BTS ingested",
+  "time_coverage": "snapshot; each row carries its own download_date recording BTS ingest (the acquired vintage carries 2026-03-09 dates)",
+  "source_url": "https://ngda-transportation-geoplatform.hub.arcgis.com/api/download/v1/items/985bf490e9fa462f80b1cb8ad5f6e139/csv?layers=0",
+  "expected_download_gb": 0.0098,
+  "expected_expanded_gb": 0.0098,
+  "expected_retained_gb": 0.0098,
+  "schema_and_format": "CSV (UTF-8 with BOM), ~9.3 MB, columns: OBJECTID, ntd_id, feed_id, shape_id, route_id, agency_id, route_short_name, route_long_name, route_desc, route_type, route_type_text, route_url, route_color, route_text_color, download_date, Shape__Length. Route-level, keyed on ntd_id so it joins to the NTD panels and to ntm-stops-national. route_type / route_type_text give the mode split (Bus, Light Rail, ...) that lets an agency's NTD ridership series be attributed to specific routes. FORMAT NOTE: the download URL carries a query string, so acquire() promotes the object with a .bin extension; the bytes are plain CSV and the sha256 is authoritative.",
+  "sensitive_fields": [],
+  "update_frequency": "periodic BTS republication (NTAD seasonal refresh). source_checksum is null -- trust-on-first-use.",
+  "source_checksum": null,
+  "canonical_contract": "none-yet. The nearest canonical neighbours are the scheduling family -- packages.canonical.entities.Block and RunPiece -- which are per-vehicle work assignments, not route definitions; Milexium has no canonical Route entity, exactly as it has no canonical Stop entity. Recorded as a gap, not mapped speculatively.",
+  "quality_tests": [
+    {
+      "name": "header_has_ntd_id_and_route_type",
+      "description": "first line carries ntd_id, route_id and route_type -- the join key and the mode discriminator"
+    },
+    {
+      "name": "multiple_agencies_present",
+      "description": "more than 100 distinct ntd_id values, i.e. a national inventory rather than one agency"
+    }
+  ],
+  "acceptance_threshold": "downloads, is CSV, > 2 MB, > 10,000 data rows, and more than 100 distinct ntd_id values.",
+  "retention_and_deletion": "retain alongside ntm-stops-national; small and reproducible from BTS, evictable ahead of audit and contractual records.",
+  "derived_artifacts": [],
+  "zone": "raw/public"
+}

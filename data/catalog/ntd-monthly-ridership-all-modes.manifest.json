@@ -1,0 +1,38 @@
+{
+  "dataset_id": "ntd-monthly-ridership-all-modes",
+  "owner_and_source": "Federal Transit Administration (FTA), National Transit Database -- 'Complete Monthly Ridership (with Adjustments and Estimates)', dataset 8bui-9xvu on the USDOT open-data portal data.transportation.gov. No API key, no registration.",
+  "license_and_commercial_rights": "Public Domain U.S. Government (the portal's own machine-readable licence field is licenseId=USGOV_WORKS, name='Public Domain U.S. Government', termsLink https://www.usa.gov/government-works, and the dataset's DCAT Common Core License field is http://www.usa.gov/publicdomain/label/1.0/). A work of the United States federal government, not subject to domestic copyright (17 U.S.C. Sec. 105). COMMERCIAL USE IS PERMITTED without restriction, licence fee, or attribution obligation; crediting FTA/NTD is customary courtesy, not a licence condition. No share-alike, no field-of-use limitation, no revocation clause -- unlike the per-agency GTFS developer licence agreements surveyed in data/US_OPEN_DATA_SURVEY.md.",
+  "decision_tasks_enabled": [
+    "forecast.demand",
+    "forecast.cross_agency_pretraining"
+  ],
+  "geography": "United States, nationwide -- all NTD-reporting transit agencies (~1,900 reporters) across all 50 states, DC and the territories",
+  "time_coverage": "monthly, January 2002 to the most recent published month (rolling; the portal refreshes monthly, R/P1M)",
+  "source_url": "https://data.transportation.gov/api/views/8bui-9xvu/rows.csv",
+  "expected_download_gb": 0.071,
+  "expected_expanded_gb": 0.071,
+  "expected_retained_gb": 0.071,
+  "schema_and_format": "CSV, ~368,900 data rows x ~20 columns. One row per agency x mode x type-of-service x month, carrying Unlinked Passenger Trips (UPT), Vehicle Revenue Miles (VRM), Vehicle Revenue Hours (VRH) and Vehicles Operated in Max Service (VOMS), plus NTD ID, agency name, UZA/UACE, mode and TOS codes. This is the SAME dataset realdata/fetch_ntd_monthly.py already pulls, but UNFILTERED: the repo currently retains only the DR/DT (demand-response) slice in realdata/panels/ntd_monthly_dr.csv.gz. The full table adds every fixed-route mode -- MB (bus), CB (commuter bus), RB (bus rapid transit), HR/LR/CR (rail), VP (vanpool), FB (ferry) and the rest.",
+  "sensitive_fields": [],
+  "update_frequency": "monthly (portal Update Frequency R/P1M). source_checksum is null: the table grows by one month each release, so the sha256 recorded at acquisition is provenance for THIS vintage, not a reproducibility guarantee.",
+  "source_checksum": null,
+  "canonical_contract": "none-yet -- an aggregate agency-mode-month demand panel. It is training and backtest input to the Program E forecasters that emit packages.canonical.entities.ForecastVintage; it is not itself an instance of any canonical entity, because Milexium's canonical model is trip-level (ServiceRequest / Outcome / VehicleObservation) and has no aggregate-ridership entity today. That gap is real and is recorded here rather than papered over.",
+  "quality_tests": [
+    {
+      "name": "header_has_upt_and_ntd_id",
+      "description": "first line contains an NTD ID column and an unlinked-passenger-trips (UPT) column -- proves the export is the ridership table, not a Socrata error page"
+    },
+    {
+      "name": "row_count_exceeds_dr_only_slice",
+      "description": "more than 300,000 data rows, i.e. materially broader than the demand-response-only slice already retained in realdata/panels/"
+    },
+    {
+      "name": "covers_multiple_modes",
+      "description": "the mode column contains fixed-route modes (MB and/or CB/RB/HR/LR) and not only DR/DT"
+    }
+  ],
+  "acceptance_threshold": "downloads, is CSV, > 40 MB, > 300,000 data rows, and the mode column spans more than the two demand-response codes. A truncated Socrata response (the API silently pages at 1,000 rows if the wrong endpoint is used) would fail all three.",
+  "retention_and_deletion": "retain: this is the demand-model breadth corpus and the direct evidence behind realdata/TRANSFER_RESULTS.md's cross-city pretraining result. Cheaply reproducible from the portal, so evictable ahead of contractual/audit records, but re-pulling gives a DIFFERENT vintage (one more month), so the retained object is the reproducible reference for any backtest that cites it.",
+  "derived_artifacts": [],
+  "zone": "raw/public"
+}
