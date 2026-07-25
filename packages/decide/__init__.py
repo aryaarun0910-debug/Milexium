@@ -68,6 +68,44 @@ from packages.decide.darp_solver import (
 )
 from packages.decide.darp_bridge import project_darp_solution
 
+# Solver portfolio (v0.3) -- additive; every API above is unchanged.
+#
+# NOTE ON IMPORT SAFETY: none of these modules import `ortools` at module scope.
+# The import happens inside the solve functions, behind `ortools_capability()`.
+# That is deliberate and load-bearing -- `import packages.decide` must succeed on
+# a machine with no OR-Tools wheel, or every unrelated test in the suite would
+# fail on an optional dependency.
+from packages.decide.capability import (
+    SolverCapability,
+    SolverUnavailable,
+    cpsat_available,
+    ortools_capability,
+)
+from packages.decide.cpsat import (
+    CPSAT_SOLVER_NAME,
+    CPSAT_SOLVER_VERSION,
+    CpSatModelTooLarge,
+    CpSatOutcome,
+    solve_cpsat,
+    solve_cpsat_detailed,
+)
+from packages.decide.cpsat_darp import (
+    CPSAT_DARP_SOLVER_NAME,
+    CPSAT_DARP_SOLVER_VERSION,
+    CpSatDarpOutcome,
+    DarpModelUnsupported,
+    exact_schedule,
+    solve_darp_cpsat,
+)
+from packages.decide.portfolio import (
+    PORTFOLIO_VERSION,
+    PortfolioContradiction,
+    PortfolioReport,
+    StrategyRun,
+    solve_darp_portfolio,
+    solve_portfolio,
+)
+
 __all__ = [
     "Assignment",
     "DecisionPolicy",
@@ -105,6 +143,29 @@ __all__ = [
     "project_darp_solution",
     "DARP_SOLVER_NAME",
     "DARP_SOLVER_VERSION",
+    # Solver portfolio (v0.3)
+    "SolverCapability",
+    "SolverUnavailable",
+    "cpsat_available",
+    "ortools_capability",
+    "CpSatModelTooLarge",
+    "CpSatOutcome",
+    "solve_cpsat",
+    "solve_cpsat_detailed",
+    "CPSAT_SOLVER_NAME",
+    "CPSAT_SOLVER_VERSION",
+    "CpSatDarpOutcome",
+    "DarpModelUnsupported",
+    "exact_schedule",
+    "solve_darp_cpsat",
+    "CPSAT_DARP_SOLVER_NAME",
+    "CPSAT_DARP_SOLVER_VERSION",
+    "PortfolioContradiction",
+    "PortfolioReport",
+    "StrategyRun",
+    "solve_portfolio",
+    "solve_darp_portfolio",
+    "PORTFOLIO_VERSION",
 ]
 
-CONTRACT_VERSION = "0.2.0"
+CONTRACT_VERSION = "0.3.0"

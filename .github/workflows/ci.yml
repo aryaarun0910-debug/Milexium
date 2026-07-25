@@ -32,6 +32,11 @@ jobs:
           # state-machine + hash-chain proofs (conformance/property-tests/
           # test_formal_smt.py) RUN on CI rather than importorskip-skipping.
           pip install -e ".[formal]"
+          # Program F CP-SAT extra (ortools, ADR-0060): same reasoning as z3.
+          # Without it all 155 portfolio/DARP tests skip and CI is green having
+          # proved nothing -- including the optimality certificates that are the
+          # whole point of the packet. ortools 9.15 publishes a cp314 wheel.
+          pip install -e ".[solver]"
       - name: Test (platform suite)
         run: python -m pytest packages/ conformance/ -q
       - name: Contract drift check

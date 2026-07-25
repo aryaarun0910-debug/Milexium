@@ -30,6 +30,15 @@ dev = [
 postgres = [
     "psycopg[binary]>=3.2,<3.3",
 ]
+# CP-SAT backend for the Program F solver portfolio (ADR-0060). MUST be
+# installed in CI: without it every CP-SAT test skips, and a suite that is green
+# because it ran nothing is the exact failure mode this repo keeps finding. The
+# 9.15 pin is deliberate -- it is the first release publishing a native CPython
+# 3.14 ABI wheel (cp314), and it renamed CpSolver.DeterministicTime() to the
+# deterministic_time property, so code written against older docs breaks on it.
+solver = [
+    "ortools>=9.15,<10",
+]
 # S3-compatible object storage (packages/estate/object_store.py, ADR-0032):
 # the dev MinIO container from infra/compose. Optional -- the object-store test
 # skips when it's absent, so CI (which doesn't install this extra) stays green.
