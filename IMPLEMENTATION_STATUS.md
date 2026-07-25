@@ -231,8 +231,47 @@ Suite **781 → 976 passed, 0 failed**. Audit clean. CI green.
    returns the **empty string**, not NULL. The test caught it; the prose would
    not have.
 
-Program depth after both tranches: **A ~50%**, B ~35%, **C ~50%**, **D ~40%**,
-E ~30%, G ~35%, **H ~30%**, **I ~40%**, **M ~35%**; F ~10% (held); J/K/L 0%.
+#### Pilot-conversion tranche 3 (2026-07-25)
+
+| Item | Program | ADR | Tests |
+|---|---|---|---|
+| Scheduling family — `Block`/`RunPiece`/`DeadheadSegment`, unblocking TODS/NeTEx | A | 0047 | 101 |
+| Tenant isolation + RLS on the Program D tables | D | 0048 | 150 |
+| Serve-time drift monitoring | E | 0049 | 23 |
+| US open-data survey + 286 MB acquired under governance | C | 0050 | 31 |
+| Graduated repair on messy operator exports + ingest quality report | B | 0051 | 24 |
+| TS SDK drift gate (the generated client had gone 835 lines stale) | M | — | CI |
+
+Suite **976 → 1248 passed, 0 failed**. Audit clean. CI green.
+
+**Two more defects found, both tests that would have kept passing while proving
+nothing:**
+
+1. **RLS would have made an existing test vacuous** (ADR-0048). ADR-0041's
+   in-place-corruption test issues a raw `UPDATE`; under RLS with the wrong
+   tenant in scope that matches **zero rows**, so "the past didn't change"
+   becomes trivially true. It now asserts the tamper *landed* first.
+2. **The TS SDK had drifted 835 lines** with no gate watching it, while the
+   Python side has had a contract-drift check since ADR-0027. Same class of
+   error, other language, no guard. Gate added.
+
+The standing lesson: **"all tests still pass" is a weak signal immediately after
+a boundary change.**
+
+Program depth after three tranches: **A ~55%**, **B ~40%**, **C ~55%**,
+**D ~50%**, **E ~40%**, G ~35%, **H ~30%**, **I ~45%**, **M ~35%**;
+F ~10% (held); J/K/L 0% (correctly parked — no ADR-0026 trigger has fired).
+
+#### On data volume (ADR-0050), since it recurs
+
+Roughly **low hundreds of GB to ~1 TB** of US open transit data exists; the
+subset that is rights-clean *and* useful to the demand models is **~250 MB**.
+This is **not** the MoE regime — demand forecasting is tabular, small-N per
+series, dominated by local structure. The repo's own evidence already said so:
+`transfer_control.py` kept both the negative and positive transfer results, and
+the leaderboard records the NTD temporal split **losing to seasonal naive**.
+What helps is *more distinct operators*, not more rows. And 286 MB or 1 TB, it
+is all public data — only a consented operator crosses to Validated.
 
 #### Still open after this tranche
 

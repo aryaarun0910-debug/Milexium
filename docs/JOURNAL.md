@@ -2,6 +2,75 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-25 (later): tranche 3 — six programs deepened, two more vacuous-test defects
+
+Ground through the remaining gap list. Suite **976 -> 1248**, audit clean, CI
+green, ADRs 0047-0051.
+
+- **A — the scheduling family** (ADR-0047, 101 tests). Block / RunPiece /
+  DeadheadSegment, which is what actually stood between Program B and TODS/NeTEx
+  -- not adapter difficulty, a missing canonical home. `RunPiece` is one row per
+  (run, piece), NOT per run: TODS gives a run no attribute of its own, so a
+  `runs` table would hold nothing but an id and be a second place for the same
+  fact to disagree. `DeadheadSegment`'s field names are deliberately the
+  teardown's own `VehicleSegment` names, so a stored segment maps field-for-field
+  with no translation. And RLS landed in the SAME packet as the tables -- the
+  agent cited ADR-0037 having to fix that retroactively, so the recorded history
+  is now changing behaviour.
+
+- **D — tenant isolation** (ADR-0048, 150 tests). The finding: **RLS would have
+  made an existing test vacuous.** ADR-0041's in-place-corruption test issues a
+  raw `UPDATE`; under RLS with the wrong tenant in scope that matches ZERO rows,
+  so "the past didn't change" becomes trivially true and the test keeps passing
+  while proving nothing. It now asserts the tamper LANDED first. Both previously
+  documented traps were closed by construction rather than luck -- the acting
+  role asserted non-superuser AND table owner (ADR-0046 pre-emptively), and the
+  RESET case asserted as an EMPTY STRING (ADR-0043).
+
+- **E — serve-time drift** (ADR-0049, 23 tests). Closes a loop rather than adding
+  a feature: ADR-0030 measured AAR intervals overcovering at 98.1% against a 90%
+  target and isolated it to a winter->spring shift. That sat in a document. The
+  runtime can now say it at serve time -- 8 of 15 features drift on exactly that
+  window, with an exchangeable-split control reporting no drift, so it is a real
+  shift and not a monitor artifact. The interval caveat cannot be separated from
+  the number: `summary()` renders both on one line. Report, don't block, asserted
+  field-by-field against the unmonitored path.
+
+- **C — the open-data question, answered by measuring** (ADR-0050, 31 tests).
+  Low hundreds of GB to ~1 TB of US open transit data exists; the slice that is
+  rights-clean AND useful is ~250 MB. Acquired 286 MB under governance. The
+  honest conclusion is that this is NOT the MoE regime -- demand forecasting is
+  tabular, small-N per series, dominated by local structure -- and the repo's own
+  evidence already said so: `transfer_control.py` kept both the negative and
+  positive transfer results, and the leaderboard records the NTD temporal split
+  LOSING to seasonal naive. What helps is more distinct OPERATORS, not more rows.
+
+- **B — graduated repair** (ADR-0051, 24 tests). Arya's point, and it was right:
+  quarantine-everything is useless when a partner sends a real vendor export. Ten
+  unambiguous repair rules, each recording a `coerced` note naming the rule; and
+  the refusal that matters -- `03/04/2026` is 3 April AND 4 March, so it is
+  quarantined with both readings named. The date rules fire only when a component
+  exceeds 12, which forces one reading; that is arithmetic, not a guess. Plus an
+  ingest report that diagnoses CORRELATED missingness via a phi coefficient,
+  because independent gaps shrink a sample while correlated gaps BIAS it -- the
+  exact thing ADR-0039 hit on real TLC data.
+
+- **M — the TS SDK had drifted 835 lines** with no gate watching it, while Python
+  has had a contract-drift check since ADR-0027. Same class of error, other
+  language, no guard. Gate added to the TS job.
+
+Two process notes worth keeping. The messy-data agent was stopped mid-packet with
+its code complete but no tests and no packet record; I finished both, and two of
+my own first test assumptions were WRONG (that `headline` was a method, and that
+a space-separated ISO timestamp needed repair). I corrected them against observed
+behaviour rather than bending the tests -- tests written from an assumed API are
+how a suite ends up asserting fiction.
+
+And the standing lesson from this tranche and the last: **"all tests still pass"
+is a weak signal immediately after a boundary change.** Three of the seven
+defects found across both tranches were tests that would have kept passing while
+proving nothing.
+
 ## 2026-07-25: the six pilot-blocking items — and three defects worth the tranche
 
 Completed items 1-6 of the pilot-conversion list, ordered by dependency rather
