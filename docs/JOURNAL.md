@@ -2,7 +2,63 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
-## 2026-07-24 (latest): outreach went out, then built what it promised
+## 2026-07-25: the six pilot-blocking items — and three defects worth the tranche
+
+Completed items 1-6 of the pilot-conversion list, ordered by dependency rather
+than program letter, as six packets across two waves. Suite **781 -> 976**,
+audit clean, CI green. ADRs 0041-0046.
+
+What landed: a canonical home for `vehicle_ref`/`run_ref` (the field the whole
+deadhead teardown depends on, which previously could not be persisted at all);
+Program D persistence; RLS on the containerized PostGIS store; the teardown and
+export-validation exposed over HTTP/SDK; and evidence packs that re-derive a
+teardown rather than re-reading it.
+
+But the tranche earned its keep on three defects, not the features:
+
+- **`redact_pack` did not redact.** It masked payload keys in `raw_events` and
+  left the same values in `pack.evidence`, which embeds payloads -- so the pack
+  built *specifically to be shareable* still carried what it claimed to have
+  removed, and the failure was silent. Found by the teardown-evidence packet,
+  which deliberately **omitted** the assertion rather than writing a green test
+  that asserted around a known leak. Fixed the class, not the instance: masking
+  now follows the data recursively, and verification re-derives the redaction
+  claim, so a pack claiming a redaction it never performed fails `reverified`.
+  The fix's tests were checked against the old code -- 8 of 11 fail there.
+
+- **The PostGIS container credential is a superuser.** The image bootstraps
+  `POSTGRES_USER` with `rolsuper` and `rolbypassrls`, and superuser bypass is
+  checked *before* FORCE. Applying RLS as that credential would have installed a
+  boundary binding nobody: policies present, tests green, data unprotected --
+  the exact false green `rls_postgres.sql` warns about for table owners, one
+  privilege level up. Fixed with an unprivileged NOLOGIN owner role, and proven
+  non-vacuous by mutation: no-op the role switch and 16 of 21 tests fail,
+  including all three spatial ones. ST_DWithin is confirmed tenant-scoped --
+  geometry is not a way around the policy.
+
+- **ADR-0040's own platform clause broke deny-all.** `OR tenant_id = PLATFORM`
+  is true whatever the GUC says. The implementing agent built it as written,
+  refused to redesign unilaterally, and pinned the exposure in a test saying
+  tightening it belonged in a new ADR -- so it forced the decision instead of
+  making it. I tightened it (ADR-0043). My first fix was *also* wrong: after
+  `RESET`, `current_setting(name, true)` returns the **empty string**, not NULL,
+  so `IS NOT NULL` did not deny. The other policies survive that only
+  incidentally, because `tenant_id = ''` is false for any real UUID. The test
+  caught it; the prose never would have.
+
+One process failure of mine, recorded because it nearly shipped: I used
+`git add packages/core/` -- a directory sweep -- while a concurrent agent was
+mid-write in that directory, and pulled its unfinished work into another
+packet's commit. HEAD imported a symbol that did not exist at that commit. Caught
+it because the commit's file list did not match the packet's owned paths,
+amended before pushing, and used explicit file paths for the rest of the session.
+File-level ownership means file-level `git add`.
+
+Phase 4 remains pilot conversion, not frontier. J/K/L are still parked: they need
+compute and a demand signal that does not exist, and completing programs is not
+one of ADR-0026's three triggers for the polyglot rewrite.
+
+## 2026-07-24: outreach went out, then built what it promised
 
 Two halves to this session. First, outreach: rebuilt the cold-email approach
 around a **peer-relative** hook (an agency's national rank among operators its

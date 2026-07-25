@@ -196,8 +196,60 @@ exists to prevent, and vehicle position/occupancy is the most sensitive
 operational data in the schema. Now `ENABLE` + `FORCE`, with a test that lifts
 FORCE to prove it is load-bearing.
 
-Program depth after this tranche: A ~45%, B ~35%, C ~40%, D ~30%, E ~30%,
-G ~35%, **H ~30%** (was 15), I ~30%, M ~25%; F ~10% (held); J/K/L 0%.
+#### Pilot-conversion tranche 2 (2026-07-25) — the six pilot-blocking items
+
+Six items, ordered by dependency rather than program letter, all landed:
+
+| # | Item | Program | ADR | Tests |
+|---|---|---|---|---|
+| 1+2 | Canonical home for `vehicle_ref`/`run_ref`; reserved platform tenant implemented | A | 0043 | 59 |
+| 3 | Feature-store + promotion **persistence** | D | 0041 | 57 |
+| 4 | **RLS on the containerized PostGIS store** | C | 0046 | 21 |
+| 5 | Teardown + export validation over **HTTP/SDK** | M | 0042 | 33 |
+| 6 | Evidence packs **re-derive** a teardown | I | 0044 | 26 |
+| — | **`redact_pack` now actually redacts** | I | 0045 | 11 |
+
+Suite **781 → 976 passed, 0 failed**. Audit clean. CI green.
+
+**Three defects were found and fixed, none of them cosmetic:**
+
+1. **`redact_pack` did not redact** (ADR-0044 → 0045). It masked payload keys in
+   `raw_events` but left the same values in `pack.evidence`, which embeds
+   payloads — so the pack built *specifically to be shareable* still carried what
+   it claimed to have removed, silently. Masking now follows the data
+   recursively, and verification **re-derives the redaction claim**, so a pack
+   claiming a redaction it did not perform fails `reverified`.
+2. **The container credential is a superuser** (ADR-0046). The `postgis` image
+   bootstraps `POSTGRES_USER` with `rolsuper` *and* `rolbypassrls`, and superuser
+   bypass is checked **before** FORCE — so applying RLS as that credential would
+   have installed a boundary binding nobody, with policies present and tests
+   green. Fixed by provisioning an unprivileged `NOLOGIN` owner role; proven
+   non-vacuous by mutation (no-op the role switch → 16 of 21 tests fail).
+3. **ADR-0040's platform clause broke deny-all** (ADR-0043). `OR tenant_id =
+   PLATFORM` is true whatever the GUC says. Tightened — and the first fix, using
+   `IS NOT NULL`, was itself wrong: after `RESET`, `current_setting(name, true)`
+   returns the **empty string**, not NULL. The test caught it; the prose would
+   not have.
+
+Program depth after both tranches: **A ~50%**, B ~35%, **C ~50%**, **D ~40%**,
+E ~30%, G ~35%, **H ~30%**, **I ~40%**, **M ~35%**; F ~10% (held); J/K/L 0%.
+
+#### Still open after this tranche
+
+- **The container credential remains a superuser.** Re-provisioning it means
+  editing `docker-compose.yml`/`.env`. What is proven is that *the store* is
+  bound, **not** that the container cannot be bypassed.
+- **Program D tables have no tenant column or RLS** — must close before a second
+  operator's data lands in them.
+- `packages/sdk-typescript/src/generated/openapi.ts` is **stale** and no drift
+  check covers it.
+- `ModelRegistry` is still in-memory: promotion roles survive a restart, the
+  model catalog does not.
+- Redaction cannot reach a sensitive value copied into free text; it is now
+  *detected and reported with locations*, not removed. Redaction is field masking
+  for sharing, **not** de-identification.
+- The Connect adapter still emits a `dropped` semantic-loss record for the run
+  reference; wiring it through to the new column is a small follow-up.
 
 #### Known gaps this tranche surfaced (flagged, not papered over)
 
