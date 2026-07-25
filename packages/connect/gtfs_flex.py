@@ -38,6 +38,12 @@ deliberately different, and the differences are recorded as semantic loss:
   as a coercion.
 - **No rider identity:** GTFS-Flex publishes service definitions, not riders;
   `rider_ref` is a synthetic, non-joinable per-row placeholder.
+- **No vehicle identity either (MX-B-ADAPTER-REFS-009).** GTFS-Flex has no
+  vehicle field of any kind, and the only run-shaped field in GTFS core --
+  `trips.block_id` -- is optional and empty throughout the acquired feed. The
+  reader now carries it through so the absence is *measured* per row, and
+  `NO_VEHICLE_REFERENCE_FIELD` records it. Nothing is wired and nothing is
+  synthesized: see that record's reason for why `trip_id` is not a run id.
 - **Rich booking-rule info** (`booking_type`, `prior_notice_duration_*`,
   `phone_number`, messages, URLs) has no ServiceRequest v0.1 field and is
   recorded as semantic loss rather than dropped silently.
@@ -90,7 +96,14 @@ REQUIRED_COLUMNS = (
 # are adapter-managed context, not source fields, so they are never reported as
 # semantic loss.
 _CONTEXT_KEYS = frozenset(
-    {"booking_rule", "service_id", "service_start_date", "service_end_date", "feed_start_date"}
+    {
+        "booking_rule",
+        "service_id",
+        "service_start_date",
+        "service_end_date",
+        "feed_start_date",
+        "block_id",
+    }
 )
 
 _MAPPED_STOP_TIMES = frozenset(REQUIRED_COLUMNS) | frozenset(
@@ -153,6 +166,19 @@ _UNMAPPED_BOOKING_RULE_REASONS = {
 }
 
 
+NO_VEHICLE_REFERENCE_FIELD = (
+    "<no vehicle reference in a GTFS-Flex feed; trips.block_id is the only run-shaped field>"
+)
+"""MX-B-ADAPTER-REFS-009. The `source_field` under which this adapter records
+that its source format carries NO vehicle reference at all.
+
+Recording the absence is the deliverable, not a placeholder for later wiring.
+ADR-0039 measures deadhead by chaining ONE vehicle's consecutive trips, so a
+source with no vehicle is a source no deadhead can be measured from -- and
+saying so plainly is what stops a later reader synthesizing a reference out of
+`trip_id` because the field looked conspicuously empty."""
+
+
 class _UnmappableValue(ValueError):
     """Internal signal that a field value cannot become canonical; caught in
     parse() and turned into a QuarantinedRow rather than propagating."""
@@ -162,6 +188,13 @@ def _present(value: object) -> bool:
     """A GTFS CSV cell is absent when it is None or an empty/whitespace string
     (the empty-string null convention GTFS text files use)."""
     return value is not None and str(value).strip() != ""
+
+
+def _str_or_none(value: object) -> str | None:
+    """A present cell -> its trimmed string form; an absent one -> None. Absent
+    is never the empty string: `''` in a reference column reads back later as a
+    block nobody worked."""
+    return str(value).strip() if _present(value) else None
 
 
 def _parse_gtfs_date(value: object) -> datetime:
@@ -227,6 +260,10 @@ def read_gtfs_flex_zip(zip_path: str | Path) -> Iterator[dict]:
       absent/dangling,
     - `service_id`, `service_start_date`, `service_end_date`: resolved via
       trips -> calendar for the row's trip,
+    - `block_id`: the row's trip's `trips.block_id`, or None when the column is
+      absent or blank. Carried ONLY so the adapter can report the absence of a
+      run reference as something it MEASURED rather than assumed (see the
+      `<no vehicle reference...>` loss record in parse()); nothing maps it.
     - `feed_start_date`: from feed_info.
 
     The whole feed is read into memory (GTFS-Flex feeds are small) and the zip
@@ -265,6 +302,7 @@ def read_gtfs_flex_zip(zip_path: str | Path) -> Iterator[dict]:
         service_id = (trip.get("service_id") or "").strip()
         calendar_row = calendar_index.get(service_id, {})
         row["service_id"] = service_id or None
+        row["block_id"] = (trip.get("block_id") or "").strip() or None
         row["service_start_date"] = (calendar_row.get("start_date") or "").strip() or None
         row["service_end_date"] = (calendar_row.get("end_date") or "").strip() or None
         row["feed_start_date"] = feed_start_date
@@ -451,6 +489,28 @@ class GtfsFlexAdapter:
                     "a service-availability template carries no per-rider mobility-device information "
                     "(trips.wheelchair_accessible describes vehicle accessibility, not a rider's "
                     "device); mobility_device is left unset rather than guessed"
+                ),
+                disposition="dropped",
+            ),
+            SemanticLossRecord(
+                source_field=NO_VEHICLE_REFERENCE_FIELD,
+                source_value=_str_or_none(raw_row.get("block_id")),
+                reason=(
+                    "GTFS-Flex has NO vehicle identifier anywhere in the standard -- not in "
+                    "stop_times, not in trips, not in booking_rules. A feed describes bookable "
+                    "service, and no vehicle has performed anything yet, so there is nothing to "
+                    "name. The only run-shaped field GTFS core offers is the optional "
+                    "trips.block_id, reported here as source_value (None when the trip carried "
+                    "none, which is the case throughout the acquired Aspen 'Downtowner' feed); it "
+                    "is MEASURED per row rather than assumed absent. Even where a feed populates "
+                    "it, nothing is wired: this adapter emits a ServiceRequest, and ADR-0043 put "
+                    "vehicle_ref/run_ref on Outcome and deliberately NOT on ServiceRequest (one "
+                    "fact, one home). Attaching a block to a bookable window would assert that a "
+                    "vehicle worked a trip nobody has taken. NOTHING here is synthesized from "
+                    "trip_id, service_id or a booking_rule_id: a trip id names a published "
+                    "pattern, not a vehicle's day of work, and chaining by it would report "
+                    "deadhead between two windows no vehicle ever traversed. ADR-0039's "
+                    "`unattributable` bucket is the correct destination for this source"
                 ),
                 disposition="dropped",
             ),

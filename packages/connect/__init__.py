@@ -13,9 +13,22 @@ from packages.connect.adapter import (
     parse_batch,
 )
 from packages.connect.reference_agency_trips import ReferenceAgencyTripsAdapter
-from packages.connect.tlc_trips import TlcTripsAdapter
-from packages.connect.tides_trips import TidesTripsAdapter
+from packages.connect.tlc_trips import (
+    NO_VEHICLE_REFERENCE_FIELD as TLC_NO_VEHICLE_REFERENCE_FIELD,
+)
+from packages.connect.tlc_trips import (
+    PERSON_IDENTIFYING_COLUMNS,
+    TlcTripsAdapter,
+    person_identifying_category,
+)
+from packages.connect.tides_trips import TidesPerformedTrip, TidesTripsAdapter
+from packages.connect.gtfs_flex import (
+    NO_VEHICLE_REFERENCE_FIELD as GTFS_FLEX_NO_VEHICLE_REFERENCE_FIELD,
+)
 from packages.connect.gtfs_flex import GtfsFlexAdapter
+from packages.connect.gtfs_realtime import (
+    NO_RUN_REFERENCE_FIELD as GTFS_REALTIME_NO_RUN_REFERENCE_FIELD,
+)
 from packages.connect.gtfs_realtime import (
     GtfsRealtimeAdapter,
     feed_message_to_rows,
@@ -45,8 +58,17 @@ __all__ = [
     "ReferenceAgencyTripsAdapter",
     "TlcTripsAdapter",
     "TidesTripsAdapter",
+    "TidesPerformedTrip",
     "GtfsFlexAdapter",
     "GtfsRealtimeAdapter",
+    # MX-B-ADAPTER-REFS-009: the per-format record of which vehicle/run
+    # reference each source actually carries -- including the ones that carry
+    # none, which is a finding rather than a placeholder.
+    "GTFS_FLEX_NO_VEHICLE_REFERENCE_FIELD",
+    "GTFS_REALTIME_NO_RUN_REFERENCE_FIELD",
+    "TLC_NO_VEHICLE_REFERENCE_FIELD",
+    "PERSON_IDENTIFYING_COLUMNS",
+    "person_identifying_category",
     "feed_message_to_rows",
     "read_gtfs_realtime_feed",
     "OperatorExportAdapter",

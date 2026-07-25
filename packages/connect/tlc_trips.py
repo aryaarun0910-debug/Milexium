@@ -26,6 +26,57 @@ from NYC's 2025 congestion-pricing program, not a hypothetical):
     tolls, bcf, sales_tax, congestion_surcharge, airport_fee, tips,
     driver_pay, shared_request_flag, shared_match_flag, access_a_ride_flag,
     wav_request_flag, wav_match_flag[, cbd_congestion_fee]
+
+THERE IS NO VEHICLE REFERENCE HERE, AND THAT IS THE FINDING
+-----------------------------------------------------------
+(MX-B-ADAPTER-REFS-009, extending ADR-0054.) The deadhead teardown chains ONE
+vehicle's consecutive trips (ADR-0039), so `vehicle_ref`/`run_ref` is the field
+it lives on. FHVHV publishes NEITHER, and the three columns that look closest
+are each a different kind of thing:
+
+- `hvfhs_license_num` is the high-volume **company's** TLC licence -- HV0002
+  (Juno), HV0003 (Uber), HV0004 (Via), HV0005 (Lyft). Four values across twenty
+  million rows. Using it as a vehicle reference would chain every Uber trip in
+  New York into one vehicle's day of work and yield a deadhead number that is
+  pure fiction, arrived at without a single missing value to warn anyone.
+- `dispatching_base_num` / `originating_base_num` are TLC-licensed **base
+  stations** (B02867, B03404...) -- businesses that dispatch, not vehicles.
+
+Verified against the parquet footers of the real files in `realdata/raw_tlc/`:
+`fhvhv_tripdata_2019-02.parquet` (24 columns) and `fhvhv_tripdata_2026-05.parquet`
+(25, adding `cbd_congestion_fee`). No hack licence, no medallion, no plate, no
+VIN, no driver id, no vehicle id. So `NO_VEHICLE_REFERENCE_FIELD` records the
+absence on every row, and nothing is synthesized.
+
+AND IF A HACK LICENCE EVER APPEARED, IT MUST NOT BECOME A VEHICLE REFERENCE
+---------------------------------------------------------------------------
+A **hack licence** is the TLC licence number of a **driver** -- a person. A
+**medallion** is a transferable taxi permit held by a person or a small company.
+Neither is a vehicle, and both identify their holder directly: TLC publishes a
+licensee lookup, so the number resolves to a name. This is not a theoretical
+concern about this dataset -- it is its history. TLC's 2013 taxi release
+published `medallion` and `hack_license` as MD5 hashes; because the input space
+is small and enumerable, the whole file was de-anonymised within days, after
+which individual drivers' shifts and earnings, and individual passengers' trips,
+were recoverable from it.
+
+The category error is worth naming precisely, because it is easy to make while
+believing you are being careful: in a fleet of owner-operators -- which is most
+of the FHV trade -- vehicle and driver are one-to-one, so **even a genuine
+vehicle id is a pseudonymous person id**. `vehicle_ref` is safe for a transit
+agency's numbered bus, shared by a different operator each shift; it is not safe
+for a single-vehicle licensee. Milexium already draws this line elsewhere:
+`RunPiece.operator_ref` is documented as a person reference and is required to
+be a token, never a name.
+
+So the refusal is structural rather than advisory. `Outcome.vehicle_ref` is a
+plain string with no tokenisation and no redaction; it is read straight back out
+by `outcomes()` and handed to `VehicleSegment.run_ref`, whose own guard
+(`_reject_rider_identifier`) inspects the COLUMN NAME a caller points at and
+would wave through a person id that had already been laundered into the
+canonical field upstream. The only place to stop it is the adapter, which is why
+`PERSON_IDENTIFYING_COLUMNS` is checked FIRST -- ahead of the required-column
+check, ahead of every parse -- and quarantines with the value redacted.
 """
 
 from __future__ import annotations
@@ -45,6 +96,7 @@ from packages.canonical import (
     new_id,
 )
 from packages.connect.adapter import AdapterResult, QuarantinedRow, SemanticLossRecord
+from packages.connect.operator_export import REDACTION_MARKER, classify_pii_column
 
 REQUIRED_COLUMNS = ("request_datetime", "PULocationID", "DOLocationID")
 
@@ -106,9 +158,88 @@ _KNOWN_COLUMNS = (
 )
 
 
+NO_VEHICLE_REFERENCE_FIELD = "<no vehicle or run reference column in FHVHV>"
+"""The `source_field` under which this adapter records that its source format
+carries no vehicle or run reference at all. See the module docstring for why the
+three licence/base columns are not one."""
+
+PERSON_IDENTIFYING_COLUMNS: frozenset[str] = frozenset(
+    {
+        "hacklicense",
+        "hacklicensenum",
+        "hacklicensenumber",
+        "hackno",
+        "hackup",
+        "medallion",
+        "medallionno",
+        "medallionnumber",
+        "driverid",
+        "drivernum",
+        "drivernumber",
+        "tlclicense",
+        "tlclicensenumber",
+        "licenseplate",
+        "licenceplate",
+        "plate",
+        "plateno",
+        "platenumber",
+        "vin",
+    }
+)
+"""Columns that name a PERSON or a person-bound asset, in the normalised form
+`_normalise_column` produces. A TLC release carrying any of them is refused.
+
+Why a local list rather than only `classify_pii_column` (ADR-0051): that
+classifier is the backstop for `docs/OPERATOR_DATA_INTAKE.md`'s declared
+categories, and its `driverlicen` substring catches `driver_license` but NOT
+`hack_license`, `medallion`, `license_plate` or `vin` -- the vocabulary of the
+for-hire trade specifically. Both run here, in that order, and the general
+classifier is not widened, because changing what it means would change what
+`operator_export.py` quarantines for reasons that have nothing to do with taxis.
+
+`plate`/`vin` are included even though a plate is nominally an attribute of a
+vehicle: they are the identifiers a keeper is registered against, so they carry
+the same one-to-one exposure in an owner-operator fleet, and no consumer in this
+repo needs them -- a chain key only has to be stable, never resolvable.
+
+Deliberately NOT here: `hvfhs_license_num`, `dispatching_base_num`,
+`originating_base_num`. Those name companies, are already published by TLC, and
+quarantining the entire real dataset over them would be a false positive on
+every row.
+"""
+
+
 class _UnmappableValue(ValueError):
     """Internal signal that a field value cannot become canonical; caught in
     parse() and turned into a QuarantinedRow rather than propagating."""
+
+
+def _normalise_column(column: object) -> str:
+    """Lowercase, alphanumerics only -- so `Hack License`, `hack_license` and
+    `HACK-LICENSE` all collapse to `hacklicense` and header cosmetics cannot
+    defeat the check. Same rule `operator_export._normalise` uses."""
+    return "".join(ch for ch in str(column).lower() if ch.isalnum())
+
+
+def person_identifying_category(column: object) -> str | None:
+    """The reason `column` names a person, or None.
+
+    Two checks, in order: the for-hire-trade vocabulary this source could
+    plausibly grow, then ADR-0051's general classifier. Returning a STRING (not a
+    bool) so a quarantine can tell an operator which of their columns is the
+    problem and why, which is the difference between a rejection they can act on
+    and one they will file a ticket about.
+    """
+    norm = _normalise_column(column)
+    if not norm:
+        return None
+    if norm in PERSON_IDENTIFYING_COLUMNS:
+        return (
+            "a driver/vehicle licence identifier that resolves to a person (TLC publishes a "
+            "licensee lookup, and in an owner-operator fleet the vehicle and the driver are the "
+            "same individual)"
+        )
+    return classify_pii_column(str(column))
 
 
 def _is_missing(value: object) -> bool:
@@ -185,6 +316,39 @@ class TlcTripsAdapter:
         self._recorded_at = recorded_at
 
     def parse(self, raw_row: dict) -> AdapterResult[ServiceRequest]:
+        # 0. PERSON-IDENTIFYING COLUMNS, BEFORE ANYTHING ELSE. Ahead of the
+        #    required-column check on purpose: a row that is BOTH malformed and
+        #    carrying a hack licence must be refused on the identifier, because
+        #    quarantining it as "missing request_datetime" tells the sender to
+        #    re-send the same file with the timestamps fixed. Ordering is the
+        #    whole behaviour here, and it is tested as such.
+        findings = sorted(
+            (str(column), category)
+            for column, category in ((c, person_identifying_category(c)) for c in raw_row)
+            if category is not None
+        )
+        if findings:
+            detail = "; ".join(f"{column} ({category})" for column, category in findings)
+            redacted = dict(raw_row)
+            for column, _ in findings:
+                redacted[column] = REDACTION_MARKER
+            return AdapterResult(
+                quarantine=QuarantinedRow(
+                    raw_row=redacted,
+                    reason=(
+                        "rejected on ingest: this FHVHV extract carries a person-identifying "
+                        f"column, which Milexium does not accept -- {detail}. Published FHVHV has "
+                        "none of these; a file that does is either a different TLC product or a "
+                        "join someone did upstream. It is NOT usable as a vehicle reference for "
+                        "the deadhead teardown: a hack licence or medallion names a driver or a "
+                        "permit holder, and in an owner-operator fleet a vehicle id IS a person "
+                        "id. The offending values were redacted from this quarantine record and "
+                        "were not retained"
+                    ),
+                    failed_field=findings[0][0],
+                )
+            )
+
         missing = [c for c in REQUIRED_COLUMNS if _is_missing(raw_row.get(c))]
         if missing:
             return AdapterResult(
@@ -267,6 +431,29 @@ class TlcTripsAdapter:
                     "an actual per-rider id would misrepresent millions of unrelated riders as "
                     "one identity; rider_ref is instead a synthetic per-row placeholder, not a "
                     "stable or joinable entity reference"
+                ),
+                disposition="dropped",
+            )
+        )
+        semantic_loss.append(
+            SemanticLossRecord(
+                source_field=NO_VEHICLE_REFERENCE_FIELD,
+                source_value=None,
+                reason=(
+                    "FHVHV publishes no vehicle or run identifier of any kind: no hack licence, no "
+                    "medallion, no plate, no VIN, no driver id, no vehicle id (verified against the "
+                    "parquet footers of realdata/raw_tlc/fhvhv_tripdata_2019-02.parquet and "
+                    "...2026-05.parquet). vehicle_ref/run_ref are therefore ABSENT for this source "
+                    "-- recorded, not synthesized. hvfhs_license_num is the operating company's "
+                    "licence (HV0002/3/4/5, four values across twenty million rows) and "
+                    "dispatching_base_num/originating_base_num are TLC-licensed base stations; "
+                    "chaining trips by any of them would place every Uber trip in New York on one "
+                    "vehicle and produce a deadhead figure with no missing value anywhere to warn "
+                    "the reader it was fiction. The concrete consequence: NO deadhead can be "
+                    "measured from this source at all (ADR-0039 chains one vehicle's consecutive "
+                    "trips), and no partial credit is available -- this is not a gap that a better "
+                    "join would close. Were a hack licence ever to appear it would be refused "
+                    "rather than used: see PERSON_IDENTIFYING_COLUMNS"
                 ),
                 disposition="dropped",
             )

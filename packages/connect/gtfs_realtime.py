@@ -68,6 +68,28 @@ written against still surfaces as ``unmapped_extension`` -- never a silent drop
 (blueprint/03 mapping discipline). The headline change is that the *synthetic
 request id* and the *whole-of-operational-context* loss are gone.
 
+THE VEHICLE REFERENCE, AND THE RUN REFERENCE THAT IS NOT THERE (ADR-0054 ->
+MX-B-ADAPTER-REFS-009)
+---------------------------------------------------------------------------
+Of the two fields the deadhead teardown can chain on, this feed carries exactly
+one, and the honest outcome differs per field:
+
+- ``vehicle.id`` IS a genuine vehicle reference and ALREADY reaches
+  ``VehicleObservation.vehicle_ref`` -- wired when the observation family landed
+  (ADR-0031), not by this packet. What this packet adds is the *proof the chain
+  closes*: adapter -> ``VehicleObservation`` -> observation store -> read back ->
+  ``VehicleSegment`` -> ``teardown_deadhead``, which nothing demonstrated before.
+  ``VehicleSegment.run_ref`` is documented as a "run/block/vehicle id", so
+  chaining a vehicle is a first-class use of it -- but the teardown's
+  ``run_ref_source`` must then say a VEHICLE was ranked, not a run.
+- There is NO run/block reference, and none is invented. See
+  ``NO_RUN_REFERENCE_FIELD``: it is recorded as loss on every mapped row.
+
+Absence stays absent on the vehicle side too. GTFS-RT's ``vehicle`` descriptor is
+optional, so a trip-keyed position names no vehicle; ``vehicle_ref`` is then
+``None`` and is never back-filled from ``vehicle_label``, ``license_plate``,
+``trip_id`` or the feed ``entity_id``.
+
 WHAT IS QUARANTINED
 -------------------
 Only signals with no honest observation to emit (mapping rule 7): an ``Alert``; a
@@ -170,6 +192,22 @@ _VEHICLE_RESIDUAL_REASONS = {
     "congestion_level": "network congestion around the vehicle; no VehicleObservation field",
 }
 
+NO_RUN_REFERENCE_FIELD = "<no run or block reference in a GTFS-Realtime feed>"
+"""MX-B-ADAPTER-REFS-009. The `source_field` under which this adapter records
+that GTFS-Realtime carries a VEHICLE reference but no RUN reference.
+
+The distinction is load-bearing. `VehiclePosition.vehicle.id` is a genuine
+vehicle identifier and already lands on `VehicleObservation.vehicle_ref`, so a
+teardown CAN chain one vehicle's consecutive observations
+(`VehicleSegment.run_ref` is documented as "run/block/vehicle id" for exactly
+this). What it cannot do is attribute that time to a RUN or a BLOCK:
+GTFS-Realtime's `TripDescriptor` carries trip_id / route_id / direction_id /
+start_date / start_time / schedule_relationship and NOTHING else. `block_id`
+lives in *static* GTFS `trips.txt`, which a realtime feed does not carry, so a
+realtime-only pipeline has no run reference to resolve and must not invent one
+from `trip_id` -- a trip is one journey along a pattern, a block is a day's
+chained work, and the two differ by exactly the deadhead being measured."""
+
 _TRIP_UPDATE_RESIDUAL_REASONS = {
     "direction_id": "trip direction; StopTimeObservation is stop-keyed, not direction-keyed",
     "trip_start_date": "the trip's service date; no StopTimeObservation field",
@@ -178,7 +216,15 @@ _TRIP_UPDATE_RESIDUAL_REASONS = {
         "trip-level schedule relationship; StopTimeObservation carries the per-STOP "
         "schedule_relationship, not the trip-level one"
     ),
-    "vehicle_id": "vehicle serving the trip; belongs on VehicleObservation, not this stop-keyed record",
+    "vehicle_id": (
+        "vehicle serving the trip. StopTimeObservation is stop-keyed and has no vehicle field, "
+        "so the reference does NOT survive this mapping. It survives only if the same feed also "
+        "publishes a VehiclePosition for that vehicle, which carries it to "
+        "VehicleObservation.vehicle_ref -- a TripUpdate-only feed loses it here, and a teardown "
+        "built from such a feed has nothing to chain (MX-B-ADAPTER-REFS-009). It is NOT copied "
+        "onto the stop observation and no vehicle-keyed record is minted from it, because a "
+        "predicted arrival is not evidence that vehicle was anywhere"
+    ),
     "vehicle_label": "human-readable vehicle label; no StopTimeObservation field",
     "trip_update_delay": (
         "trip-level delay; StopTimeObservation carries the per-stop arrival/departure "
@@ -241,6 +287,35 @@ def _as_int(value: object) -> int | None:
         return int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError) as exc:
         raise _UnmappableValue(f"unparseable integer value {value!r}") from exc
+
+
+def _no_run_reference_loss(carried_instead: str) -> SemanticLossRecord:
+    """The record that GTFS-Realtime has no run/block reference to carry.
+
+    Emitted on EVERY mapped row, not only where one looks missing: the point is
+    that the standard has no such field, which is a property of the format and
+    not of the row. `carried_instead` names what the row DID carry, so the record
+    can never be misread as "this feed lost its vehicle reference too".
+    """
+    return SemanticLossRecord(
+        source_field=NO_RUN_REFERENCE_FIELD,
+        source_value=None,
+        reason=(
+            "GTFS-Realtime publishes no run, block or piece-of-work identifier. Its TripDescriptor "
+            "carries trip_id/route_id/direction_id/start_date/start_time/schedule_relationship and "
+            "nothing more; block_id lives in STATIC GTFS trips.txt, which a realtime feed does not "
+            "include. So a realtime-only teardown can attribute empty time to a VEHICLE "
+            f"(via {carried_instead}, which this row does carry when the feed names one) but never "
+            "to a run, and run-level attribution stays ADR-0039 `unattributable` rather than being "
+            "inferred. trip_id is NOT used as a substitute: a trip is one journey along a pattern, "
+            "a block is a day's chained work, and the difference between them is precisely the "
+            "deadhead being measured -- keying on trip_id would report every vehicle's whole day "
+            "as a sequence of single-trip runs with no gaps between them, i.e. zero deadhead. "
+            "Joining a static GTFS feed to recover trips.block_id is a real option and is NOT done "
+            "here: this adapter maps one realtime row and holds no static feed"
+        ),
+        disposition="dropped",
+    )
 
 
 def _report_unmapped(
@@ -347,6 +422,15 @@ class GtfsRealtimeAdapter:
             observation = VehicleObservation(
                 observation_id=new_id(ObservationId),
                 tenant_id=self._tenant_id,
+                # THE reference the deadhead teardown chains on (ADR-0039), read
+                # from `vehicle.id` and NOWHERE else. GTFS-RT's `vehicle`
+                # descriptor is optional and its `id` is optional within it, so a
+                # position keyed only by trip has none -- and that stays None. It
+                # is never back-filled from `vehicle_label` (a human display
+                # string an agency may reuse or blank), from `license_plate` (a
+                # different identifier, and one attached to a keeper), from
+                # `trip_id`, or from the feed's `entity_id` (a per-message key
+                # that is only incidentally the vehicle id in some feeds).
                 vehicle_ref=_str_or_none(raw_row.get("vehicle_id")),
                 trip_ref=_str_or_none(raw_row.get("trip_id")),
                 route_ref=_str_or_none(raw_row.get("route_id")),
@@ -391,6 +475,7 @@ class GtfsRealtimeAdapter:
             "occupancy_percentage",
         }
         semantic_loss = _report_unmapped(raw_row, _VEHICLE_RESIDUAL_REASONS, vehicle_known)
+        semantic_loss.append(_no_run_reference_loss("VehicleObservation.vehicle_ref"))
         return AdapterResult(record=observation, semantic_loss=tuple(semantic_loss))
 
     # -- TripUpdate stop_time_update -> StopTimeObservation ----------------
@@ -501,6 +586,10 @@ class GtfsRealtimeAdapter:
             "trip_update_timestamp",
         }
         semantic_loss = _report_unmapped(raw_row, _TRIP_UPDATE_RESIDUAL_REASONS, trip_known)
+        # A stop observation carries NEITHER reference: StopTimeObservation has no
+        # vehicle field (the vehicle_id residual record above says so), and the
+        # feed has no run field at all.
+        semantic_loss.append(_no_run_reference_loss("no field on StopTimeObservation"))
         return AdapterResult(record=observation, semantic_loss=tuple(semantic_loss))
 
     # -- helper ------------------------------------------------------------

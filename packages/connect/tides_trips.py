@@ -17,6 +17,15 @@ field, and -- most importantly -- no rider "request" timestamp at all, so the
 mandatory ServiceRequest.requested_at has no direct source field (see the
 service_date coercion below, and the accompanying ADR).
 
+THE VEHICLE AND RUN REFERENCE (MX-B-ADAPTER-REFS-009, extending ADR-0054)
+TIDES is the one remaining adapter source that genuinely carries BOTH fields the
+deadhead teardown chains on: `vehicle_id` is the vehicle that performed the trip
+and `block_id` is a day's chained vehicle work -- the run reference. ADR-0043
+put their canonical home on `Outcome` and deliberately not on `ServiceRequest`,
+so `parse()` (which returns a request) still reports them as dropped, correctly
+and now narrowly. `parse_performed_trip()` returns the `Outcome` that carries
+them, and it is the entry point anything feeding the teardown should use.
+
 TIDES trips_performed columns (from data/standards/tides-sample.*.csv, the real
 TIDES header row):
     date, trip_id_performed, vehicle_id, trip_id_scheduled, route_id,
@@ -31,8 +40,11 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timezone
 
+from pydantic import BaseModel, ConfigDict, model_validator
+
 from packages.canonical import (
     BitemporalMeta,
+    Outcome,
     RequestId,
     RequestTimes,
     ServiceRequest,
@@ -65,14 +77,22 @@ _UNMAPPED_COLUMN_REASONS = {
         "ServiceRequest v0.1 field for a source scheduled-trip cross-reference"
     ),
     "vehicle_id": (
-        "identifies the vehicle that performed the trip (belongs on Vehicle / an "
-        "assignment), not a ServiceRequest attribute"
+        "identifies the vehicle that performed the trip. Dropped from THIS output and only "
+        "this one: ADR-0043 gave vehicle_ref a canonical home on Outcome and deliberately NOT "
+        "on ServiceRequest (one fact, one home), and parse() returns a request. It is no "
+        "longer homeless -- parse_performed_trip() returns the Outcome that carries it "
+        "verbatim (MX-B-ADAPTER-REFS-009)"
     ),
     "operator_id": (
         "identifies the operating agency/operator (belongs on Driver / Tenant), "
         "not a rider and not a ServiceRequest field"
     ),
-    "block_id": "vehicle block (a day's chained vehicle work) has no ServiceRequest v0.1 field",
+    "block_id": (
+        "the vehicle block -- a day's chained vehicle work, and the run reference the deadhead "
+        "teardown groups on. Dropped from THIS output only, for the same reason as vehicle_id: "
+        "run_ref lives on Outcome, not ServiceRequest. parse_performed_trip() carries it "
+        "(MX-B-ADAPTER-REFS-009)"
+    ),
     "route_id": "route the trip ran on has no ServiceRequest v0.1 field",
     "route_type": "GTFS route-type classification has no ServiceRequest v0.1 field",
     "shape_id": "trip geometry/shape reference has no ServiceRequest v0.1 field",
@@ -100,6 +120,65 @@ _KNOWN_COLUMNS = (
     | frozenset(_UNMAPPED_COLUMN_REASONS)
     | frozenset({"schedule_trip_start", "actual_trip_start"})
 )
+
+
+ENTITY_BEHIND_THE_LABEL_FIELD = "<the block or vehicle the reference names>"
+"""The `source_field` of the NARROWED loss record `parse_performed_trip()`
+emits in place of the `vehicle_id`/`block_id` `dropped` records.
+
+ADR-0054 narrowed rather than deleted the equivalent record for the operator
+export, and the reasoning transfers unchanged: the reference itself is retained,
+the ENTITY it names is not. Deleting the record outright is the tidy-looking
+move that silently discards a residual claim which is still true."""
+
+_CANCELED_RELATIONSHIPS = frozenset({"canceled", "cancelled"})
+"""GTFS-style `schedule_relationship` values that mean the trip did not run.
+Both spellings, because TIDES inherits GTFS's American `canceled` but exports
+are written by people."""
+
+
+class TidesPerformedTrip(BaseModel):
+    """One TIDES `trips_performed` row as the canonical entities it actually is.
+
+    NOT a canonical entity: `packages.canonical` owns the canonical model and
+    this module does not extend it. A Connect-layer container, exactly as
+    `OperatorTripRecord` is, so one call can return the request and the outcome
+    that carries the vehicle/run reference together.
+
+    WHY THIS EXISTS ALONGSIDE `parse()` RATHER THAN REPLACING IT. Two reasons,
+    both about files this packet does not own. `parse()` returns an
+    `AdapterResult[ServiceRequest]`, and five assertions across two unowned test
+    files (`conformance/fixtures/test_connect_tides_trips.py`,
+    `conformance/adversarial/test_connect_tides_malformed_rows.py`) read
+    `result.record` as a request. More binding: one of them pins
+    `lost["vehicle_id"].disposition == "dropped"` and `source_value == "VH-07"`,
+    which is exactly the record that would have to move. Changing the return
+    type is the right end state and is a follow-up, not something to do to other
+    people's files from here. The cost is real and is stated rather than hidden:
+    two entry points for one row. It is bounded by construction --
+    `parse_performed_trip()` CALLS `parse()` and returns its request unmodified,
+    so the two cannot disagree about anything except the loss list, where they
+    differ deliberately (see `ENTITY_BEHIND_THE_LABEL_FIELD`).
+
+    `vehicle_ref`/`run_ref` are mirrored here for symmetry with
+    `OperatorTripRecord`; `Outcome.vehicle_ref`/`Outcome.run_ref` is the copy
+    that persists, and both are set from one source.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    request: ServiceRequest
+    outcome: Outcome
+    vehicle_ref: str | None = None
+    run_ref: str | None = None
+
+    @model_validator(mode="after")
+    def _outcome_belongs_to_request(self) -> "TidesPerformedTrip":
+        if self.outcome.request_id != self.request.request_id:
+            raise ValueError("outcome.request_id must reference the request it accompanies")
+        if self.outcome.tenant_id != self.request.tenant_id:
+            raise ValueError("outcome.tenant_id must match the request's tenant")
+        return self
 
 
 class _UnmappableValue(ValueError):
@@ -149,6 +228,20 @@ def _parse_timestamp(column: str, raw_value: object) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _reference(raw_row: dict, column: str) -> str | None:
+    """A TIDES reference column -> its trimmed value, or None when the export did
+    not carry it.
+
+    ABSENT IS ABSENT. A blank cell becomes None, never `''` and never the string
+    `'None'`, because either would read back out of a nullable TEXT column later
+    as a block somebody worked. Reads exactly one column and has no fallback
+    argument, so there is no expression anywhere in this module that could
+    back-fill a missing block from a vehicle number.
+    """
+    value = raw_row.get(column)
+    return None if _is_blank(value) else str(value).strip()
 
 
 def _synthetic_rider_ref(raw_row: dict) -> str:
@@ -323,3 +416,133 @@ class TidesTripsAdapter:
             meta=BitemporalMeta(version=1, recorded_at=self._recorded_at),
         )
         return AdapterResult(record=request, semantic_loss=tuple(semantic_loss))
+
+    def parse_performed_trip(self, raw_row: dict) -> AdapterResult[TidesPerformedTrip]:
+        """The same row as a request AND the outcome that carries its vehicle
+        and block (MX-B-ADAPTER-REFS-009, extending ADR-0054).
+
+        TIDES `trips_performed` is the one remaining adapter source that is
+        genuinely a record of WHAT HAPPENED and names both references the
+        deadhead teardown needs: `vehicle_id` is the vehicle that performed the
+        trip, and `block_id` is a day's chained vehicle work -- the same concept
+        `Block.block_ref` documents as "GTFS trips.block_id", and exactly what
+        `VehicleSegment.run_ref` groups on. Both are carried verbatim onto
+        `Outcome.vehicle_ref`/`Outcome.run_ref`, so they survive a write to
+        MilexiumDB rather than dying at the process boundary.
+
+        `served` IS A JUDGMENT AND IS ONLY MADE WHERE THE ROW SUPPORTS IT.
+        `Outcome.served` is a non-nullable bool with no "unknown", so a row that
+        does not say what happened is QUARANTINED here rather than defaulted
+        either way. Defaulting True would assert service that may never have run;
+        defaulting False would assert a failure the operator never reported, and
+        both would be invisible in the totals. Two signals decide it: a
+        `schedule_relationship` of canceled/cancelled means the trip did not run
+        (served=False), and otherwise a present `actual_trip_start` means it did
+        (served=True). A row with neither is refused. `parse()` still accepts
+        such a row -- it is a perfectly good request; it is only unusable as a
+        performed trip.
+
+        A row naming NEITHER a vehicle nor a block is accepted, with both fields
+        None, unlike `operator_export.py` which quarantines it. That is not an
+        inconsistency: ADR-0038 made vehicle-or-run a MANDATORY intake column for
+        operator exports, a contract Milexium negotiates with the sender. TIDES
+        is a published standard whose fields are optional and which Milexium does
+        not get to renegotiate, so the honest destination for an unattributed
+        performed trip is ADR-0039's `unattributable` bucket, not a rejection.
+        """
+        base = self.parse(raw_row)
+        if base.is_quarantined:
+            return AdapterResult(quarantine=base.quarantine)
+
+        request = base.record
+        relationship = raw_row.get("schedule_relationship")
+        canceled = (
+            not _is_blank(relationship)
+            and str(relationship).strip().lower() in _CANCELED_RELATIONSHIPS
+        )
+        actual_started = request.times.actual_pickup_at is not None
+        if not canceled and not actual_started:
+            return AdapterResult(
+                quarantine=QuarantinedRow(
+                    raw_row=dict(raw_row),
+                    reason=(
+                        "the row does not say whether the trip was performed: actual_trip_start is "
+                        "absent and schedule_relationship does not report a cancellation. "
+                        "Outcome.served is a non-nullable bool, so there is no honest value to "
+                        "write -- defaulting it either way would put an unreported fact into every "
+                        "total derived from it. parse() still maps this row to a ServiceRequest"
+                    ),
+                    failed_field="actual_trip_start",
+                )
+            )
+
+        vehicle_ref = _reference(raw_row, "vehicle_id")
+        run_ref = _reference(raw_row, "block_id")
+        outcome = Outcome(
+            tenant_id=request.tenant_id,
+            request_id=request.request_id,
+            served=not canceled,
+            # Only where the trip actually ran. A canceled trip has no observed
+            # pickup even if the export left a stale timestamp in the column.
+            actual_pickup_at=None if canceled else request.times.actual_pickup_at,
+            # Not derived here. on_time would need the scheduled-vs-actual
+            # comparison and a tolerance nobody has agreed; excess ride time
+            # needs a dropoff this adapter does not map; deadhead_minutes is the
+            # teardown's OUTPUT, and computing it per row would invert the
+            # dependency this packet exists to feed.
+            on_time=None,
+            excess_ride_time_minutes=None,
+            deadhead_minutes=None,
+            # ADR-0043's columns. Each read from its OWN source column: a missing
+            # block is never back-filled from the vehicle number, and vice versa.
+            vehicle_ref=vehicle_ref,
+            run_ref=run_ref,
+        )
+        record = TidesPerformedTrip(
+            request=request, outcome=outcome, vehicle_ref=vehicle_ref, run_ref=run_ref
+        )
+
+        # The reference is no longer lost, so it is no longer reported as lost --
+        # a loss list that keeps naming a field it persists teaches its reader to
+        # discount the whole list. What remains true is NARROWER and is kept.
+        semantic_loss = [
+            loss for loss in base.semantic_loss if loss.source_field not in ("vehicle_id", "block_id")
+        ]
+        if vehicle_ref is not None or run_ref is not None:
+            semantic_loss.append(
+                SemanticLossRecord(
+                    source_field=ENTITY_BEHIND_THE_LABEL_FIELD,
+                    source_value=None,
+                    reason=(
+                        "the reference itself is retained: vehicle_id/block_id are written to "
+                        "Outcome.vehicle_ref/Outcome.run_ref (ADR-0043) and survive a write to "
+                        "MilexiumDB. What is NOT retained is the entity behind the label. These "
+                        "stay plain source-system strings with no foreign key to vehicles, blocks "
+                        "or run_pieces, and no Vehicle/Block/RunPiece row is minted here: a "
+                        "trips_performed row describes ONE trip, and a Block needs the pull-out "
+                        "and pull-in of a whole service day, which no single row carries and a "
+                        "one-row parse() cannot aggregate. Two consequences worth stating plainly: "
+                        "the same block id sent by two agencies is not one block, and a teardown "
+                        "can measure the gaps BETWEEN this block's consecutive trips but not the "
+                        "empty time before its first trip or after its last, which is therefore "
+                        "invisible rather than zero"
+                    ),
+                    disposition="dropped",
+                )
+            )
+        semantic_loss.append(
+            SemanticLossRecord(
+                source_field="schedule_relationship" if canceled else "actual_trip_start",
+                source_value=str(relationship) if canceled else str(raw_row.get("actual_trip_start")),
+                reason=(
+                    "Outcome.served is materialised from this field. TIDES has no explicit "
+                    "served/not-served column, so a cancellation in schedule_relationship is read "
+                    "as served=False and a present actual_trip_start as served=True; a row saying "
+                    "neither is quarantined by parse_performed_trip() rather than defaulted. "
+                    "on_time, excess_ride_time_minutes and deadhead_minutes are left None -- not "
+                    "guessed from schedule_trip_start"
+                ),
+                disposition="coerced",
+            )
+        )
+        return AdapterResult(record=record, semantic_loss=tuple(semantic_loss))
