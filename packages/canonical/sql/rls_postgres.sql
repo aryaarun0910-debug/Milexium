@@ -229,3 +229,51 @@ ALTER TABLE stop_time_observations FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON stop_time_observations
     USING (tenant_id = current_setting('milexium.tenant_id', true))
     WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+-- The request-INDEPENDENT SCHEDULING tables (MX-A-SCHEDULING-FAMILY-006): blocks,
+-- run_pieces, deadhead_segments. All three carry tenant_id directly, so they take
+-- the plain symmetric policy -- read what you may write.
+--
+-- ADDED IN THE SAME PACKET AS THE TABLES, deliberately. The observation tables
+-- above sat here UNGUARDED for two packets because they were added to
+-- schema_v0_1.sql after this file was written, and ADR-0037 had to fix that
+-- retroactively; a tenant-scoped table with no policy is precisely the false
+-- assurance ADR-0018 exists to prevent. That mistake is not repeated: a new
+-- tenant-scoped table and its policy land together or neither lands.
+--
+-- ENABLE *and* FORCE for the reason stated at the top of this file: milexium_dev
+-- OWNS these tables and a table owner bypasses RLS by default, so ENABLE alone
+-- would leave the owning credential unconstrained and every isolation test below
+-- would pass for the wrong reason.
+--
+-- WHAT IS SENSITIVE HERE, and it is not obvious. These tables hold no rider data
+-- at all -- but `run_pieces.operator_ref` is a PERSON reference (a tokenised
+-- operator badge, never a name; see RunPiece in entities.py), and the three tables
+-- together are an operator's crew roster and depot geography: who worked which
+-- vehicle, out of which garage, at what hour. That is commercially sensitive to
+-- the agency and personal to the driver, so the boundary is not decoration.
+--
+-- THE EMPTY-STRING TRAP (see the note above the model_versions policy): these
+-- three, like every other symmetric policy in this file, survive a RESET session
+-- only INCIDENTALLY -- `current_setting(name, true)` returns '' rather than NULL
+-- after a RESET, and `tenant_id = ''` happens to be false for any real UUID. That
+-- is why the conformance test for these tables asserts the reset GUC reads as the
+-- EMPTY STRING and still returns zero rows: the deny is proven, not assumed from
+-- the NULL case that does not actually occur here.
+ALTER TABLE blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocks FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON blocks
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+ALTER TABLE run_pieces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE run_pieces FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON run_pieces
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+ALTER TABLE deadhead_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deadhead_segments FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON deadhead_segments
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));

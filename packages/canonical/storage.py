@@ -20,14 +20,17 @@ from datetime import datetime
 from pathlib import Path
 
 from packages.canonical.entities import (
+    Block,
+    DeadheadSegment,
     DecisionAlternative,
     DecisionEvent,
     Outcome,
+    RunPiece,
     Tenant,
     platform_tenant,
 )
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
-from packages.canonical.ids import DecisionEventId, ScheduleRunId, TenantId, new_id
+from packages.canonical.ids import BlockId, DecisionEventId, ScheduleRunId, TenantId, new_id
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
@@ -353,6 +356,204 @@ class SqliteCanonicalStore:
                 deadhead_minutes=row[5],
                 vehicle_ref=row[6],
                 run_ref=row[7],
+            )
+            for row in cur.fetchall()
+        )
+
+    # -- scheduling family (request-independent) ---------------------------
+    #
+    # Blocks, run pieces and deadhead segments are the canonical home TODS needs
+    # (MX-A-SCHEDULING-FAMILY-006), the counterpart to the telemetry family
+    # ADR-0035 landed. Each write takes the entity alone: every one of them
+    # carries its own mandatory `tenant_id`, so there is no separate argument
+    # that could disagree with the row -- the same contract `record_outcome`
+    # already has. Each read takes the acting tenant and filters in SQL.
+    #
+    # `PostgresCanonicalStore` exposes these three pairs with identical
+    # signatures and identical ordering (ADR-0004's mirrored-contract claim,
+    # asserted structurally in the conformance suite).
+
+    def _resolve_block_for_tenant(self, tenant_id: TenantId, block_id: BlockId | None) -> None:
+        """Raise unless `block_id` is absent or names a block of `tenant_id`.
+
+        `run_pieces.block_id` and `deadhead_segments.block_id` are real foreign
+        keys to `blocks`, and a foreign key alone does NOT keep them inside the
+        tenant: PostgreSQL evaluates referential integrity with RLS bypassed by
+        design (see the note in sql/rls_postgres.sql), so the database would
+        happily let tenant B's run piece point at tenant A's block. The parent is
+        therefore resolved UNDER the acting tenant first, exactly as
+        `append_decision_alternative` resolves its parent schedule run, so
+        "which tenant owns this block" is never inferred from the caller's word.
+        """
+        if block_id is None:
+            return
+        cur = self._conn.execute(
+            "SELECT 1 FROM blocks WHERE block_id = ? AND tenant_id = ?",
+            (str(block_id), str(tenant_id)),
+        )
+        if cur.fetchone() is None:
+            raise CrossTenantWriteError(
+                f"block {block_id!s} does not belong to tenant {tenant_id!s}"
+            )
+
+    def record_block(self, block: Block) -> None:
+        """Persist one vehicle's continuous work between pull-out and pull-in."""
+        self._conn.execute(
+            "INSERT INTO blocks (block_id, tenant_id, block_ref, service_ref, vehicle_ref, "
+            "garage_ref, pull_out_at, pull_in_at, recorded_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                str(block.block_id),
+                str(block.tenant_id),
+                block.block_ref,
+                block.service_ref,
+                block.vehicle_ref,
+                block.garage_ref,
+                block.pull_out_at.isoformat(),
+                block.pull_in_at.isoformat(),
+                block.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def blocks(self, tenant_id: TenantId) -> tuple[Block, ...]:
+        """Tenant-scoped read, ordered by valid time then by the surrogate key.
+
+        Reconstructing a `Block` on read means the stored columns must still
+        validate as one -- a `garage_ref` that came back as `''` rather than NULL,
+        or a pull-in that read back before its pull-out, fails here rather than in
+        whatever consumer trusted it."""
+        cur = self._conn.execute(
+            "SELECT block_id, block_ref, service_ref, vehicle_ref, garage_ref, pull_out_at, "
+            "pull_in_at, recorded_at FROM blocks "
+            "WHERE tenant_id = ? ORDER BY pull_out_at, block_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            Block(
+                block_id=row[0],
+                tenant_id=tenant_id,
+                block_ref=row[1],
+                service_ref=row[2],
+                vehicle_ref=row[3],
+                garage_ref=row[4],
+                pull_out_at=datetime.fromisoformat(row[5]),
+                pull_in_at=datetime.fromisoformat(row[6]),
+                recorded_at=datetime.fromisoformat(row[7]),
+            )
+            for row in cur.fetchall()
+        )
+
+    def record_run_piece(self, piece: RunPiece) -> None:
+        """Persist one continuous piece of an operator's run.
+
+        A `block_id` naming another tenant's block is a `CrossTenantWriteError`,
+        never a silently accepted row -- see `_resolve_block_for_tenant`."""
+        self._resolve_block_for_tenant(piece.tenant_id, piece.block_id)
+        self._conn.execute(
+            "INSERT INTO run_pieces (run_piece_id, tenant_id, run_ref, piece_ref, piece_sequence, "
+            "operator_ref, block_id, block_ref, vehicle_ref, start_type, end_type, started_at, "
+            "ended_at, recorded_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                str(piece.run_piece_id),
+                str(piece.tenant_id),
+                piece.run_ref,
+                piece.piece_ref,
+                piece.piece_sequence,
+                piece.operator_ref,
+                None if piece.block_id is None else str(piece.block_id),
+                piece.block_ref,
+                piece.vehicle_ref,
+                piece.start_type,
+                piece.end_type,
+                piece.started_at.isoformat(),
+                piece.ended_at.isoformat(),
+                piece.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def run_pieces(self, tenant_id: TenantId) -> tuple[RunPiece, ...]:
+        """Tenant-scoped read, ordered by valid time then by the surrogate key."""
+        cur = self._conn.execute(
+            "SELECT run_piece_id, run_ref, piece_ref, piece_sequence, operator_ref, block_id, "
+            "block_ref, vehicle_ref, start_type, end_type, started_at, ended_at, recorded_at "
+            "FROM run_pieces WHERE tenant_id = ? ORDER BY started_at, run_piece_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            RunPiece(
+                run_piece_id=row[0],
+                tenant_id=tenant_id,
+                run_ref=row[1],
+                piece_ref=row[2],
+                piece_sequence=row[3],
+                operator_ref=row[4],
+                block_id=row[5],
+                block_ref=row[6],
+                vehicle_ref=row[7],
+                start_type=row[8],
+                end_type=row[9],
+                started_at=datetime.fromisoformat(row[10]),
+                ended_at=datetime.fromisoformat(row[11]),
+                recorded_at=datetime.fromisoformat(row[12]),
+            )
+            for row in cur.fetchall()
+        )
+
+    def record_deadhead_segment(self, segment: DeadheadSegment) -> None:
+        """Persist one non-revenue vehicle movement.
+
+        This is what makes a deadhead teardown re-derivable from stored state
+        rather than only from an in-memory Connect handoff: `packages/replay/
+        teardown.py` measures exactly these segments, and until now they had no
+        canonical home to be read back out of."""
+        self._resolve_block_for_tenant(segment.tenant_id, segment.block_id)
+        self._conn.execute(
+            "INSERT INTO deadhead_segments (deadhead_segment_id, tenant_id, deadhead_ref, "
+            "block_id, block_ref, run_ref, vehicle_ref, deadhead_type, from_stop_ref, "
+            "to_stop_ref, started_at, ended_at, recorded_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                str(segment.deadhead_segment_id),
+                str(segment.tenant_id),
+                segment.deadhead_ref,
+                None if segment.block_id is None else str(segment.block_id),
+                segment.block_ref,
+                segment.run_ref,
+                segment.vehicle_ref,
+                segment.deadhead_type,
+                segment.from_stop_ref,
+                segment.to_stop_ref,
+                segment.started_at.isoformat(),
+                segment.ended_at.isoformat(),
+                segment.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def deadhead_segments(self, tenant_id: TenantId) -> tuple[DeadheadSegment, ...]:
+        """Tenant-scoped read, ordered by valid time then by the surrogate key --
+        which is also the order a teardown wants to consume them in."""
+        cur = self._conn.execute(
+            "SELECT deadhead_segment_id, deadhead_ref, block_id, block_ref, run_ref, vehicle_ref, "
+            "deadhead_type, from_stop_ref, to_stop_ref, started_at, ended_at, recorded_at "
+            "FROM deadhead_segments WHERE tenant_id = ? ORDER BY started_at, deadhead_segment_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            DeadheadSegment(
+                deadhead_segment_id=row[0],
+                tenant_id=tenant_id,
+                deadhead_ref=row[1],
+                block_id=row[2],
+                block_ref=row[3],
+                run_ref=row[4],
+                vehicle_ref=row[5],
+                deadhead_type=row[6],
+                from_stop_ref=row[7],
+                to_stop_ref=row[8],
+                started_at=datetime.fromisoformat(row[9]),
+                ended_at=datetime.fromisoformat(row[10]),
+                recorded_at=datetime.fromisoformat(row[11]),
             )
             for row in cur.fetchall()
         )

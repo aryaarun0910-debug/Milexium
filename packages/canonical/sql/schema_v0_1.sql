@@ -227,3 +227,83 @@ CREATE TABLE stop_time_observations (
     observed_at             TEXT NOT NULL,
     recorded_at             TEXT NOT NULL
 );
+
+-- SCHEDULING family (request-INDEPENDENT), the second half of the ADR-0031 gap.
+-- ADR-0035 gave telemetry a home -- what a vehicle was OBSERVED doing. These three
+-- tables give the other half a home: what a vehicle and an operator were ASSIGNED
+-- to do. TODS (runs, blocks, pieces-of-work, deadheads) had no canonical home for
+-- any of it, which is why ADR-0031/0035 both left TODS and NeTEx Specified rather
+-- than half-building adapters that would route most of the standard to loss.
+--
+-- ADDITIVE ONLY: no existing table or column above is altered by this family.
+--
+-- Every *_ref column is the SOURCE system's identifier as the agency writes it
+-- (block id, run id, vehicle number, garage code), so there is deliberately no
+-- REFERENCES vehicles(vehicle_id) anywhere below -- the same judgment
+-- outcomes.vehicle_ref and vehicle_observations.vehicle_ref already make. The only
+-- foreign keys are to tenants (the isolation boundary) and to blocks (a genuine
+-- canonical parent, minted by this repository).
+--
+-- PORTABILITY (ADR-0002): TEXT ids, ISO-8601 UTC strings for timestamps, and
+-- CHECK ... IN (...) instead of an ENUM type -- so this file still runs unmodified
+-- on SQLite and on PostgreSQL 17. Row-level security for these three tables is
+-- Postgres-only and therefore lives in sql/rls_postgres.sql, applied separately;
+-- it is NOT optional, a tenant-scoped table with no policy is the exact defect
+-- ADR-0037 had to fix retroactively for the observation tables.
+CREATE TABLE blocks (
+    block_id     TEXT PRIMARY KEY,
+    tenant_id    TEXT NOT NULL REFERENCES tenants(tenant_id),
+    block_ref    TEXT,
+    service_ref  TEXT,
+    vehicle_ref  TEXT,
+    garage_ref   TEXT,
+    pull_out_at  TEXT NOT NULL,
+    pull_in_at   TEXT NOT NULL,
+    recorded_at  TEXT NOT NULL
+);
+
+-- One row per (run, piece), matching TODS runs_pieces: a run has no attribute of
+-- its own beyond the pieces that share its run_ref, so there is no `runs` table for
+-- the same fact to disagree with. run_ref is NULLABLE and absence means the export
+-- did not say -- the piece is unattributable, never back-filled onto a neighbour.
+-- block_id is a nullable FK: a crew export legitimately arrives before the vehicle
+-- assignment it references, and block_ref preserves what the source said meanwhile.
+CREATE TABLE run_pieces (
+    run_piece_id   TEXT PRIMARY KEY,
+    tenant_id      TEXT NOT NULL REFERENCES tenants(tenant_id),
+    run_ref        TEXT,
+    piece_ref      TEXT,
+    piece_sequence INTEGER CHECK (piece_sequence IS NULL OR piece_sequence >= 0),
+    operator_ref   TEXT,
+    block_id       TEXT REFERENCES blocks(block_id),
+    block_ref      TEXT,
+    vehicle_ref    TEXT,
+    start_type     TEXT,
+    end_type       TEXT,
+    started_at     TEXT NOT NULL,
+    ended_at       TEXT NOT NULL,
+    recorded_at    TEXT NOT NULL
+);
+
+-- Non-revenue movement. started_at/ended_at/run_ref carry the names
+-- packages/replay/teardown.py already uses for its VehicleSegment inputs, so a
+-- stored segment maps onto the teardown field-for-field instead of being
+-- translated. deadhead_type is NOT NULL with a CHECK because it is the field a
+-- consumer branches on; 'other' is the honest landing place for a source that did
+-- not classify the movement, never a guess at 'interline'.
+CREATE TABLE deadhead_segments (
+    deadhead_segment_id TEXT PRIMARY KEY,
+    tenant_id           TEXT NOT NULL REFERENCES tenants(tenant_id),
+    deadhead_ref        TEXT,
+    block_id            TEXT REFERENCES blocks(block_id),
+    block_ref           TEXT,
+    run_ref             TEXT,
+    vehicle_ref         TEXT,
+    deadhead_type       TEXT NOT NULL CHECK (deadhead_type IN
+        ('pull_out','pull_in','interline','relief','repositioning','other')),
+    from_stop_ref       TEXT,
+    to_stop_ref         TEXT,
+    started_at          TEXT NOT NULL,
+    ended_at            TEXT NOT NULL,
+    recorded_at         TEXT NOT NULL
+);

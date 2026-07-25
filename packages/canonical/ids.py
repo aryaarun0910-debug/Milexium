@@ -92,6 +92,32 @@ class ObservationId(_TypedId):
     """
 
 
+class BlockId(_TypedId):
+    """Identifies one `Block` -- a vehicle's continuous work between pull-out and
+    pull-in. The record's OWN surrogate key (see the note below on why the
+    scheduling family gets three distinct id kinds rather than one shared one)."""
+
+
+class RunPieceId(_TypedId):
+    """Identifies one `RunPiece` -- one continuous piece of an operator's run."""
+
+
+class DeadheadSegmentId(_TypedId):
+    """Identifies one `DeadheadSegment` -- one non-revenue vehicle movement.
+
+    WHY THE SCHEDULING FAMILY HAS THREE ID KINDS AND THE TELEMETRY FAMILY HAS
+    ONE. ``ObservationId`` above is deliberately shared by ``VehicleObservation``
+    and ``StopTimeObservation`` because neither entity references the other, so a
+    single opaque "this record's own key" type can never be mixed up in practice.
+    The scheduling family DOES reference itself: a ``RunPiece`` and a
+    ``DeadheadSegment`` each carry the ``BlockId`` of the block they belong to.
+    With one shared type, passing a deadhead segment's id where a block id
+    belongs would type-check and insert a dangling reference -- exactly the
+    "a VehicleId where a DriverId belongs" error this module exists to reject.
+    Three types make that a validation failure at the boundary instead.
+    """
+
+
 AggregateId = Annotated[str, AfterValidator(_validate_uuid_string)]
 """An id known only to be *some* aggregate's id (used by the generic event log)."""
 

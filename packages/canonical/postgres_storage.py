@@ -48,14 +48,17 @@ import psycopg
 from psycopg import sql
 
 from packages.canonical.entities import (
+    Block,
+    DeadheadSegment,
     DecisionAlternative,
     DecisionEvent,
     Outcome,
+    RunPiece,
     Tenant,
     platform_tenant,
 )
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
-from packages.canonical.ids import DecisionEventId, ScheduleRunId, TenantId, new_id
+from packages.canonical.ids import BlockId, DecisionEventId, ScheduleRunId, TenantId, new_id
 from packages.canonical.storage import CrossTenantWriteError
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
@@ -463,6 +466,202 @@ class PostgresCanonicalStore:
                 deadhead_minutes=row[5],
                 vehicle_ref=row[6],
                 run_ref=row[7],
+            )
+            for row in cur.fetchall()
+        )
+
+    # -- scheduling family (request-independent) ---------------------------
+    #
+    # The same three pairs `SqliteCanonicalStore` exposes, with the same names,
+    # the same signatures, the same ORDER BY clauses and the same error types --
+    # so the two engines return the same SEQUENCE, not merely the same set
+    # (ADR-0004's mirrored-contract claim).
+    #
+    # Two independent boundaries hold on every one of them, as everywhere else in
+    # this store: the `tenant_isolation` policy on blocks / run_pieces /
+    # deadhead_segments (keyed on the GUC set here, ENABLE + FORCE in
+    # sql/rls_postgres.sql) and the tenant filter in the SQL itself.
+
+    def _resolve_block_for_tenant(self, tenant_id: TenantId, block_id: BlockId | None) -> None:
+        """Raise unless `block_id` is absent or names a block of `tenant_id`.
+
+        THIS CHECK IS NOT REDUNDANT WITH RLS, and this store is where that
+        matters most. The `run_pieces.block_id` / `deadhead_segments.block_id`
+        foreign keys are evaluated by PostgreSQL with RLS BYPASSED by design (the
+        note near the top of sql/rls_postgres.sql), and the tables' own WITH CHECK
+        clauses only constrain `tenant_id` -- so nothing in the database stops
+        tenant B's run piece from pointing at tenant A's block. The parent is
+        resolved under the acting GUC first, which is also why the lookup below is
+        itself policy-filtered: another tenant's block is invisible here, so it
+        cannot be confirmed and the write is refused.
+        """
+        if block_id is None:
+            return
+        cur = self._conn.execute(
+            "SELECT 1 FROM blocks WHERE block_id = %s AND tenant_id = %s",
+            (str(block_id), str(tenant_id)),
+        )
+        if cur.fetchone() is None:
+            raise CrossTenantWriteError(
+                f"block {block_id!s} does not belong to tenant {tenant_id!s}"
+            )
+
+    def record_block(self, block: Block) -> None:
+        """Persist one vehicle's continuous work between pull-out and pull-in."""
+        self._use_tenant(block.tenant_id)
+        self._conn.execute(
+            "INSERT INTO blocks (block_id, tenant_id, block_ref, service_ref, vehicle_ref, "
+            "garage_ref, pull_out_at, pull_in_at, recorded_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (
+                str(block.block_id),
+                str(block.tenant_id),
+                block.block_ref,
+                block.service_ref,
+                block.vehicle_ref,
+                block.garage_ref,
+                block.pull_out_at.isoformat(),
+                block.pull_in_at.isoformat(),
+                block.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def blocks(self, tenant_id: TenantId) -> tuple[Block, ...]:
+        """Tenant-scoped read, ordered by valid time then by the surrogate key."""
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            "SELECT block_id, block_ref, service_ref, vehicle_ref, garage_ref, pull_out_at, "
+            "pull_in_at, recorded_at FROM blocks "
+            "WHERE tenant_id = %s ORDER BY pull_out_at, block_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            Block(
+                block_id=row[0],
+                tenant_id=tenant_id,
+                block_ref=row[1],
+                service_ref=row[2],
+                vehicle_ref=row[3],
+                garage_ref=row[4],
+                pull_out_at=datetime.fromisoformat(row[5]),
+                pull_in_at=datetime.fromisoformat(row[6]),
+                recorded_at=datetime.fromisoformat(row[7]),
+            )
+            for row in cur.fetchall()
+        )
+
+    def record_run_piece(self, piece: RunPiece) -> None:
+        """Persist one continuous piece of an operator's run.
+
+        A `block_id` naming another tenant's block is a `CrossTenantWriteError` --
+        the identical error type the SQLite store raises, for the identical
+        reason. See `_resolve_block_for_tenant`."""
+        self._use_tenant(piece.tenant_id)
+        self._resolve_block_for_tenant(piece.tenant_id, piece.block_id)
+        self._conn.execute(
+            "INSERT INTO run_pieces (run_piece_id, tenant_id, run_ref, piece_ref, piece_sequence, "
+            "operator_ref, block_id, block_ref, vehicle_ref, start_type, end_type, started_at, "
+            "ended_at, recorded_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (
+                str(piece.run_piece_id),
+                str(piece.tenant_id),
+                piece.run_ref,
+                piece.piece_ref,
+                piece.piece_sequence,
+                piece.operator_ref,
+                None if piece.block_id is None else str(piece.block_id),
+                piece.block_ref,
+                piece.vehicle_ref,
+                piece.start_type,
+                piece.end_type,
+                piece.started_at.isoformat(),
+                piece.ended_at.isoformat(),
+                piece.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def run_pieces(self, tenant_id: TenantId) -> tuple[RunPiece, ...]:
+        """Tenant-scoped read, ordered by valid time then by the surrogate key."""
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            "SELECT run_piece_id, run_ref, piece_ref, piece_sequence, operator_ref, block_id, "
+            "block_ref, vehicle_ref, start_type, end_type, started_at, ended_at, recorded_at "
+            "FROM run_pieces WHERE tenant_id = %s ORDER BY started_at, run_piece_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            RunPiece(
+                run_piece_id=row[0],
+                tenant_id=tenant_id,
+                run_ref=row[1],
+                piece_ref=row[2],
+                piece_sequence=row[3],
+                operator_ref=row[4],
+                block_id=row[5],
+                block_ref=row[6],
+                vehicle_ref=row[7],
+                start_type=row[8],
+                end_type=row[9],
+                started_at=datetime.fromisoformat(row[10]),
+                ended_at=datetime.fromisoformat(row[11]),
+                recorded_at=datetime.fromisoformat(row[12]),
+            )
+            for row in cur.fetchall()
+        )
+
+    def record_deadhead_segment(self, segment: DeadheadSegment) -> None:
+        """Persist one non-revenue vehicle movement -- the canonical home a
+        deadhead teardown can now be re-derived from."""
+        self._use_tenant(segment.tenant_id)
+        self._resolve_block_for_tenant(segment.tenant_id, segment.block_id)
+        self._conn.execute(
+            "INSERT INTO deadhead_segments (deadhead_segment_id, tenant_id, deadhead_ref, "
+            "block_id, block_ref, run_ref, vehicle_ref, deadhead_type, from_stop_ref, "
+            "to_stop_ref, started_at, ended_at, recorded_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (
+                str(segment.deadhead_segment_id),
+                str(segment.tenant_id),
+                segment.deadhead_ref,
+                None if segment.block_id is None else str(segment.block_id),
+                segment.block_ref,
+                segment.run_ref,
+                segment.vehicle_ref,
+                segment.deadhead_type,
+                segment.from_stop_ref,
+                segment.to_stop_ref,
+                segment.started_at.isoformat(),
+                segment.ended_at.isoformat(),
+                segment.recorded_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def deadhead_segments(self, tenant_id: TenantId) -> tuple[DeadheadSegment, ...]:
+        """Tenant-scoped read, ordered by valid time then by the surrogate key."""
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            "SELECT deadhead_segment_id, deadhead_ref, block_id, block_ref, run_ref, vehicle_ref, "
+            "deadhead_type, from_stop_ref, to_stop_ref, started_at, ended_at, recorded_at "
+            "FROM deadhead_segments WHERE tenant_id = %s ORDER BY started_at, deadhead_segment_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            DeadheadSegment(
+                deadhead_segment_id=row[0],
+                tenant_id=tenant_id,
+                deadhead_ref=row[1],
+                block_id=row[2],
+                block_ref=row[3],
+                run_ref=row[4],
+                vehicle_ref=row[5],
+                deadhead_type=row[6],
+                from_stop_ref=row[7],
+                to_stop_ref=row[8],
+                started_at=datetime.fromisoformat(row[9]),
+                ended_at=datetime.fromisoformat(row[10]),
+                recorded_at=datetime.fromisoformat(row[11]),
             )
             for row in cur.fetchall()
         )

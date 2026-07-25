@@ -10,18 +10,22 @@ roadmap's table/column intent; types and validation are new.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from packages.canonical.ids import (
     PLATFORM_TENANT_ID,
     PLATFORM_TENANT_NAME,
+    BlockId,
+    DeadheadSegmentId,
     DecisionEventId,
     DriverId,
     ModelVersionId,
     ObservationId,
     PolicyId,
     RequestId,
+    RunPieceId,
     ScheduleRunId,
     TenantId,
     VehicleId,
@@ -329,6 +333,262 @@ class StopTimeObservation(_Canonical):
     departure_delay_seconds: int | None = None
     observed_at: UtcDateTime
     recorded_at: UtcDateTime
+
+
+DeadheadKind = Literal[
+    "pull_out", "pull_in", "interline", "relief", "repositioning", "other"
+]
+"""What a non-revenue movement WAS. The five named kinds are the ones a
+scheduler actually acts on differently:
+
+- ``pull_out``  -- garage/depot to the start of the first revenue trip.
+- ``pull_in``   -- end of the last revenue trip back to the garage/depot.
+- ``interline`` -- between two revenue trips the same vehicle performs, typically
+  on different routes; the movement that block-building exists to minimise.
+- ``relief``    -- to or from a relief point where one operator hands the vehicle
+  to another. Empty for a different reason: the crew, not the schedule.
+- ``repositioning`` -- any other in-service empty movement (to a layover point, a
+  fuelling stop, a turn-back).
+
+``other`` is a deliberate escape hatch, NOT a default. A source that records a
+deadhead without saying which kind it was maps to ``other`` so the movement is
+still counted, rather than being guessed into ``interline`` and silently
+inflating the one number an interlining change is measured by. It is a
+CLASSIFICATION carried by the source, never inferred here from geometry or
+timing -- the same discipline ``packages.replay.teardown.SegmentKind`` keeps.
+
+A closed Literal rather than a free string (unlike ``current_status`` /
+``schedule_relationship`` on the telemetry family, which stay source strings):
+this is the field a consumer BRANCHES on, so an unrecognised value would not be
+lossless detail, it would be a silently unhandled branch. The portable schema
+mirrors it with `CHECK (deadhead_type IN (...))`, which is why it is a Literal
+here and not an enum in vocab.py -- ADR-0002 bans ENUM types from the portable
+DDL.
+"""
+
+
+class Block(_Canonical):
+    """One vehicle's continuous work between pull-out and pull-in.
+
+    The first entity of the request-INDEPENDENT **scheduling** family, and the
+    canonical home ADR-0031 found missing for TODS. ADR-0035 closed the
+    *telemetry* half of that gap (``VehicleObservation`` /
+    ``StopTimeObservation``: what a vehicle was observed doing). This is the
+    other half: what a vehicle and an operator were ASSIGNED to do. TODS
+    describes runs, blocks, pieces-of-work and deadheads, and every one of them
+    was homeless -- which is why ADR-0031 and ADR-0035 both left TODS and NeTEx
+    Specified rather than half-building an adapter that would route most of the
+    standard to semantic loss.
+
+    A block is the vehicle's unit of work: it leaves the garage once
+    (``pull_out_at``), performs a sequence of revenue trips and the deadheads
+    between them, and returns once (``pull_in_at``). It is the thing a
+    ``DeadheadSegment`` belongs to and the thing a ``RunPiece`` is worked on.
+
+    REQUEST-INDEPENDENT, like the telemetry family and for the same reason. A
+    block exists whether or not a single rider ever asks for anything -- it is
+    published days before service runs. ``_Canonical``'s ``extra="forbid"``
+    means a ``request_id`` cannot even be attached to one, so ADR-0031's
+    synthetic-``request_id`` squash is structurally impossible here.
+
+    SOURCE REFS ARE PLAIN STRINGS, NOT CANONICAL TYPED IDS -- ADR-0035's first
+    design call, applied unchanged. ``block_ref`` is the agency's own block id
+    (GTFS ``trips.block_id``, a TODS block), ``vehicle_ref`` their vehicle
+    number, ``garage_ref`` their depot code. They name an EXTERNAL agency's
+    entities, not Milexium aggregates, so typing ``vehicle_ref`` as ``VehicleId``
+    would assert a canonical ``Vehicle`` row no operator export creates. The
+    canonical id is ``block_id``: the record's own key, pointing at nothing it
+    cannot back up.
+
+    Bitemporal: ``pull_out_at``/``pull_in_at`` are valid time (when the vehicle
+    is/was out); ``recorded_at`` is transaction time (when Milexium ingested the
+    assignment).
+    """
+
+    block_id: BlockId
+    tenant_id: TenantId
+    block_ref: str | None = Field(
+        default=None,
+        description="Source-system block identifier (e.g. GTFS trips.block_id). Never a canonical id.",
+    )
+    service_ref: str | None = Field(
+        default=None,
+        description="Source-system service/calendar identifier the block runs under (e.g. GTFS service_id).",
+    )
+    vehicle_ref: str | None = Field(
+        default=None,
+        description="Source-system vehicle identifier assigned to the block. Never a VehicleId.",
+    )
+    garage_ref: str | None = Field(
+        default=None,
+        description="Source-system garage/depot the block pulls out of and back into.",
+    )
+    pull_out_at: UtcDateTime
+    pull_in_at: UtcDateTime
+    recorded_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def _pull_in_does_not_precede_pull_out(self) -> "Block":
+        """A vehicle cannot return before it leaves. Rejected at construction
+        because a reversed pair is a parsing artefact (a date rollover, a
+        local-vs-UTC mix-up) that would otherwise yield a NEGATIVE block
+        duration and quietly subtract from every total derived from it."""
+        if self.pull_in_at < self.pull_out_at:
+            raise ValueError(
+                f"block pulls in before it pulls out ({self.pull_in_at.isoformat()} < "
+                f"{self.pull_out_at.isoformat()})"
+            )
+        return self
+
+
+class RunPiece(_Canonical):
+    """One continuous piece of work in an operator's run (TODS `runs_pieces`).
+
+    A *run* is one operator's assignment for a service day; a *piece* is one
+    unbroken stretch of it on one block, bounded by a report, a relief or a
+    pull-in. A two-piece run is a split shift: morning peak, break, afternoon
+    peak.
+
+    WHY THE ROW IS A PIECE AND NOT A RUN. TODS gives a run no attribute of its
+    own -- ``runs_pieces.txt`` is one row per (run, piece), and the run is the
+    grouping key those rows share. Minting a separate ``Run`` table would create
+    an aggregate with nothing in it but an id, and two places for the same fact
+    to disagree. So the run's identity lives on every piece as ``run_ref``, and a
+    single-piece run is exactly one row. Grouping by ``run_ref`` reconstructs the
+    run; a piece whose export named no run is *unattributable* and says so,
+    rather than being invented into a run that did not work it.
+
+    REQUEST-INDEPENDENT, and structurally so (``extra="forbid"``): a crew
+    assignment is made before any rider request exists.
+
+    ``operator_ref`` IS A PERSON REFERENCE AND IS TREATED LIKE ONE. It follows
+    ``ServiceRequest.rider_ref``'s rule exactly (blueprint 10 data
+    minimisation): a tokenised badge/run-signup reference as the operator's own
+    system writes it, NEVER a name. Nothing in this package needs to know who an
+    operator is -- only that the same one worked two pieces -- so a token is
+    sufficient for every consumer and a name is never required.
+    """
+
+    run_piece_id: RunPieceId
+    tenant_id: TenantId
+    run_ref: str | None = Field(
+        default=None,
+        description="Source-system run identifier this piece belongs to. None means the export did not say.",
+    )
+    piece_ref: str | None = Field(
+        default=None, description="Source-system identifier for the piece itself, where one exists."
+    )
+    piece_sequence: int | None = Field(
+        default=None, ge=0, description="Position of this piece within its run, when the source orders them."
+    )
+    operator_ref: str | None = Field(
+        default=None,
+        description="Tokenized operator reference. Never a raw name (blueprint 10 data minimization).",
+    )
+    block_id: BlockId | None = Field(
+        default=None,
+        description="The canonical Block this piece works, when Milexium holds one. Optional: a crew export can arrive before the vehicle assignment does.",
+    )
+    block_ref: str | None = Field(
+        default=None,
+        description="Source-system block identifier as the export writes it, kept even when block_id is unresolved.",
+    )
+    vehicle_ref: str | None = None
+    start_type: str | None = Field(
+        default=None,
+        description="Why the piece begins (report / pull-out / relief) -- kept as the source string.",
+    )
+    end_type: str | None = Field(
+        default=None,
+        description="Why the piece ends (relief / pull-in) -- kept as the source string.",
+    )
+    started_at: UtcDateTime
+    ended_at: UtcDateTime
+    recorded_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def _piece_does_not_end_before_it_starts(self) -> "RunPiece":
+        if self.ended_at < self.started_at:
+            raise ValueError(
+                f"run piece ends before it starts ({self.ended_at.isoformat()} < "
+                f"{self.started_at.isoformat()})"
+            )
+        return self
+
+
+class DeadheadSegment(_Canonical):
+    """One non-revenue ("empty") vehicle movement: pull-out, pull-in, interlining.
+
+    The third scheduling entity, and the one with a consumer already waiting for
+    it. ``packages/replay/teardown.py`` measures exactly this -- where empty
+    vehicle time sat, by hour, by day and by run -- but it can only be handed
+    ``VehicleSegment``s built in memory from a Connect-layer export, because
+    deadhead had no canonical home to be read back out of. This entity is that
+    home, and it is deliberately shaped so the handoff is a field-for-field
+    mapping rather than a translation:
+
+        VehicleSegment(started_at=seg.started_at, ended_at=seg.ended_at,
+                       kind="deadhead", run_ref=seg.run_ref)
+
+    ``started_at``/``ended_at``/``run_ref`` therefore carry the teardown's own
+    names, and ``run_ref`` keeps the teardown's absence semantics precisely: None
+    means the export did not say, the segment lands in ``unattributable``, and it
+    is NEVER guessed onto a neighbouring run. A fabricated run reference would
+    attribute empty time to a run that did not incur it, which is the one error a
+    teardown exists to prevent.
+
+    ``deadhead_type`` is REQUIRED, unlike almost every other field here, because
+    a movement nobody classified is still a classification decision -- see
+    ``DeadheadKind`` for why ``other`` is the honest landing place and not a
+    default. Every other field is optional: a source that gives only "this
+    vehicle was empty from 06:12 to 06:31" still produces a usable row.
+
+    REQUEST-INDEPENDENT (``extra="forbid"``), and necessarily so: deadhead is
+    time when NO rider is aboard. Keying it on a rider request would be the
+    ADR-0031 category error in its purest form.
+    """
+
+    deadhead_segment_id: DeadheadSegmentId
+    tenant_id: TenantId
+    deadhead_ref: str | None = Field(
+        default=None, description="Source-system identifier for the deadhead itself (e.g. a TODS deadhead_id)."
+    )
+    block_id: BlockId | None = Field(
+        default=None,
+        description="The canonical Block this movement belongs to, when Milexium holds one.",
+    )
+    block_ref: str | None = None
+    run_ref: str | None = Field(
+        default=None,
+        description=(
+            "Source-system run/block identifier, as the operator writes it -- the field "
+            "packages.replay.teardown attributes empty time by. None means unattributable."
+        ),
+    )
+    vehicle_ref: str | None = None
+    deadhead_type: DeadheadKind
+    from_stop_ref: str | None = Field(
+        default=None, description="Source-system stop/location the movement started from (a garage, a terminal)."
+    )
+    to_stop_ref: str | None = Field(
+        default=None, description="Source-system stop/location the movement ended at."
+    )
+    started_at: UtcDateTime
+    ended_at: UtcDateTime
+    recorded_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def _segment_does_not_end_before_it_starts(self) -> "DeadheadSegment":
+        """The same guard ``packages.replay.teardown.VehicleSegment`` applies to
+        its own inputs, applied one layer earlier so a reversed pair cannot even
+        be STORED. A negative duration here would subtract from the empty-time
+        total and make a teardown understate the very thing it measures."""
+        if self.ended_at < self.started_at:
+            raise ValueError(
+                f"deadhead segment ends before it starts ({self.ended_at.isoformat()} < "
+                f"{self.started_at.isoformat()})"
+            )
+        return self
 
 
 class OutboxEntry(_Canonical):
