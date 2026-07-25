@@ -98,6 +98,11 @@ from pydantic import BaseModel, ConfigDict
 from packages.canonical.ids import TenantId
 from packages.canonical.time import UtcDateTime, _require_utc
 
+# One-directional: this module imports the migration runner, and the runner
+# imports `_iso_utc` back from here only INSIDE a function (see
+# `packages/core/migrations._now_iso`), so there is no import cycle.
+from packages.core.migrations import migrate, split_statements
+
 CORE_SCHEMA_PATH = Path(__file__).parent / "sql" / "core_v0_1.sql"
 # Postgres-only: RLS is not in the portable subset, so it is a separate file
 # applied only by `CoreDatabase.postgres`, exactly as packages/canonical splits
@@ -249,9 +254,18 @@ class CoreDatabase:
     created at construction and torn down by `drop_schema()` -- the same
     test-isolation strategy `packages/canonical/postgres_storage.py` uses,
     because a real server is a shared persistent process rather than SQLite's
-    disposable `:memory:` default. `CREATE SCHEMA IF NOT EXISTS` plus the DDL's
-    own `IF NOT EXISTS` means REOPENING a named schema (or an on-disk SQLite
-    file) is idempotent -- which is exactly the persistence claim under test.
+    disposable `:memory:` default.
+
+    OPENING A DATABASE RUNS ITS MIGRATIONS (MX-D-MIGRATIONS-008), and that is
+    what makes reopening a named schema -- or an on-disk SQLite file -- safe
+    rather than merely non-erroring. It used to rest on the DDL's own `CREATE
+    ... IF NOT EXISTS`, which ADR-0048 recorded honestly as the absence of a
+    migration path: a database created before `tenant_id` existed was NOT
+    upgraded by reopening it, the old tables simply stayed as they were, and the
+    code then ran against a shape it was not written for. `packages/core/
+    migrations.py` replaces that with a recorded version, an ordered upgrade
+    from it, and -- the part `IF NOT EXISTS` could never provide -- a REFUSAL to
+    open a database whose version this code does not understand.
 
     TENANT ISOLATION IS ASYMMETRIC BETWEEN THE ENGINES, and that asymmetry is
     stated rather than papered over. On PostgreSQL, `postgres()` applies
@@ -278,14 +292,32 @@ class CoreDatabase:
 
     # -- construction ------------------------------------------------------- #
     @classmethod
-    def sqlite(cls, path: str = ":memory:") -> "CoreDatabase":
-        """Open (or create) a SQLite database and apply the core DDL. A path
-        other than `:memory:` is what makes the store outlive the process."""
+    def sqlite(
+        cls, path: str = ":memory:", *, legacy_tenant_id: TenantId | None = None
+    ) -> "CoreDatabase":
+        """Open (or create) a SQLite database and bring it to the current schema
+        version. A path other than `:memory:` is what makes the store outlive the
+        process -- and is therefore the only case where a database can be found
+        at an OLDER version than this code writes.
+
+        `legacy_tenant_id` is forwarded to `packages/core/migrations.migrate` and
+        is needed only when an ADR-0041 pre-tenant database that already holds
+        rows is being upgraded; see that module for why the migration refuses to
+        pick a tenant for those rows itself.
+        """
         connection = sqlite3.connect(path)
         connection.execute("PRAGMA foreign_keys = ON")
-        connection.executescript(CORE_SCHEMA_PATH.read_text(encoding="utf-8"))
-        connection.commit()
-        return cls(connection, placeholder="?")
+        database = cls(connection, placeholder="?")
+        try:
+            migrate(database, legacy_tenant_id=legacy_tenant_id)
+        except BaseException:
+            # A refused database must not leave an open handle behind: the
+            # caller never received the object, so nobody else can close it, and
+            # on Windows an open SQLite handle blocks the file being inspected or
+            # replaced -- which is exactly what a refusal invites you to do.
+            connection.close()
+            raise
+        return database
 
     @classmethod
     def postgres(
@@ -297,16 +329,24 @@ class CoreDatabase:
         user: str = "milexium_dev",
         password: str | None = None,
         schema: str | None = None,
+        legacy_tenant_id: TenantId | None = None,
     ) -> "CoreDatabase":
         """Open the natively installed PostgreSQL 17 dev instance (ADR-0006) and
-        apply the SAME `core_v0_1.sql`, unmodified -- the portability claim
-        (ADR-0002) is that the file needs no per-engine edit -- then the
-        Postgres-only `core_rls_postgres.sql` on top of it.
+        bring the schema to the current version with the SAME migration code path
+        SQLite uses -- the portability claim (ADR-0002) is that neither the DDL
+        nor the upgrade needs a per-engine edit -- then apply the Postgres-only
+        `core_rls_postgres.sql` on top.
 
-        The RLS file is applied INSIDE the same schema (search_path is already
-        set), so its unqualified table names resolve to the tables just created,
-        and it is written to be re-appliable because this classmethod is how a
-        named schema is REOPENED."""
+        Both are applied INSIDE the same schema (search_path is already set), so
+        unqualified table names resolve to the tables just created, and both are
+        written to be re-appliable because this classmethod is how a named schema
+        is REOPENED.
+
+        The RLS file is applied by `migrate()` at the END of its run rather than
+        here, and that ordering is load-bearing: migrating rebuilds tables, a
+        rebuilt table is a NEW relation with no policy and no FORCE, and the rows
+        must be copied through before any `WITH CHECK` clause exists to reject
+        them."""
         import psycopg
         from psycopg import sql as pg_sql
 
@@ -320,10 +360,19 @@ class CoreDatabase:
         with connection.cursor() as cur:
             cur.execute(pg_sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(ident))
             cur.execute(pg_sql.SQL("SET search_path TO {}").format(ident))
-            cur.execute(CORE_SCHEMA_PATH.read_text(encoding="utf-8"))
-            cur.execute(CORE_RLS_PATH.read_text(encoding="utf-8"))
-        connection.commit()
-        return cls(connection, placeholder="%s", schema=schema_name)
+        database = cls(connection, placeholder="%s", schema=schema_name)
+        try:
+            migrate(database, legacy_tenant_id=legacy_tenant_id)
+        except BaseException:
+            # Roll back first: a refusal raised mid-statement would otherwise
+            # leave the connection in PostgreSQL's aborted-transaction state, and
+            # closing it there discards the work silently rather than visibly.
+            try:
+                connection.rollback()
+            finally:
+                connection.close()
+            raise
+        return database
 
     # -- tenant scoping ----------------------------------------------------- #
     def use_tenant(self, tenant_id: object) -> None:
@@ -350,7 +399,81 @@ class CoreDatabase:
             "SELECT set_config('milexium.tenant_id', %s, false)", (str(tenant_id),)
         )
 
+    # -- schema version ----------------------------------------------------- #
+    def apply_row_level_security(self) -> None:
+        """Apply `core_rls_postgres.sql`. A NO-OP ON SQLITE, which has no
+        row-level security to apply.
+
+        Called by `packages/core/migrations.migrate` at the end of EVERY run,
+        not only when a migration ran. Migrating rebuilds tables (SQLite cannot
+        add a `NOT NULL` column or change a primary key in place), and a rebuilt
+        table is a new relation: `relrowsecurity`, `relforcerowsecurity` and the
+        `tenant_isolation` policy do not survive it. A migration that forgot this
+        would leave seven tables holding real operator data with tenant isolation
+        SILENTLY REMOVED -- worse than the database it started from, and green on
+        every test that only checks the rows arrived."""
+        if self._placeholder == "?":
+            return
+        for statement in split_statements(CORE_RLS_PATH.read_text(encoding="utf-8")):
+            self._conn.execute(statement)
+
+    def schema_version(self) -> int | None:
+        """The Program D schema version this database records, or `None` if it
+        has never been stamped. After a successful open this is always
+        `packages.core.migrations.CURRENT_SCHEMA_VERSION` -- an open that could
+        not reach it raised instead of returning."""
+        from packages.core.migrations import stamped_version
+
+        return stamped_version(self)
+
+    # -- schema introspection (portable) ------------------------------------ #
+    def table_exists(self, table: str) -> bool:
+        """Whether `table` exists in the schema this database writes into.
+
+        The one place a catalog has to be consulted per engine -- there is no
+        portable spelling -- so it is confined here beside the placeholder, next
+        to the other genuine engine differences, rather than leaking into
+        `migrations.py`. On PostgreSQL the lookup is scoped to `current_schema()`
+        so a table of the same name in another `mx_core_<uuid>` schema is not
+        mistaken for this one's."""
+        if self._placeholder == "?":
+            rows = self.query(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+                (table,),
+            )
+        else:
+            rows = self.query(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = current_schema() AND table_name = ?",
+                (table,),
+            )
+        return bool(rows)
+
+    def column_names(self, table: str) -> tuple[str, ...]:
+        """The column names of `table`, in declaration order.
+
+        Portable by construction: a zero-row `SELECT *` and the DB-API
+        `cursor.description` both engines are required to populate -- no
+        `PRAGMA table_info` on one side and `information_schema.columns` on the
+        other, which would be two chances to disagree about what a column is.
+        Row-level security does not interfere: a policy filters ROWS, and this
+        deliberately fetches none.
+
+        `table` is interpolated, so it must never come from a caller: every use
+        passes a name from `packages.core.migrations.CORE_TABLES`."""
+        cursor = self._conn.execute(f"SELECT * FROM {table} WHERE 1 = 0")  # noqa: S608
+        return tuple(column[0] for column in cursor.description)
+
     # -- statement execution ------------------------------------------------ #
+    def execute_ddl(self, statement: str) -> None:
+        """Execute ONE schema statement verbatim.
+
+        Separate from `execute` because DDL takes no parameters and must not go
+        through the `?` -> `%s` rewrite: a schema statement has nothing to
+        substitute, and passing it through a parameter-shaped path would invite
+        one to be added."""
+        self._conn.execute(statement)
+
     def _cursor(self, statement: str, params: tuple):
         text = (
             statement

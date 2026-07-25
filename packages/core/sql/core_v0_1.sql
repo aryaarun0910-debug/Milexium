@@ -81,6 +81,31 @@
 -- store and the promotion ledger) may be opened over the SAME database, and
 -- because reopening a store on an existing database is the persistence claim
 -- under test -- neither may fail on "table already exists".
+--
+-- BUT `IF NOT EXISTS` IS NOT, AND NEVER WAS, A MIGRATION MECHANISM
+-- (MX-D-MIGRATIONS-008). It makes reopening an OUT-OF-DATE database succeed
+-- quietly: a database created before `tenant_id` was added is not upgraded by
+-- re-running this file, the old tables stay exactly as they are, and the
+-- application then runs against a shape it was not written for. ADR-0048
+-- recorded that honestly and named its own expiry date -- "acceptable ONLY
+-- because these tables have never held operator data".
+--
+-- THIS FILE IS THEREFORE NOT THE THING THAT UPGRADES A DATABASE. It states the
+-- CURRENT shape, and nothing else; `packages/core/migrations.py` owns getting a
+-- database to it, `packages/core/sql/core_schema_migrations.sql` owns recording
+-- which shape a database is at, and `packages/core/sql/legacy/
+-- core_v0_1_pre_tenant.sql` preserves the previous one so the upgrade can be
+-- proved against what actually shipped. Two consequences for anyone editing
+-- THIS file:
+--
+--   * a change here is a NEW SCHEMA VERSION. Adding a column, widening a CHECK
+--     or changing a primary key means bumping `CURRENT_SCHEMA_VERSION` and
+--     adding a `Migration` beside it. A change made here alone reaches new
+--     databases and silently misses every existing one.
+--   * the shape this file produces must stay identical to the shape the
+--     migration chain produces. conformance/property-tests/test_core_migrations.py
+--     asserts exactly that, by comparing a migrated database's columns against a
+--     freshly-created one's rather than against a list written down twice.
 
 -- Append-only point-in-time feature values. A correction is a NEW row with a
 -- later (or equal) knowledge_time, never an UPDATE: there is no UPDATE or

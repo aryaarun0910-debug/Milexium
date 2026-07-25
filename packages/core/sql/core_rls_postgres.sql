@@ -69,6 +69,37 @@
 -- with "policy already exists". The drop-then-create keeps this file idempotent in
 -- the same sense every `CREATE ... IF NOT EXISTS` in core_v0_1.sql is, which is a
 -- precondition of the persistence claim rather than a stylistic preference.
+--
+-- WHEN THIS FILE IS APPLIED, AND WHY THE ORDER IS LOAD-BEARING
+-- (MX-D-MIGRATIONS-008). `packages/core/migrations.migrate()` applies this file
+-- at the END of every PostgreSQL run -- whether or not a migration ran. That is
+-- not belt-and-braces. Migrating REBUILDS tables (SQLite can neither add a NOT
+-- NULL column nor change a primary key in place, so the one portable technique
+-- is rename-aside / create / copy / drop), and a rebuilt table is a NEW
+-- RELATION: `relrowsecurity`, `relforcerowsecurity` and the policy below do NOT
+-- follow the data through. A migration that stopped after copying the rows
+-- would leave seven tables full of real operator data with tenant isolation
+-- silently REMOVED -- strictly worse than the un-migrated database it started
+-- from, and green on any test that only checked the rows arrived.
+-- conformance/property-tests/test_core_migrations.py therefore re-asserts both
+-- pg_class bits and a blocked cross-tenant read AFTER migrating, not only after
+-- a fresh create.
+--
+-- And the rows are copied BEFORE this file runs, never after: the WITH CHECK
+-- half of every policy below rejects any row whose tenant_id does not equal the
+-- session GUC, and no GUC is set during a migration. Reversed, the copy would
+-- move nothing while reporting success.
+--
+-- ONE PROGRAM D TABLE IS DELIBERATELY ABSENT FROM THIS FILE:
+-- `core_schema_migrations`, the schema-version ledger. It holds no operator
+-- data -- it records which shape the database is in -- and putting it under a
+-- tenant policy would be actively dangerous rather than merely redundant. A
+-- connection has NOT set `milexium.tenant_id` at the instant it is opened,
+-- which is exactly when the version is read; under a policy that read would
+-- return zero rows, zero rows is indistinguishable from "never stamped", and
+-- the migration runner would conclude an already-migrated database needs
+-- migrating. Deny-all is the right default for operator rows and the wrong
+-- default for the record that says what shape those rows are in.
 
 ALTER TABLE feature_values ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feature_values FORCE ROW LEVEL SECURITY;
