@@ -127,11 +127,26 @@ def body_for(ins: dict, first_name: str, short_name: str) -> str:
             "not something visible from inside your own numbers.",
         ]
 
+    # WARMTH (v3.1). The v3 close was "Want it?" -- two words, and read as a
+    # stranger demanding a decision. The research this file follows says an
+    # INTEREST-based CTA beats a meeting ask; it does NOT say be terse to the
+    # point of coldness, and I conflated the two.
+    #
+    # The register evidence is in the first reply we got. A public-sector
+    # assistant declined and signed off "Have a great day. Take care, Tan." That
+    # is who these emails go to -- ops staff, often decades in the job, not SaaS
+    # founders. A Valley-terse close reads as brusque from an unknown student.
+    #
+    # So: same single low-friction ask, same sub-100 words, same no-small-talk
+    # opening -- but the close gives them an easy exit and thanks them for the
+    # time either way. Warmth is not padding; it is not making the reader do
+    # emotional work to forgive the tone.
     lines += [
         "",
-        "I can show you which hours and which runs.",
+        "I've mapped which hours and which runs it sits in — happy to send that "
+        "over if it's useful to you.",
         "",
-        "Want it?",
+        "Either way, thanks for reading.",
         "",
         SENDER,
     ]
