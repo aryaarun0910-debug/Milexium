@@ -4,6 +4,53 @@ Written at session limit. Read this before touching anything.
 
 ---
 
+## ⚠️ CORRECTION — all six agents were KILLED MID-EDIT, not completed
+
+The section below says six packets were "in flight". They did not finish. **All
+six were terminated by the session limit while actively editing**, so their work
+is *incomplete*, their limitation reports are *lost*, and in at least two cases
+**the tests and the code they test may be out of sync**.
+
+**Assessed at close, and this part is good news:**
+- **HEAD `ad03131` is clean and pushed.** Nothing committed is at risk.
+- **The tree still imports** — `packages.canonical.state_machine`,
+  `decide.ir`, `replay.teardown`, `evidence`, `forecast`, `estate.acquire` all
+  load. The half-edits are incomplete, not corrupt.
+- **`packages/replay/teardown.py` is byte-identical**, so ADR-0056's central
+  claim and its pinned benchmark numbers survive.
+
+**Where each agent died** (its own last words — useful, because it tells you what
+state its files are in):
+
+| Packet | Died doing | Risk |
+|---|---|---|
+| A — lifecycle record | *"The background run overlapped my last edits, so its result is unreliable. Starting a clean full-suite run"* | Its own last test result was already known-bad |
+| H — intervention eval | *"Now the full repo suite, to confirm no regression from the `__init__.py` change"* | An `__init__.py` change was **never regression-tested** |
+| F — commingled exposure | *"All four hand-built cases behave exactly as designed. Now the exposure test suite."* | Hand cases pass; the suite was never written/run |
+| E — capacity forecast | *"M8 came back GREEN. Before concluding the test is weak, let me check whether the mutation itself was wrong."* | **A mutation escaped and was never resolved** |
+| I — pack verification | *"Now the test that isolates the prev_hash linkage check."* | Hash-chain test missing |
+| Demo — walkthrough | *"Now update the tests for the single-pack shape."* | **Tests known to be out of sync with the code** |
+
+### Recommendation: inspect, do not rescue
+
+**Set a high bar. Do not try to finish another agent's half-formed thought from
+its artifacts alone.** For each packet: run *only* its test files, and
+
+- if it passes cleanly and you can read the code and honestly derive its
+  limitations yourself → write the ADR and commit it;
+- if it fails, or the tests don't match the code, or you cannot state the
+  limitations from the code → **discard it and re-dispatch the packet fresh.**
+
+Re-running a packet costs one agent. Committing a half-finished one costs an ADR
+that overclaims, in a permanent record we may show to an industry expert. E's
+unresolved GREEN mutation is exactly the failure this repo has caught seven times
+this month — **do not commit E without resolving it.**
+
+`git checkout -- <path>` per packet is the clean discard. The new untracked test
+files are listed by `git status`; delete them with the packet they belong to.
+
+---
+
 ## FINAL STATE AT SESSION CLOSE — read this first
 
 **HEAD = `5125601`. Everything committed is pushed and was CI-green at last
