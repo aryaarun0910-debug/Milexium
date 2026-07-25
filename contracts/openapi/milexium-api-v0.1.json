@@ -29,6 +29,274 @@
         "title": "ChainViolation",
         "type": "object"
       },
+      "CostBasis": {
+        "additionalProperties": false,
+        "description": "The operator's own cost per vehicle-hour, plus where that rate came from.\n\n`avoidable_share_low`/`high` are the fraction of that rate which actually\nfalls when a vehicle-hour is removed -- the fixed-versus-variable split.\nThey have NO default: nobody outside the operator's finance office knows\nit, and inventing one is how a teardown becomes a lie in front of a\ndirector who knows their books. Absent them, the teardown reports the\naccounting value of the empty time and explicitly no envelope.",
+        "properties": {
+          "avoidable_share_high": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoidable Share High"
+          },
+          "avoidable_share_low": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoidable Share Low"
+          },
+          "cost_per_vehicle_hour": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cost Per Vehicle Hour",
+            "type": "number"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "source": {
+            "description": "Where the rate came from, verbatim, so it can be checked (e.g. an NTD filing line).",
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost_per_vehicle_hour",
+          "source"
+        ],
+        "title": "CostBasis",
+        "type": "object"
+      },
+      "CostEnvelope": {
+        "additionalProperties": false,
+        "description": "HOW MUCH -- and how much of that is not a promise.\n\n`value_at_full_cost` is arithmetic on the operator's own rate: empty hours\ntimes cost per vehicle-hour. It is the accounting value of the time, never\na saving. `modelled_envelope_low`/`high` apply the modelled reduction and\nthe operator's own fixed-versus-variable split, and are None (with\n`envelope_basis` saying so) when that split was not supplied.",
+        "properties": {
+          "avoidable_share_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoidable Share High"
+          },
+          "avoidable_share_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoidable Share Low"
+          },
+          "cost_basis_source": {
+            "title": "Cost Basis Source",
+            "type": "string"
+          },
+          "cost_per_vehicle_hour": {
+            "title": "Cost Per Vehicle Hour",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "deadhead_hours": {
+            "title": "Deadhead Hours",
+            "type": "number"
+          },
+          "envelope_basis": {
+            "title": "Envelope Basis",
+            "type": "string"
+          },
+          "hedge": {
+            "default": "Modelled envelope, not guaranteed cash: how much of this is genuinely recoverable depends on the operator's fixed-versus-variable split -- fixed costs (salaries, depreciation, admin) do not fall proportionally with vehicle-hours removed. The value at full cost below is the accounting value of the empty time at the operator's own rate, not a saving.",
+            "title": "Hedge",
+            "type": "string"
+          },
+          "is_guaranteed_saving": {
+            "default": false,
+            "title": "Is Guaranteed Saving",
+            "type": "boolean"
+          },
+          "modelled_envelope_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelled Envelope High"
+          },
+          "modelled_envelope_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelled Envelope Low"
+          },
+          "reduction_fraction": {
+            "title": "Reduction Fraction",
+            "type": "number"
+          },
+          "value_at_full_cost": {
+            "title": "Value At Full Cost",
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency",
+          "cost_per_vehicle_hour",
+          "cost_basis_source",
+          "deadhead_hours",
+          "value_at_full_cost",
+          "reduction_fraction",
+          "avoidable_share_low",
+          "avoidable_share_high",
+          "modelled_envelope_low",
+          "modelled_envelope_high",
+          "envelope_basis"
+        ],
+        "title": "CostEnvelope",
+        "type": "object"
+      },
+      "DeadheadTeardown": {
+        "additionalProperties": false,
+        "description": "The structured answer to \"which hours, which runs, how much\".\n\n`causal_proof` is fixed False and raises if set: a teardown measures where\nempty time sat in records that were already produced; it says nothing about\nwhat caused it or what removing it would achieve.",
+        "properties": {
+          "attributed_run_count": {
+            "description": "How many identified runs contributed any empty time at all -- the full ranking's length before top_n truncation, so a reader can see what the top-N is a top-N of.",
+            "title": "Attributed Run Count",
+            "type": "integer"
+          },
+          "by_day_of_week": {
+            "items": {
+              "$ref": "#/components/schemas/TimeBucket"
+            },
+            "title": "By Day Of Week",
+            "type": "array"
+          },
+          "by_day_of_week_and_hour": {
+            "items": {
+              "$ref": "#/components/schemas/TimeBucket"
+            },
+            "title": "By Day Of Week And Hour",
+            "type": "array"
+          },
+          "by_hour_of_day": {
+            "items": {
+              "$ref": "#/components/schemas/TimeBucket"
+            },
+            "title": "By Hour Of Day",
+            "type": "array"
+          },
+          "causal_proof": {
+            "default": false,
+            "title": "Causal Proof",
+            "type": "boolean"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostEnvelope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deadhead_share_of_vehicle_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadhead Share Of Vehicle Time"
+          },
+          "interpretation": {
+            "default": "Modelled teardown, not causal proof and not a promised saving. This localises non-revenue (empty) vehicle time to hours, days and runs from the trip-level records supplied; it shows where empty time sat, not that any of it was avoidable. Any money figure is the accounting value of that time at the operator's own cost per vehicle-hour, hedged by the fixed-versus-variable split. Every figure is re-derivable from this manifest's inputs and method.",
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "is_modelled": {
+            "default": true,
+            "title": "Is Modelled",
+            "type": "boolean"
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/TeardownManifest"
+          },
+          "top_runs": {
+            "items": {
+              "$ref": "#/components/schemas/RunContribution"
+            },
+            "title": "Top Runs",
+            "type": "array"
+          },
+          "total_deadhead_minutes": {
+            "title": "Total Deadhead Minutes",
+            "type": "number"
+          },
+          "total_revenue_minutes": {
+            "title": "Total Revenue Minutes",
+            "type": "number"
+          },
+          "unattributable": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunContribution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "manifest",
+          "total_deadhead_minutes",
+          "total_revenue_minutes",
+          "deadhead_share_of_vehicle_time",
+          "by_hour_of_day",
+          "by_day_of_week",
+          "by_day_of_week_and_hour",
+          "top_runs",
+          "unattributable",
+          "attributed_run_count",
+          "cost"
+        ],
+        "title": "DeadheadTeardown",
+        "type": "object"
+      },
       "DecisionAlternative": {
         "additionalProperties": false,
         "description": "A candidate assignment considered (and, usually, rejected) during a\nschedule run -- required so \"why not the alternatives\" is answerable.",
@@ -224,6 +492,16 @@
             },
             "title": "Raw Events",
             "type": "array"
+          },
+          "teardown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeardownEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -383,6 +661,31 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "InputRecord": {
+        "additionalProperties": false,
+        "description": "One input the teardown consumed, and where it came from, so the figure\nit feeds can be checked against the operator's own source.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "source"
+        ],
+        "title": "InputRecord",
+        "type": "object"
+      },
       "KnownInput": {
         "additionalProperties": false,
         "description": "What was known when one RECOMMENDATION event was generated -- that\nevent's own payload and reason codes, verbatim. Never supplemented with\ninformation not actually recorded at that sequence.",
@@ -418,8 +721,145 @@
         "title": "KnownInput",
         "type": "object"
       },
+      "MethodStep": {
+        "additionalProperties": false,
+        "description": "One step of the arithmetic actually applied, stated precisely enough to\nbe re-run by hand on the same export.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "detail"
+        ],
+        "title": "MethodStep",
+        "type": "object"
+      },
+      "OperatorExportValidationRequest": {
+        "additionalProperties": false,
+        "description": "Body for `POST /operator-exports/validate`: a SAMPLE of an operator's\nexport, plus the `column_map` they intend to send it with.\n\n`rows` are raw export rows exactly as the agency's extract produces them --\nthe same `list[dict]` the adapter takes. They are checked and discarded;\nsee the endpoint docstring for what \"discarded\" means precisely.",
+        "properties": {
+          "column_map": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column Map"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "OperatorExportValidationRequest",
+        "type": "object"
+      },
+      "OperatorExportValidationResponse": {
+        "additionalProperties": false,
+        "description": "The dry-run verdict on a sample export.\n\n`persisted` is fixed False and RAISES if set True, the same structural\nrefusal `DeadheadTeardown.causal_proof` uses: the non-persistence promise is\nencoded in the response model, not only in prose.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "canonical_columns": {
+            "default": [
+              "trip_ref",
+              "rider_ref",
+              "requested_at",
+              "scheduled_pickup_at",
+              "actual_pickup_at",
+              "pickup_zone",
+              "dropoff_zone",
+              "vehicle_ref",
+              "run_ref",
+              "outcome"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Canonical Columns",
+            "type": "array"
+          },
+          "persisted": {
+            "default": false,
+            "title": "Persisted",
+            "type": "boolean"
+          },
+          "persistence_note": {
+            "default": "Nothing from this request was stored. The rows were parsed in memory against an ephemeral tenant id that belongs to no store, the resulting canonical records were discarded without ever being written, and no value from any row is echoed back below -- only column NAMES, counts and reasons.",
+            "title": "Persistence Note",
+            "type": "string"
+          },
+          "pii_categories": {
+            "default": [
+              "personal name",
+              "email address",
+              "phone number",
+              "street address",
+              "national, insurance or medical identifier",
+              "date of birth",
+              "medical or eligibility detail"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Pii Categories",
+            "type": "array"
+          },
+          "pii_rejected": {
+            "title": "Pii Rejected",
+            "type": "integer"
+          },
+          "quarantined": {
+            "title": "Quarantined",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RowValidation"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "rows_checked": {
+            "title": "Rows Checked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows_checked",
+          "accepted",
+          "quarantined",
+          "pii_rejected",
+          "results"
+        ],
+        "title": "OperatorExportValidationResponse",
+        "type": "object"
+      },
       "Outcome": {
         "additionalProperties": false,
+        "description": "What actually happened to one service request.\n\n``vehicle_ref``/``run_ref`` are the CANONICAL HOME ADR-0038 found missing.\nBefore them, the vehicle/run assignment lived only on the Connect-layer\n``OperatorTripRecord`` and was recorded as a ``dropped`` semantic loss on\nevery row -- so the single field the whole deadhead teardown depends on\n(``packages/replay/teardown.py`` chains ONE vehicle's consecutive trips;\nADR-0038 makes ``vehicle_ref``-or-``run_ref`` a mandatory intake column for\nexactly that reason) survived the in-memory handoff and would NOT have\nsurvived a write to MilexiumDB.\n\nWHY HERE AND NOWHERE ELSE. Which vehicle/run performed (or was assigned and\ndid not perform) a trip is a fact about *what happened*, not about what was\nasked for, so it belongs on the outcome record -- sitting directly beside\n``deadhead_minutes``, the field derived from chaining it. It is deliberately\nNOT duplicated onto ``ServiceRequest``: one fact, one home, so the two can\nnever disagree. A teardown needing the request's own times joins on\n``(tenant_id, request_id)``.\n\nWHY PLAIN STRINGS, NOT ``VehicleId``. These name the SOURCE SYSTEM's entities\n(an operator's own vehicle number, run or block id), not a Milexium\n``Vehicle`` aggregate -- the same reason ``VehicleObservation.vehicle_ref`` is\na plain string. Typing them as ``VehicleId`` would assert a canonical\naggregate that no operator export creates.\n\nBoth are optional and BOTH may be absent: a trip whose export named neither\nis unattributable, and the teardown reports it as such rather than guessing\nit onto a neighbouring run. Absent means absent; it is never back-filled.",
         "properties": {
           "actual_pickup_at": {
             "anyOf": [
@@ -470,6 +910,18 @@
             "title": "Request Id",
             "type": "string"
           },
+          "run_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source-system run/block identifier, as the operator writes it.",
+            "title": "Run Ref"
+          },
           "served": {
             "title": "Served",
             "type": "boolean"
@@ -477,6 +929,18 @@
           "tenant_id": {
             "title": "Tenant Id",
             "type": "string"
+          },
+          "vehicle_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source-system vehicle identifier, as the operator writes it. Never a VehicleId.",
+            "title": "Vehicle Ref"
           }
         },
         "required": [
@@ -525,6 +989,44 @@
             },
             "title": "Redacted Fields",
             "type": "array"
+          },
+          "teardown_data_provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teardown Data Provenance"
+          },
+          "teardown_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teardown Id"
+          },
+          "teardown_included": {
+            "default": false,
+            "title": "Teardown Included",
+            "type": "boolean"
+          },
+          "teardown_segment_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teardown Segment Count"
           },
           "tenant_id": {
             "title": "Tenant Id",
@@ -776,6 +1278,150 @@
         "title": "RecordedEvent",
         "type": "object"
       },
+      "RowValidation": {
+        "additionalProperties": false,
+        "description": "What WOULD happen to one sample row on a real import.\n\n`reason` is the adapter's own quarantine text, which names offending columns\nby NAME and never quotes a rejected identifier's value. `pii_columns` is\nderived from the adapter's redaction of its own quarantine record (the\ncolumns it replaced with `REDACTION_MARKER`), so it reports which columns to\nstrip without this layer re-running -- or weakening -- the PII check.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "failed_field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed Field"
+          },
+          "pii_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pii Columns",
+            "type": "array"
+          },
+          "pii_rejection": {
+            "title": "Pii Rejection",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "row_index": {
+            "title": "Row Index",
+            "type": "integer"
+          },
+          "semantic_loss": {
+            "items": {
+              "$ref": "#/components/schemas/SemanticLossNote"
+            },
+            "title": "Semantic Loss",
+            "type": "array"
+          }
+        },
+        "required": [
+          "row_index",
+          "accepted",
+          "pii_rejection",
+          "pii_columns",
+          "reason",
+          "failed_field",
+          "semantic_loss"
+        ],
+        "title": "RowValidation",
+        "type": "object"
+      },
+      "RunContribution": {
+        "additionalProperties": false,
+        "description": "WHICH RUNS -- one run's contribution to the empty time.\n\n`attributable` is False exactly when the export gave no run identifier;\nthat row is the honest \"we cannot tell you which run this was\" total, and\nis reported outside the ranking so a top-N truncation can never bury it.",
+        "properties": {
+          "attributable": {
+            "title": "Attributable",
+            "type": "boolean"
+          },
+          "deadhead_minutes": {
+            "title": "Deadhead Minutes",
+            "type": "number"
+          },
+          "revenue_minutes": {
+            "title": "Revenue Minutes",
+            "type": "number"
+          },
+          "run_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Ref"
+          },
+          "segment_count": {
+            "title": "Segment Count",
+            "type": "integer"
+          },
+          "share_of_total_deadhead": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Of Total Deadhead"
+          }
+        },
+        "required": [
+          "run_ref",
+          "attributable",
+          "deadhead_minutes",
+          "revenue_minutes",
+          "segment_count",
+          "share_of_total_deadhead"
+        ],
+        "title": "RunContribution",
+        "type": "object"
+      },
+      "SemanticLossNote": {
+        "additionalProperties": false,
+        "description": "One semantic-loss note the adapter attached to an accepted row, projected\nfor the wire WITHOUT `SemanticLossRecord.source_value`.\n\nThe adapter already nulls `source_value` everywhere personal data could hide\n(unmapped extensions, the rider reference). Dropping the field entirely at\nthe API boundary means that guarantee does not depend on the adapter's field\npolicy staying exactly as it is: a validation response cannot carry a source\nvalue because the model has nowhere to put one. The `reason` text is what\nthe operator needs anyway -- it says what was lost and why.",
+        "properties": {
+          "disposition": {
+            "title": "Disposition",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_field": {
+            "title": "Source Field",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_field",
+          "disposition",
+          "reason"
+        ],
+        "title": "SemanticLossNote",
+        "type": "object"
+      },
       "StateViolation": {
         "properties": {
           "detail": {
@@ -802,6 +1448,672 @@
           "detail"
         ],
         "title": "StateViolation",
+        "type": "object"
+      },
+      "TeardownBucketRow": {
+        "additionalProperties": false,
+        "description": "WHICH HOURS -- one clock position's empty and earning minutes, as\nclaimed. `day_of_week` is None on an hour-of-day-only bucket and\n`hour_of_day` is None on a day-of-week-only bucket.",
+        "properties": {
+          "day_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week"
+          },
+          "deadhead_minutes": {
+            "title": "Deadhead Minutes",
+            "type": "number"
+          },
+          "deadhead_share_of_bucket": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadhead Share Of Bucket"
+          },
+          "hour_of_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour Of Day"
+          },
+          "revenue_minutes": {
+            "title": "Revenue Minutes",
+            "type": "number"
+          },
+          "share_of_total_deadhead": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Of Total Deadhead"
+          }
+        },
+        "required": [
+          "day_of_week",
+          "hour_of_day",
+          "deadhead_minutes",
+          "revenue_minutes",
+          "deadhead_share_of_bucket",
+          "share_of_total_deadhead"
+        ],
+        "title": "TeardownBucketRow",
+        "type": "object"
+      },
+      "TeardownEvidence": {
+        "additionalProperties": false,
+        "description": "A deadhead teardown in pack-carriable form: the manifest verbatim, the\nclaimed figures and surfaces, and the segments those figures must follow\nfrom.\n\n`manifest` is the ADR-0039 `TeardownManifest` dumped verbatim as a dict --\nthe same convention `EvidencePack.evidence` already uses for the\n`EvidencePacket`, and the reason a pack can be loaded and re-derived with no\n`packages.replay` import anywhere in the verification path.\n\n`data_provenance` restates the manifest's provenance as a VALIDATED field\n(the manifest is a verbatim record and could say anything); re-derivation\nchecks the two agree. It admits only \"real_public\" or \"synthetic\" -- a pack\nbuilt from real public data says so, and there is no \"operator\" value to\nsay anything else with.",
+        "properties": {
+          "attributed_run_count": {
+            "title": "Attributed Run Count",
+            "type": "integer"
+          },
+          "by_day_of_week": {
+            "items": {
+              "$ref": "#/components/schemas/TeardownBucketRow"
+            },
+            "title": "By Day Of Week",
+            "type": "array"
+          },
+          "by_hour_of_day": {
+            "items": {
+              "$ref": "#/components/schemas/TeardownBucketRow"
+            },
+            "title": "By Hour Of Day",
+            "type": "array"
+          },
+          "causal_proof": {
+            "default": false,
+            "title": "Causal Proof",
+            "type": "boolean"
+          },
+          "data_provenance": {
+            "title": "Data Provenance",
+            "type": "string"
+          },
+          "evidence_version": {
+            "default": "0.1.0",
+            "title": "Evidence Version",
+            "type": "string"
+          },
+          "figures": {
+            "$ref": "#/components/schemas/TeardownFigures"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "is_modelled": {
+            "default": true,
+            "title": "Is Modelled",
+            "type": "boolean"
+          },
+          "manifest": {
+            "additionalProperties": true,
+            "title": "Manifest",
+            "type": "object"
+          },
+          "note": {
+            "default": "This pack carries a modelled deadhead teardown together with the trip-structure segments it was computed from, so a third party can RECOMPUTE its headline figures from those segments and the manifest's declared inputs instead of trusting the recorded numbers. Re-derivation checks arithmetic, not truth: it proves the figures follow from the data supplied, never that any empty time was avoidable, that the data describes the operation faithfully, or that any money would be recovered.",
+            "title": "Note",
+            "type": "string"
+          },
+          "run_refs_redacted": {
+            "default": false,
+            "title": "Run Refs Redacted",
+            "type": "boolean"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/TeardownSegmentRow"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "teardown_id": {
+            "title": "Teardown Id",
+            "type": "string"
+          },
+          "top_runs": {
+            "items": {
+              "$ref": "#/components/schemas/TeardownRunRow"
+            },
+            "title": "Top Runs",
+            "type": "array"
+          },
+          "unattributable": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeardownRunRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "manifest",
+          "teardown_id",
+          "data_provenance",
+          "figures",
+          "by_hour_of_day",
+          "by_day_of_week",
+          "top_runs",
+          "unattributable",
+          "attributed_run_count",
+          "segments",
+          "interpretation"
+        ],
+        "title": "TeardownEvidence",
+        "type": "object"
+      },
+      "TeardownFigures": {
+        "additionalProperties": false,
+        "description": "The headline figures exactly as the teardown emitted them -- the CLAIM\nthat gets re-derived and checked.\n\nDeliberately carries no input value. Every input (the cost per vehicle-hour,\nthe modelled reduction fraction, the operator's avoidable share) lives in\nthe manifest's `(name, value, source)` records, so re-derivation always runs\ninputs -> figures and can never be satisfied by reading a figure back out of\nthe thing it is checking.\n\n`value_at_full_cost` is the accounting value of the empty time at the\noperator's own rate, NOT a saving; `hedge` carries ADR-0039's\n`FIXED_COST_HEDGE` verbatim and `envelope_basis` carries its refusal to\nguess a recoverable fraction when the operator's fixed-versus-variable split\nwas not supplied.",
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "deadhead_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadhead Hours"
+          },
+          "deadhead_share_of_vehicle_time": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadhead Share Of Vehicle Time"
+          },
+          "envelope_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Envelope Basis"
+          },
+          "hedge": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hedge"
+          },
+          "is_guaranteed_saving": {
+            "default": false,
+            "title": "Is Guaranteed Saving",
+            "type": "boolean"
+          },
+          "modelled_envelope_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelled Envelope High"
+          },
+          "modelled_envelope_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelled Envelope Low"
+          },
+          "total_deadhead_minutes": {
+            "title": "Total Deadhead Minutes",
+            "type": "number"
+          },
+          "total_revenue_minutes": {
+            "title": "Total Revenue Minutes",
+            "type": "number"
+          },
+          "value_at_full_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value At Full Cost"
+          }
+        },
+        "required": [
+          "total_deadhead_minutes",
+          "total_revenue_minutes",
+          "deadhead_share_of_vehicle_time",
+          "deadhead_hours",
+          "value_at_full_cost",
+          "modelled_envelope_low",
+          "modelled_envelope_high",
+          "currency",
+          "envelope_basis",
+          "hedge"
+        ],
+        "title": "TeardownFigures",
+        "type": "object"
+      },
+      "TeardownManifest": {
+        "additionalProperties": false,
+        "description": "Pins what a teardown used and how, so it is reproducible and auditable.\n\n`teardown_id` is deterministic in the segments and the modelling choices:\nthe same export torn down the same way pins the same id.",
+        "properties": {
+          "data_provenance": {
+            "enum": [
+              "real_public",
+              "synthetic"
+            ],
+            "title": "Data Provenance",
+            "type": "string"
+          },
+          "dataset_label": {
+            "title": "Dataset Label",
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/InputRecord"
+            },
+            "title": "Inputs",
+            "type": "array"
+          },
+          "method": {
+            "items": {
+              "$ref": "#/components/schemas/MethodStep"
+            },
+            "title": "Method",
+            "type": "array"
+          },
+          "note": {
+            "default": "Modelled teardown, not causal proof and not a promised saving. This localises non-revenue (empty) vehicle time to hours, days and runs from the trip-level records supplied; it shows where empty time sat, not that any of it was avoidable. Any money figure is the accounting value of that time at the operator's own cost per vehicle-hour, hedged by the fixed-versus-variable split. Every figure is re-derivable from this manifest's inputs and method.",
+            "title": "Note",
+            "type": "string"
+          },
+          "observed_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed From"
+          },
+          "observed_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed To"
+          },
+          "replay_discipline_note": {
+            "default": "Modelled comparison, not causal proof of savings. This compares the recorded or simulated outcomes of two schedules over the same request set; at least one schedule is a counterfactual that was not actually operated over that identical set, so every delta is a modelled difference between schedules, not measured proof that Milexium caused an improvement. Public aggregate data validates aggregate demand tasks, not individual dispatch. No monetary savings figure is derived.",
+            "title": "Replay Discipline Note",
+            "type": "string"
+          },
+          "replay_version": {
+            "title": "Replay Version",
+            "type": "string"
+          },
+          "run_ref_source": {
+            "title": "Run Ref Source",
+            "type": "string"
+          },
+          "segment_count": {
+            "title": "Segment Count",
+            "type": "integer"
+          },
+          "segment_sha256": {
+            "title": "Segment Sha256",
+            "type": "string"
+          },
+          "teardown_id": {
+            "title": "Teardown Id",
+            "type": "string"
+          },
+          "teardown_version": {
+            "title": "Teardown Version",
+            "type": "string"
+          },
+          "unmeasured_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unmeasured Reason"
+          },
+          "unmeasured_segment_count": {
+            "title": "Unmeasured Segment Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "teardown_version",
+          "replay_version",
+          "teardown_id",
+          "dataset_label",
+          "data_provenance",
+          "run_ref_source",
+          "segment_count",
+          "segment_sha256",
+          "observed_from",
+          "observed_to",
+          "unmeasured_segment_count",
+          "unmeasured_reason",
+          "inputs",
+          "method"
+        ],
+        "title": "TeardownManifest",
+        "type": "object"
+      },
+      "TeardownRequest": {
+        "additionalProperties": false,
+        "description": "Body for `POST /teardowns` -- the arguments of\n`MilexiumClient.teardown_deadhead`, one-to-one.\n\nThe field list is the whole refusal surface, so read what is ABSENT:\n\n- There is no `is_guaranteed_saving` and no `causal_proof`. `extra=\"forbid\"`\n  means sending either is a 422, not a silently ignored field -- an API that\n  accepted them would be advertising a claim the analysis refuses to make.\n- `data_provenance` is the `DataProvenance` Literal, which has no \"operator\"\n  value, so an HTTP caller cannot label anything as operator data either.\n- `cost_basis.avoidable_share_low/high` still have no default. Omit them and\n  you get the accounting value of the empty time and NO envelope, with\n  `envelope_basis` stating that the recoverable fraction is unknown.\n\n`segments` are `VehicleSegment` models straight from `packages.replay`, not\nan API-local copy, so the domain's own construction rules (UTC-aware\ntimestamps, end-not-before-start, the 48h parsing-artefact ceiling, and\n`extra=\"forbid\"` blocking a rider field from being attached to a segment)\nare enforced on the wire rather than restated and allowed to drift.",
+        "properties": {
+          "cost_basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostBasis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_provenance": {
+            "enum": [
+              "real_public",
+              "synthetic"
+            ],
+            "title": "Data Provenance",
+            "type": "string"
+          },
+          "dataset_label": {
+            "title": "Dataset Label",
+            "type": "string"
+          },
+          "reduction_fraction": {
+            "default": 0.1,
+            "title": "Reduction Fraction",
+            "type": "number"
+          },
+          "run_ref_source": {
+            "title": "Run Ref Source",
+            "type": "string"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/VehicleSegment"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "top_n_runs": {
+            "default": 10,
+            "title": "Top N Runs",
+            "type": "integer"
+          },
+          "unmeasured_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unmeasured Reason"
+          },
+          "unmeasured_segments": {
+            "default": 0,
+            "title": "Unmeasured Segments",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "segments",
+          "dataset_label",
+          "data_provenance",
+          "run_ref_source"
+        ],
+        "title": "TeardownRequest",
+        "type": "object"
+      },
+      "TeardownRunRow": {
+        "additionalProperties": false,
+        "description": "WHICH RUNS -- one run's contribution, as claimed. `attributable` is False\nexactly when the export carried no run reference; that row is reported\noutside the ranking so a top-N truncation can never bury it. A redacted pack\nmasks `run_ref` to `[REDACTED]` and leaves `attributable` True: the run WAS\nidentified in the source, it simply is not disclosed here.",
+        "properties": {
+          "attributable": {
+            "title": "Attributable",
+            "type": "boolean"
+          },
+          "deadhead_minutes": {
+            "title": "Deadhead Minutes",
+            "type": "number"
+          },
+          "revenue_minutes": {
+            "title": "Revenue Minutes",
+            "type": "number"
+          },
+          "run_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Ref"
+          },
+          "segment_count": {
+            "title": "Segment Count",
+            "type": "integer"
+          },
+          "share_of_total_deadhead": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Of Total Deadhead"
+          }
+        },
+        "required": [
+          "run_ref",
+          "attributable",
+          "deadhead_minutes",
+          "revenue_minutes",
+          "segment_count",
+          "share_of_total_deadhead"
+        ],
+        "title": "TeardownRunRow",
+        "type": "object"
+      },
+      "TeardownSegmentRow": {
+        "additionalProperties": false,
+        "description": "One embedded segment: trip STRUCTURE only -- when it started, when it\nended, whether it was earning, and which run it belonged to.\n\nThese are the same four fields ADR-0039's `VehicleSegment` carries and the\nonly four it reads, restated here as plain JSON-safe values so a pack can be\nloaded and re-derived without importing the generator. Nothing else can ride\nalong: `extra=\"forbid\"` plus a fixed four-field shape means a rider\nidentifier cannot be attached to a segment on its way into a pack, just as\nit cannot be attached on its way into a teardown.\n\nTimestamps are held as the ISO-8601 strings the fingerprint is computed\nover, so the fingerprint is reproduced from bytes rather than from a\nre-formatting of a parsed value.",
+        "properties": {
+          "ended_at": {
+            "title": "Ended At",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "run_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Ref"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "started_at",
+          "ended_at",
+          "kind",
+          "run_ref"
+        ],
+        "title": "TeardownSegmentRow",
+        "type": "object"
+      },
+      "TimeBucket": {
+        "additionalProperties": false,
+        "description": "WHICH HOURS -- empty and earning minutes at one clock position.\n\n`day_of_week` is None on an hour-of-day-only bucket and `hour_of_day` is\nNone on a day-of-week-only bucket; both are set on a joint bucket. Minutes\nare apportioned across hour boundaries, so the buckets in any one grouping\nsum exactly to the headline totals.",
+        "properties": {
+          "day_of_week": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0=Monday .. 6=Sunday.",
+            "title": "Day Of Week"
+          },
+          "day_of_week_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week Name"
+          },
+          "deadhead_minutes": {
+            "title": "Deadhead Minutes",
+            "type": "number"
+          },
+          "deadhead_share_of_bucket": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadhead Share Of Bucket"
+          },
+          "hour_of_day": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour Of Day"
+          },
+          "revenue_minutes": {
+            "title": "Revenue Minutes",
+            "type": "number"
+          },
+          "share_of_total_deadhead": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Of Total Deadhead"
+          }
+        },
+        "required": [
+          "deadhead_minutes",
+          "revenue_minutes",
+          "deadhead_share_of_bucket",
+          "share_of_total_deadhead"
+        ],
+        "title": "TimeBucket",
         "type": "object"
       },
       "ValidationError": {
@@ -842,6 +2154,49 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VehicleSegment": {
+        "additionalProperties": false,
+        "description": "One contiguous block of one vehicle's time, already classified.\n\nTrip structure only: when it started, when it ended, whether it was earning,\nand which run/block/vehicle it belonged to. ``extra=\"forbid\"`` means a rider\nidentifier cannot be attached to a segment at all -- construction raises.\n``run_ref`` is the *source system's* identifier (a run, block or vehicle id\nas the operator writes it), left as a plain string for the same reason\nVehicleObservation.vehicle_ref is: it names their entity, not ours. ``None``\nmeans the export did not say, and is honoured as \"unattributable\" rather\nthan filled in.",
+        "properties": {
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "revenue",
+              "deadhead"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "run_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source-system run/block/vehicle id, or None when the export omitted it.",
+            "title": "Run Ref"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "started_at",
+          "ended_at",
+          "kind"
+        ],
+        "title": "VehicleSegment",
         "type": "object"
       },
       "VerifyResponse": {
@@ -928,7 +2283,7 @@
     }
   },
   "info": {
-    "description": "Milexium HTTP API (Program M, v0.1 HTTP surface).\n\nA thin FastAPI application that exposes the same decision loop as the\n`MilexiumClient` Python SDK over HTTP, so software that is *not* written in\nPython can integrate the runtime -- the \"others integrate this\" unlock that the\nSDK began and this layer extends past the Python boundary.\n\nIt is pure composition over `packages.sdk.MilexiumClient`; it adds no domain\nlogic, only an HTTP contract and Pydantic request/response bodies. The endpoint\nset is deliberately narrow and mirrors the SDK surface one-to-one:\n\n    GET  /health                                   liveness\n    GET  /version                                  API / SDK / contract versions\n    POST /decisions                                record a RECOMMENDATION (system act)\n    POST /decisions/{aggregate_id}/overrides       record an OVERRIDE (human act)\n    GET  /decisions/{aggregate_id}/evidence        the reconstructed EvidencePacket\n    GET  /decisions/{aggregate_id}/evidence-pack   the portable, self-verifying EvidencePack\n    GET  /decisions/{aggregate_id}/verify          independent hash-chain check\n\nThe OpenAPI schema FastAPI serves at **/openapi.json** (human-browsable at\n**/docs**) is the machine-readable API contract -- a non-Python client generates\nits own bindings from it.\n\nDeliberately NOT in this v0.1 HTTP slice:\n\n- **Ingestion and forecast endpoints.** Ingestion drives a Python\n  `SourceAdapter` object and forecasting needs a model registry + on-disk model\n  artifacts; both are Python objects/files that do not map honestly onto a\n  JSON-over-HTTP body yet. They stay on the SDK (`client.ingest`,\n  `client.forecast`) and are Specified for the HTTP surface.\n- **Auth, the multi-tenant API gateway, and rate limiting.** OUT of scope\n  (Specified). This app is backed by ONE `MilexiumClient` bound to ONE\n  in-memory tenant; there is no per-request tenant resolution, no credential\n  check, and no quota. A real deployment injects a Postgres-backed store\n  (`packages.canonical` PostgresCanonicalStore) and puts tenant auth in front --\n  none of which this slice fakes.\n\nStatus: Demonstrated (drives the real in-memory loop end to end over HTTP);\nnot Validated, not Production.\n",
+    "description": "Milexium HTTP API (Program M, v0.1 HTTP surface).\n\nA thin FastAPI application that exposes the same decision loop as the\n`MilexiumClient` Python SDK over HTTP, so software that is *not* written in\nPython can integrate the runtime -- the \"others integrate this\" unlock that the\nSDK began and this layer extends past the Python boundary.\n\nIt is pure composition over `packages.sdk.MilexiumClient`; it adds no domain\nlogic, only an HTTP contract and Pydantic request/response bodies. Every\nendpoint below is a call to one SDK method -- mostly one-to-one, except\n`/operator-exports/validate`, which loops `client.ingest` a row at a time so it\ncan attribute each verdict to a row index. The endpoint set is deliberately\nnarrow:\n\n    GET  /health                                   liveness\n    GET  /version                                  API / SDK / contract versions\n    POST /decisions                                record a RECOMMENDATION (system act)\n    POST /decisions/{aggregate_id}/overrides       record an OVERRIDE (human act)\n    GET  /decisions/{aggregate_id}/evidence        the reconstructed EvidencePacket\n    GET  /decisions/{aggregate_id}/evidence-pack   the portable, self-verifying EvidencePack\n    GET  /decisions/{aggregate_id}/verify          independent hash-chain check\n    POST /teardowns                                deadhead teardown over trip segments (ADR-0039)\n    POST /operator-exports/validate                dry-run intake check on an export sample (ADR-0038)\n\nThe OpenAPI schema FastAPI serves at **/openapi.json** (human-browsable at\n**/docs**) is the machine-readable API contract -- a non-Python client generates\nits own bindings from it.\n\nWHY THESE TWO GOT AN HTTP ENDPOINT AND INGESTION STILL DOES NOT\nADR-0021 excluded ingestion and forecast from HTTP for one reason: their inputs\nare *Python objects and on-disk files* (a `SourceAdapter` instance; a model\nregistry plus xgboost artifacts), and pretending otherwise would mean inventing\na JSON stand-in for something that is not JSON. That reasoning is respected\nhere, not worked around -- it simply does not apply to these two:\n\n- A `VehicleSegment` is four scalars (start, end, revenue-or-deadhead, run\n  reference). It is already a JSON object; a JSON POST body is its honest\n  shape, not a wrapper around one. So `POST /teardowns` takes segments inline.\n- The operator-export *validation* path is configured entirely by a JSON\n  `column_map` over a named, concrete adapter -- no Python object crosses the\n  boundary -- and it does not ingest anything, so ADR-0021's objection (an\n  adapter is a Python object) has nothing to bite on.\n\nDeliberately NOT done, with reasons rather than silence:\n\n- **No multipart/CSV upload on either endpoint.** Tempting for a big export,\n  but it would put CSV parsing, type coercion and header handling in the API,\n  which is Connect adapter work with an existing owner; it would also give the\n  validation endpoint a file on disk (Starlette spools uploads), which is\n  exactly what an endpoint promising to persist nothing should not have. Both\n  endpoints therefore take bounded JSON and refuse oversize bodies with 413,\n  pointing bulk callers at the SDK (`client.teardown_deadhead`), which has no\n  size ceiling at all.\n- **No \"tear down my raw export\" endpoint.** Turning export rows into segments\n  requires deciding which rows are revenue and which are deadhead, and\n  `packages.replay.teardown` deliberately refuses to infer that from geometry\n  or timing -- the caller's adapter decides. An HTTP endpoint that guessed it\n  would be inventing the one judgment the module refuses to make.\n- **Generic ingestion and forecast endpoints.** Unchanged from ADR-0021: they\n  stay on the SDK (`client.ingest`, `client.forecast`) and are Specified for\n  HTTP.\n- **Auth, the multi-tenant API gateway, and rate limiting.** OUT of scope\n  (Specified). This app is backed by ONE `MilexiumClient` bound to ONE\n  in-memory tenant; there is no per-request tenant resolution, no credential\n  check, and no quota. A real deployment injects a Postgres-backed store\n  (`packages.canonical` PostgresCanonicalStore) and puts tenant auth in front --\n  none of which this slice fakes.\n\nThe two new endpoints are also the only place this package names a *concrete*\nadapter (`OperatorExportAdapter`). That asymmetry is deliberate: the SDK core\nstays generic over `SourceAdapter` (ADR-0015), while an HTTP surface has no\nchoice but to name the thing it exposes, because a caller cannot hand a URL a\nPython class.\n\nStatus: Demonstrated (drives the real in-memory loop end to end over HTTP);\nnot Validated, not Production.\n",
     "title": "Milexium API",
     "version": "0.1.0"
   },
@@ -1171,6 +2526,90 @@
         "summary": "Health",
         "tags": [
           "meta"
+        ]
+      }
+    },
+    "/operator-exports/validate": {
+      "post": {
+        "description": "Dry-run an operator export sample: which rows would import, which\nwould quarantine, and why -- WITHOUT storing anything.\n\nNOTHING IS PERSISTED. Concretely, and in the order it matters:\n\n1. The adapter is constructed against `new_id(TenantId)` -- an ephemeral\n   tenant that exists for the duration of this call and is registered\n   with no store, so the canonical records it produces have nowhere they\n   could be written even by mistake.\n2. `client.ingest` parses in memory and returns a summary; it issues no\n   write (the store is only touched by `record_decision`/\n   `record_override`). The parsed records are dropped when this function\n   returns.\n3. No row VALUE is echoed back. The response carries counts, column\n   NAMES, the adapter's own reason text and its semantic-loss reasons.\n\n(3) is what makes this safe to point at a real extract. The adapter\nredacts direct identifiers out of its own quarantine record; this\nendpoint additionally never returns that record, so a rejected rider\nname cannot reach the response even in redacted form -- the operator is\ntold WHICH COLUMN to strip, which is the actionable part, and is never\nshown the value back.\n\nRows are parsed one at a time through the SDK so each verdict can be\nattributed to its row index; the batch runner flattens that.",
+        "operationId": "validate_operator_export_operator_exports_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorExportValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorExportValidationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Operator Export",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
+    "/teardowns": {
+      "post": {
+        "description": "Localise non-revenue (\"empty\") vehicle time to hours, days and runs.\n\nThe response is the `DeadheadTeardown` itself, NOT an API-local\nprojection of it. That is the point: the hedging is carried in fields\n(`interpretation`, `is_modelled`, `causal_proof`, `manifest.note`,\n`manifest.replay_discipline_note`, `cost.hedge`, `cost.envelope_basis`),\nand any re-projection here would be a second place those fields could be\ndropped from. A caller reading this over HTTP gets the same refusals a\ncaller holding the Python object does.\n\nWhat it returns is a MODELLED localisation of where empty time sat --\nnot causal proof that anything caused it, and not a promised saving. Any\nmoney figure is the accounting value of that time at the operator's own\nrate, hedged by the fixed-versus-variable split they supplied (and with\nno envelope at all if they did not supply one).\n\nStateless: no segment, and nothing derived from one, is written to the\ncanonical store. Verb POST because the body carries the input, not\nbecause anything is created server-side.",
+        "operationId": "teardown_teardowns_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeardownRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeadheadTeardown"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Teardown",
+        "tags": [
+          "teardown"
         ]
       }
     },

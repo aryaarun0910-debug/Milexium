@@ -407,6 +407,7 @@
     },
     "Outcome": {
       "additionalProperties": false,
+      "description": "What actually happened to one service request.\n\n``vehicle_ref``/``run_ref`` are the CANONICAL HOME ADR-0038 found missing.\nBefore them, the vehicle/run assignment lived only on the Connect-layer\n``OperatorTripRecord`` and was recorded as a ``dropped`` semantic loss on\nevery row -- so the single field the whole deadhead teardown depends on\n(``packages/replay/teardown.py`` chains ONE vehicle's consecutive trips;\nADR-0038 makes ``vehicle_ref``-or-``run_ref`` a mandatory intake column for\nexactly that reason) survived the in-memory handoff and would NOT have\nsurvived a write to MilexiumDB.\n\nWHY HERE AND NOWHERE ELSE. Which vehicle/run performed (or was assigned and\ndid not perform) a trip is a fact about *what happened*, not about what was\nasked for, so it belongs on the outcome record -- sitting directly beside\n``deadhead_minutes``, the field derived from chaining it. It is deliberately\nNOT duplicated onto ``ServiceRequest``: one fact, one home, so the two can\nnever disagree. A teardown needing the request's own times joins on\n``(tenant_id, request_id)``.\n\nWHY PLAIN STRINGS, NOT ``VehicleId``. These name the SOURCE SYSTEM's entities\n(an operator's own vehicle number, run or block id), not a Milexium\n``Vehicle`` aggregate -- the same reason ``VehicleObservation.vehicle_ref`` is\na plain string. Typing them as ``VehicleId`` would assert a canonical\naggregate that no operator export creates.\n\nBoth are optional and BOTH may be absent: a trip whose export named neither\nis unattributable, and the teardown reports it as such rather than guessing\nit onto a neighbouring run. Absent means absent; it is never back-filled.",
       "properties": {
         "actual_pickup_at": {
           "anyOf": [
@@ -461,6 +462,19 @@
           "title": "Request Id",
           "type": "string"
         },
+        "run_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source-system run/block identifier, as the operator writes it.",
+          "title": "Run Ref"
+        },
         "served": {
           "title": "Served",
           "type": "boolean"
@@ -468,6 +482,19 @@
         "tenant_id": {
           "title": "Tenant Id",
           "type": "string"
+        },
+        "vehicle_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source-system vehicle identifier, as the operator writes it. Never a VehicleId.",
+          "title": "Vehicle Ref"
         }
       },
       "required": [
