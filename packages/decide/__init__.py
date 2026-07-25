@@ -106,6 +106,65 @@ from packages.decide.portfolio import (
     solve_portfolio,
 )
 
+# Commingled online exposure (v0.4) -- additive; every API above is unchanged.
+#
+# The offline path above sees every request before committing to any of them.
+# These three modules add the SAME-DAY case, where it does not: requests arrive
+# over time, each commitment is irrevocable, and the measurable question is what
+# not seeing the future costs and WHO it costs. `commingled` adds the shared-floor
+# constraint the v0.1 IR cannot express (without which commingling is free by
+# construction); `online` is the sequential harness; `exposure` is the
+# online-vs-offline gap, its accessibility breakdown, and the capacity
+# attribution behind each denial.
+#
+# Same import-safety rule as v0.3: nothing here imports `ortools` at module scope.
+from packages.decide.commingled import (
+    COMMINGLED_SOLVER_NAME,
+    COMMINGLED_SOLVER_VERSION,
+    AcceptedRide,
+    CommingledFleet,
+    CommingledInstance,
+    CommingledOutcome,
+    DenialPenaltyTooWeak,
+    InstanceProvenance,
+    Placement,
+    assert_denial_dominates,
+    check_commingled,
+    check_floor_feasibility,
+    commingled_objective,
+    derive_commingled_instance,
+    feasible_placements,
+    has_placement,
+    pool_only_relaxation,
+    solve_commingled_offline,
+)
+from packages.decide.online import (
+    ONLINE_HARNESS_NAME,
+    ONLINE_HARNESS_VERSION,
+    POLICIES,
+    Arrival,
+    Commitment,
+    InvalidPlacement,
+    IrrevocabilityViolation,
+    OnlineOutcome,
+    OnlineView,
+    RationingRefused,
+    arrivals_from,
+    first_fit,
+    preserve_accessible_capacity,
+    run_online,
+)
+from packages.decide.exposure import (
+    AMBULATORY,
+    EXPOSURE_VERSION,
+    WHEELCHAIR,
+    CapacityAttribution,
+    CohortExposure,
+    ExposureReport,
+    attribute_capacity,
+    measure_exposure,
+)
+
 __all__ = [
     "Assignment",
     "DecisionPolicy",
@@ -166,6 +225,47 @@ __all__ = [
     "solve_portfolio",
     "solve_darp_portfolio",
     "PORTFOLIO_VERSION",
+    # Commingled online exposure (v0.4)
+    "AcceptedRide",
+    "CommingledFleet",
+    "CommingledInstance",
+    "CommingledOutcome",
+    "DenialPenaltyTooWeak",
+    "InstanceProvenance",
+    "Placement",
+    "assert_denial_dominates",
+    "check_commingled",
+    "check_floor_feasibility",
+    "commingled_objective",
+    "derive_commingled_instance",
+    "feasible_placements",
+    "has_placement",
+    "pool_only_relaxation",
+    "solve_commingled_offline",
+    "COMMINGLED_SOLVER_NAME",
+    "COMMINGLED_SOLVER_VERSION",
+    "Arrival",
+    "Commitment",
+    "InvalidPlacement",
+    "IrrevocabilityViolation",
+    "OnlineOutcome",
+    "OnlineView",
+    "POLICIES",
+    "RationingRefused",
+    "arrivals_from",
+    "first_fit",
+    "preserve_accessible_capacity",
+    "run_online",
+    "ONLINE_HARNESS_NAME",
+    "ONLINE_HARNESS_VERSION",
+    "AMBULATORY",
+    "WHEELCHAIR",
+    "CapacityAttribution",
+    "CohortExposure",
+    "ExposureReport",
+    "attribute_capacity",
+    "measure_exposure",
+    "EXPOSURE_VERSION",
 ]
 
-CONTRACT_VERSION = "0.3.0"
+CONTRACT_VERSION = "0.4.0"
