@@ -70,6 +70,11 @@ def test_openapi_contract_is_served_and_documents_every_endpoint() -> None:
         "/decisions/{aggregate_id}/evidence",
         "/decisions/{aggregate_id}/evidence-pack",
         "/decisions/{aggregate_id}/verify",
+        # MX-M-TEARDOWN-SURFACE-004: the teardown and the intake dry-run.
+        # Behaviour for both is proved in test_api_teardown.py; they are listed
+        # here only to keep this an EXACT enumeration of the served surface.
+        "/teardowns",
+        "/operator-exports/validate",
     }
     # The evidence models are documented as reusable schema components.
     assert "EvidencePacket" in spec["components"]["schemas"]

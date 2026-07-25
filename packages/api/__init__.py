@@ -14,6 +14,12 @@ The machine-readable API contract is the OpenAPI document FastAPI serves at
 `/openapi.json` (browsable at `/docs`). See `packages.api.app` for the endpoint
 set and the explicit v0.1 scope boundaries (no ingestion/forecast over HTTP; no
 auth/multi-tenant gateway/rate limiting -- all Specified).
+
+Beyond the decision loop the app exposes the two capabilities an integrator
+actually asks for by name: `POST /teardowns` (the deadhead teardown, ADR-0039)
+and `POST /operator-exports/validate` (a dry-run intake check on an export
+sample that stores nothing, ADR-0038). `packages.api.app` records why those two
+map honestly onto HTTP when ingestion still does not.
 """
 
 from packages.api.app import app, create_app, in_memory_client

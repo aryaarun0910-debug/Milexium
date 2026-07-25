@@ -9,6 +9,7 @@ and one stable public surface, not new domain logic. Every method delegates:
 - `evidence_for`                -> packages.evidence.build_evidence_packet
 - `export_pack`                 -> packages.evidence.build_evidence_pack
 - `forecast`                    -> packages.forecast.ForecastRuntime
+- `teardown_deadhead`           -> packages.replay.teardown.teardown_deadhead
 - `verify`                      -> packages.verify.verify_chain
 
 The SDK core never imports a *concrete* adapter (ReferenceAgencyTripsAdapter,
@@ -34,10 +35,11 @@ from packages.canonical import (
 )
 from packages.connect.adapter import parse_batch
 from packages.evidence import build_evidence_pack, build_evidence_packet
+from packages.replay.teardown import DEFAULT_REDUCTION_FRACTION, teardown_deadhead
 from packages.verify import verify_chain
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
     from pathlib import Path
 
     from pydantic import BaseModel
@@ -50,6 +52,12 @@ if TYPE_CHECKING:
     )
     from packages.core import ModelRegistry
     from packages.evidence import EvidencePack, EvidencePacket
+    from packages.replay.teardown import (
+        CostBasis,
+        DataProvenance,
+        DeadheadTeardown,
+        VehicleSegment,
+    )
     from packages.verify import ChainViolation
 
 
@@ -253,6 +261,51 @@ class MilexiumClient:
             horizon_end=horizon_end,
             issued_at=issued_at,
             interval_half_width=interval_half_width,
+        )
+
+    def teardown_deadhead(
+        self,
+        segments: "Iterable[VehicleSegment]",
+        *,
+        dataset_label: str,
+        data_provenance: "DataProvenance",
+        run_ref_source: str,
+        cost_basis: "CostBasis | None" = None,
+        reduction_fraction: float = DEFAULT_REDUCTION_FRACTION,
+        top_n_runs: int = 10,
+        unmeasured_segments: int = 0,
+        unmeasured_reason: str | None = None,
+    ) -> "DeadheadTeardown":
+        """Localise non-revenue ("empty") vehicle time to hours, days and runs,
+        and value it at the operator's own cost per vehicle-hour.
+
+        A straight pass-through to `packages.replay.teardown.teardown_deadhead`
+        (ADR-0039): the facade adds no parameter of its own and REMOVES none, so
+        every refusal that module encodes survives the SDK boundary unchanged --
+        `CostBasis.avoidable_share_low/high` still have no default (absent them
+        no envelope is produced and `envelope_basis` says why), there is still no
+        way to ask for a guaranteed saving or causal proof, and `DataProvenance`
+        still has no "operator" value.
+
+        STATELESS: this reads nothing from, and writes nothing to, the canonical
+        store. It is on the client because the client is the one import an
+        integrator holds, not because a teardown is a stored artifact -- the
+        result is a value the caller keeps or discards. If you want the teardown
+        recorded as a decision, `record_decision` it explicitly.
+
+        The result is a *modelled* localisation of where empty time sat -- never
+        causal proof, never a promised saving (blueprint/01, ADR-0019).
+        """
+        return teardown_deadhead(
+            segments,
+            dataset_label=dataset_label,
+            data_provenance=data_provenance,
+            run_ref_source=run_ref_source,
+            cost_basis=cost_basis,
+            reduction_fraction=reduction_fraction,
+            top_n_runs=top_n_runs,
+            unmeasured_segments=unmeasured_segments,
+            unmeasured_reason=unmeasured_reason,
         )
 
     def verify(self, aggregate_id: str) -> "tuple[ChainViolation, ...]":
