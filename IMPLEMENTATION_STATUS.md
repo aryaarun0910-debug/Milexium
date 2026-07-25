@@ -273,11 +273,34 @@ the leaderboard records the NTD temporal split **losing to seasonal naive**.
 What helps is *more distinct operators*, not more rows. And 286 MB or 1 TB, it
 is all public data — only a consented operator crosses to Validated.
 
+#### Post-tranche hardening (2026-07-25, after tag `v0.4.0-pilot-conversion`)
+
+| Item | ADR | Result |
+|---|---|---|
+| **Release tagged** — the rollback anchor before any archival work | — | `v0.4.0-pilot-conversion` |
+| **Container superuser closed** — an unprivileged `milexium_app` LOGIN role | 0052 | RLS now binds at the **connection**, not by convention |
+| **Data governance unified** — manifests at existing paths, no file moves | 0053 | 5 `realdata/` sources declare rights; 16 tests |
+
+**Suite 1249 passed.** The container fix surfaced a test that had been
+**out-privileging the thing it tested**: the never-set-GUC case opened its own
+connection as `POSTGRES_USER` and demoted it only when the store had an acting
+role — once the store's credential became unprivileged there was nothing to
+demote, so it ran as a raw superuser. The change did not break the boundary; it
+broke a test quietly relying on a superuser being demoted for it.
+
+**Declutter audit finding — the honest answer was "not much".** Zero tracked
+`__pycache__`/`.pyc`, an 81:79 code-to-test ratio, all 51 ADRs live, no dead code
+worth archiving. `kaggle/` must **not** be archived: it holds transfer-learning
+results where the **negative** results were deliberately kept as evidence.
+Scope was held to what was actually redundant rather than expanded to justify the
+exercise.
+
 #### Still open after this tranche
 
-- **The container credential remains a superuser.** Re-provisioning it means
-  editing `docker-compose.yml`/`.env`. What is proven is that *the store* is
-  bound, **not** that the container cannot be bypassed.
+- **The superuser still exists**, as it must — it is the bootstrap identity and
+  the only role that can administer the cluster. The *application* no longer uses
+  it; a developer connecting with `POSTGRES_PASSWORD` still bypasses RLS, by
+  design. No secrets manager exists (blueprint/10 remains Specified).
 - **Program D tables have no tenant column or RLS** — must close before a second
   operator's data lands in them.
 - `packages/sdk-typescript/src/generated/openapi.ts` is **stale** and no drift

@@ -2,6 +2,54 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-25 (evening): tagged, superuser closed, governance unified
+
+Three things, in the order Arya asked for them.
+
+**Tagged `v0.4.0-pilot-conversion`** at 1248 green — the first tag in the repo,
+and the rollback anchor before any archival work. The tag message carries the
+known open items rather than only the wins, so the anchor is honest about what
+it anchors.
+
+**Closed the container superuser (ADR-0052).** ADR-0046 found the PostGIS
+credential holds rolsuper AND rolbypassrls, and bound the STORE by having it
+SET ROLE to a NOLOGIN role — but recorded the honest limit that the credential
+itself stayed all-powerful, so anything else using it still bypassed every
+policy. Now there is `milexium_app`: a LOGIN role, NOSUPERUSER, NOBYPASSRLS,
+with only what the store needs. Verified: the store connects as it,
+`rolsuper=False`, and `_acting_role` is None — the SET ROLE demotion is no
+longer NEEDED, because the credential is already bound.
+
+The interesting part was a failure I caused and then diagnosed: two tests went
+red. One was a fixture typo of mine. The other was real and instructive — the
+never-set-GUC test opened its OWN connection hardcoded to `POSTGRES_USER` and
+demoted it only when the store had an acting role. Once the store's credential
+became unprivileged there was nothing to demote, so that test connection ran as
+a raw superuser and read a row. It surfaced as a boundary failure that was
+really **the test out-privileging the thing it was testing**. The change didn't
+break the boundary; it broke a test that had been quietly relying on a superuser
+being demoted for it.
+
+**Unified data governance without moving a file (ADR-0053).** Arya spotted the
+`realdata/` vs `data/` clutter. Merging them is the wrong move: the evidence
+registry pins those panels AND their sha256 (52 hash pins, made
+cross-platform-stable after CI caught a CRLF/LF mismatch), the
+forecast/leakage/teardown suites read those exact paths, 54 files reference them.
+The inconsistency actually worth closing was that `realdata/` held real
+TLC/MTA/Chicago data with NO declared rights while `data/` refuses a byte
+without one. Five sources now carry governance manifests at their existing
+paths — and deliberately no `.acquired.json`, because these never went through
+`acquire()` and writing one would forge a free-space guard, quarantine and
+checksum promotion that never happened.
+
+**The declutter audit's honest answer was "not much".** Zero tracked
+`__pycache__`, an 81:79 code-to-test ratio, all 51 ADRs live, no dead code worth
+archiving. `kaggle/` in particular must NOT be archived — it holds
+transfer-learning results where the NEGATIVE results were deliberately kept as
+evidence, and archiving them would quietly delete part of the honesty record.
+Scope was held to what was actually redundant (four merged outreach staging
+CSVs) rather than expanded to justify the exercise.
+
 ## 2026-07-25 (later): tranche 3 — six programs deepened, two more vacuous-test defects
 
 Ground through the remaining gap list. Suite **976 -> 1248**, audit clean, CI
