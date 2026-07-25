@@ -341,6 +341,54 @@ Program depth after four tranches: **A ~60%**, **B ~50%**, **C ~55%**,
 **D ~60%**, **E ~40%**, G ~35%, **H ~45%**, **I ~45%**, **M ~35%**;
 F ~10% (held); J/K/L 0% (**now measured, not assumed** — see ADR-0056).
 
+#### Pilot-conversion tranche 5 (2026-07-25, night)
+
+| Item | Program | ADR | Tests |
+|---|---|---|---|
+| What each adapter actually carries — TIDES/GTFS-RT/TLC/GTFS-Flex refs | B | 0057 | 49 |
+| A findings gate that rejects more than it publishes | — | 0058 | 76 |
+| Model catalog persisted through a FORCEd boundary | D | 0059 | 113 |
+| **Solver portfolio + CP-SAT — proves published optima** | F | 0060 | 155 |
+| Interactive-surface latency + TS SDK drift | M | 0061 | 34 |
+
+**Suite 1411 → ~1900 passed.** CI green.
+
+**Program F moved from ~10% to a real portfolio.** CP-SAT reproduces the
+published Cordeau optima **exactly**, at 0.00% gap to a bound we computed rather
+than borrowed — the lattice is built so every rounding direction makes the model
+a relaxation, so `floor(BestObjectiveBound)/scale` is rigorous. ortools installs
+natively on Python 3.14 (`cp314` wheel), so the contingency architecture was not
+needed.
+
+**And it exposed our own heuristic.** The pure-Python LNS that Program F had
+*before* this packet is **1.6%–8.0% off optimal** on every instance we can now
+prove. Nobody knew, because there had never been anything to measure it against.
+It also showed the existing eight-step route scheduler is **sound but
+incomplete** — it was rejecting the very routings CP-SAT was proving optimal.
+
+#### Two corrections to earlier ADRs, both from packets correcting the orchestrator
+
+1. **ADR-0056's latency claim was wrong** (corrected by ADR-0061). "46 s
+   synchronous on the interactive surface" — but a 20,000-segment ceiling already
+   bounded the accepted path to ~2 s. The real defect was in the **refusal**: the
+   guard sat *inside* the handler, so a 600k body burnt 7.4–31.3 s validating
+   input in order to reject it. **A latency claim about a component you did not
+   instrument is a hypothesis.**
+2. **`ntd/agency_economics.csv` is demand-response only** (ADR-0058), not
+   all-modes as the orchestrator asserted. Measured: `vrh` matches the DR-only
+   total for **100.0%** of 2024 agencies and the all-mode total for **50.1%** —
+   exactly the single-mode operators. The supporting argument was also a
+   reasoning error: a tail of 9-in-406 collapsing to 1-in-45 is **2.22% both
+   ways**, the identical rate.
+
+**A finding that costs us: deadhead does not predict cost per trip.** Spearman
+**+0.024** across 406 operators, against +0.738 for cost per *hour*. This
+undercuts the hook the v3 peer engine leads with, and is **unresolved**.
+
+Program depth after five tranches: **A ~60%**, **B ~60%**, **C ~55%**,
+**D ~70%**, **E ~40%**, G ~35%, **H ~45%**, **I ~45%**, **M ~50%**;
+**F ~45%** (was ~10%); J/K/L 0% (measured, not assumed — ADR-0056).
+
 #### Still open after this tranche
 
 - **The superuser still exists**, as it must — it is the bootstrap identity and

@@ -2,6 +2,91 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-25 (late): five packets, two corrections to me, and an open door
+
+**Suite 1411 → ~1900.** ADRs 0057–0061, one commit per packet, CI green.
+
+**Program F is the headline.** ortools installs natively on Python 3.14, so
+Program F now has a real solver portfolio — and CP-SAT **reproduces the published
+Cordeau optima exactly**, at 0.00% gap to a bound we computed ourselves. The
+bound is rigorous because every rounding direction on the integer lattice makes
+the model a relaxation.
+
+The valuable part is what it exposed. **Our own pure-Python LNS is 1.6%–8.0% off
+optimal** on every instance we can now prove. Nobody knew, because there had
+never been anything to measure against — you cannot discover you are 8% short
+without a prover standing next to the heuristic. It also revealed the existing
+route scheduler is sound but *incomplete*: it was rejecting routings CP-SAT was
+simultaneously proving optimal.
+
+### Two packets corrected me, and both were right
+
+**ADR-0056 — my own latency claim — was wrong.** I wrote "46 s synchronous on the
+interactive surface." A 20,000-segment ceiling already bounded the accepted path
+to ~2 s. The real defect was in the *refusal*: the count guard sat inside the
+handler, so a 600,000-segment body burnt 7.4–31.3 s validating input purely in
+order to reject it. I had reasoned from the analysis benchmark to the surface
+without instrumenting the surface. **A latency claim about a component you did
+not measure is a hypothesis.**
+
+**And `agency_economics.csv` is demand-response only**, not all-modes as I
+asserted and instructed an agent to encode as a guard. It measured instead of
+complying: `vrh` matches the DR-only total for 100.0% of agencies and the
+all-mode total for 50.1% — exactly the single-mode operators. My supporting
+argument was worse than the conclusion: I claimed a tail of 9-in-406 collapsing
+to 1-in-45 proved mode contamination, but **both are 2.22%**. That was arithmetic
+about subgroup size wearing the costume of evidence, and I presented it as a
+catch.
+
+Right answer, wrong reasoning — the deadhead tail *is* correctly rejected, on
+effect size and concentration. Two of the nine run 232 and 36 vehicle-hours a
+year.
+
+**A rejection that costs us:** deadhead does not predict cost per trip. Spearman
++0.024 across 406 operators. The v3 peer engine leads with deadhead rank as
+though it implies cost. It does not, and that is unresolved.
+
+**I also nearly shipped the session's signature failure myself.** ortools was not
+pinned, so CI would have skipped all 155 CP-SAT tests — green, having proved
+nothing, including the optimality certificates that are the entire point. Now a
+`solver` extra installed alongside z3.
+
+### Kent — the door opened
+
+He replied again within the hour. Three things matter.
+
+He answered the billable question: **free**, and framed it as mutually
+beneficial. He corrected his own position gracefully — his 2023 critique was of
+the *older* algorithms, and today's differ — which means reading him closely and
+declining his courtesy framing was the right risk.
+
+And then the sentence that matters more than the rest of the email:
+
+> *"I agree with you that there is insufficient new data to support any
+> conclusion that the new software has done any better, but I am persuaded that
+> they are on the right track."*
+
+The leading US paratransit authority, personally engaged on live AI-scheduling
+installs, saying the industry is making a large bet with **no evidence base**.
+That is our market need in his words, not ours. Followed by: *"I would welcome
+your participation to evaluate our progress wherever I am able."* — an offer of
+access to live deployments, which is the only route to consented operator data
+and therefore to **Validated**.
+
+**Before replying I verified the claim I had made to him** — that we record why
+each trip got its outcome, at decision time. It holds: `ServiceRequestState` is a
+real normative state machine, `RequestTimes` keeps requested/negotiated/
+scheduled/predicted separate, `Denial` carries hard-constraint reason codes.
+Nothing was oversold. What is *missing* is the durable per-request history, which
+is now the first packet of the next wave.
+
+Wave six dispatched against exactly that: the lifecycle decision record, an
+honest before/after intervention evaluation (his deployments claim improved OTP
+that nobody can attribute), the commingled-exposure measurement that our
+technical argument to him promised, and an end-to-end demo — because ~1,900 tests
+and 61 ADRs are rigour that is completely invisible to anyone who does not read
+code.
+
 ## 2026-07-25 (night): three packets, a null result, and the first real reply
 
 **Suite 1249 → 1411 passed.** Programs B, D and H landed as three parallel
