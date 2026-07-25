@@ -36,6 +36,10 @@
 -- bypass RLS in PostgreSQL by design, so these policies do not break inserts
 -- into tenant-scoped tables whose parent `tenants` row is not "visible" under
 -- the acting GUC -- confirmed against PostgreSQL 17.
+--
+-- ONE POLICY IN THIS FILE IS ASYMMETRIC: `model_versions` (ADR-0040). Everything
+-- else below is read-what-you-may-write. See the block above that table for why
+-- platform-owned models must be readable by every tenant and writable by none.
 
 -- tenants is the boundary table: its own primary key IS the tenant id, so it is
 -- scoped to itself. A session may see/insert only the tenant row matching its
@@ -75,15 +79,63 @@ CREATE POLICY tenant_isolation ON policies
 -- model_versions and forecast_vintages both carry tenant_id, so they are covered
 -- for completeness -- "database-layer tenant isolation" with an unguarded
 -- tenant-scoped table is exactly the false assurance this packet exists to
--- prevent. NOTE: ModelVersion.tenant_id has an unresolved meaning for
--- platform-trained models that belong to no single customer (ADR-0010); a strict
--- `tenant_id = GUC` policy is correct here only once a "platform tenant"
--- convention is chosen. No store method reads/writes these tables yet, so this
--- guards them without prescribing that convention.
+-- prevent.
+--
+-- THE ONE ASYMMETRIC POLICY IN THIS FILE (ADR-0040). Every other policy here is
+-- symmetric: what you may read, you may write. model_versions cannot be, because
+-- the models trained in this repository are trained on PUBLIC data and belong to
+-- no customer. ADR-0040 reserved a single well-known platform tenant for them
+-- (packages/canonical/ids.py: PLATFORM_TENANT_ID) and rejected the alternative of
+-- a nullable tenant_id -- `tenant_id = current_setting(...)` is never true for
+-- NULL, so nullable rows would be invisible under this very policy and every
+-- consumer would need a special case.
+--
+-- The consequence that must not be missed: platform models have to be READABLE
+-- BY EVERY TENANT AND WRITABLE BY NONE OF THEM. A strict `tenant_id = GUC` would
+-- make the platform's own models invisible to the customers who need to run them.
+-- So:
+--   USING      admits the platform id  -> any tenant may READ a platform model.
+--   WITH CHECK OMITS the platform id   -> a session acting as a tenant CANNOT
+--                                         write a platform-stamped row.
+-- A customer can use a platform model and cannot forge one. The literal below is
+-- the same value as PLATFORM_TENANT_ID; conformance/property-tests/
+-- test_platform_tenant.py asserts the two have not drifted apart, and proves the
+-- asymmetry adversarially (the write is rejected, the read is not).
+--
+-- HONEST LIMIT OF THE BOUNDARY, stated rather than implied: the GUC *is* the
+-- identity here, so a session that sets `milexium.tenant_id` to the platform id
+-- is acting AS the platform and may write platform rows -- that is how the
+-- platform seeds its own models, and it is the same trust model every other
+-- policy in this file has. What is excluded is a session acting as a customer.
+--
+-- Deny-all-by-default is preserved for CUSTOMER rows (an unset GUC yields NULL
+-- and `tenant_id = NULL` is never true). Platform rows remain visible with the
+-- GUC unset, which is the deliberate consequence of the OR above: they are
+-- readable by every tenant by construction, so this exposes nothing that any
+-- tenant could not already read, and it exposes no customer's data.
 ALTER TABLE model_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE model_versions FORCE ROW LEVEL SECURITY;
+-- The platform-read branch requires the session to be SCOPED (ADR-0043,
+-- tightening ADR-0040). ADR-0040's literal clause was `OR tenant_id = PLATFORM`,
+-- true whatever the GUC says -- so an unset session could read platform rows,
+-- contradicting the deny-all default this file advertises at the top. That
+-- leaked no customer data (platform rows are readable by every tenant by
+-- construction), but "the rows we judged harmless" is a judgement that would
+-- have to keep holding for every column and join added later, and an unset GUC
+-- almost always means a connection nobody scoped.
+--
+-- NOTE THE EMPTY-STRING TRAP: `current_setting(name, true)` returns NULL only
+-- when the GUC was NEVER set in the session. After `RESET` (or `SET x = ''`) it
+-- returns the EMPTY STRING, which `IS NOT NULL` happily accepts -- so an
+-- IS NOT NULL guard here does not deny a reset session, as a first attempt at
+-- this clause proved. The other policies on this file survive that only
+-- incidentally, because `tenant_id = ''` is false for any real UUID. This
+-- branch has no such accident protecting it, so it tests for "non-empty"
+-- explicitly.
 CREATE POLICY tenant_isolation ON model_versions
-    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    USING (tenant_id = current_setting('milexium.tenant_id', true)
+           OR (tenant_id = '00000000-0000-7000-8000-000000000000'
+               AND coalesce(current_setting('milexium.tenant_id', true), '') <> ''))
     WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
 
 ALTER TABLE forecast_vintages ENABLE ROW LEVEL SECURITY;

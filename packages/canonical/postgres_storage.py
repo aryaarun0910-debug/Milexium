@@ -47,7 +47,13 @@ from pathlib import Path
 import psycopg
 from psycopg import sql
 
-from packages.canonical.entities import DecisionAlternative, DecisionEvent, Tenant
+from packages.canonical.entities import (
+    DecisionAlternative,
+    DecisionEvent,
+    Outcome,
+    Tenant,
+    platform_tenant,
+)
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
 from packages.canonical.ids import DecisionEventId, ScheduleRunId, TenantId, new_id
 from packages.canonical.storage import CrossTenantWriteError
@@ -126,6 +132,31 @@ class PostgresCanonicalStore:
             # SQLite). Applied inside the same schema (search_path already set),
             # so unqualified table names in rls_postgres.sql resolve to it.
             cur.execute(_RLS_PATH.read_text(encoding="utf-8"))
+        self._conn.commit()
+        self._seed_platform_tenant()
+
+    def _seed_platform_tenant(self) -> None:
+        """Register the reserved platform tenant (ADR-0040), idempotently.
+
+        Same contract and same reason as
+        `SqliteCanonicalStore._seed_platform_tenant`: the reserved id has to be a
+        real `tenants` row or the foreign key rejects the first platform-owned
+        insert, so seeding it is part of store setup rather than a caller's job.
+
+        It runs AFTER rls_postgres.sql, under the policy it just installed, so it
+        must set the GUC to the platform id first -- the `tenants` policy's
+        WITH CHECK is `tenant_id = GUC`, and this row registers the platform as
+        itself, exactly as `create_tenant()` has every other tenant register
+        itself. `ON CONFLICT DO NOTHING` is the idempotency; `platform_tenant()`
+        pins a fixed `created_at`, so a re-seed cannot change the value either.
+        """
+        tenant = platform_tenant()
+        self._use_tenant(tenant.tenant_id)
+        self._conn.execute(
+            "INSERT INTO tenants (tenant_id, name, created_at) VALUES (%s, %s, %s) "
+            "ON CONFLICT (tenant_id) DO NOTHING",
+            (str(tenant.tenant_id), tenant.name, tenant.created_at.isoformat()),
+        )
         self._conn.commit()
 
     def _use_tenant(self, tenant_id: object) -> None:
@@ -370,6 +401,68 @@ class PostgresCanonicalStore:
                 feasible=bool(row[3]),
                 failed_constraints=tuple(ReasonCode(x) for x in json.loads(row[4])),
                 objective_delta=row[5],
+            )
+            for row in cur.fetchall()
+        )
+
+    def record_outcome(self, outcome: Outcome) -> None:
+        """Persist what actually happened to one request, INCLUDING the vehicle
+        and run that performed it.
+
+        Identical contract and semantics to
+        `SqliteCanonicalStore.record_outcome` -- the canonical home ADR-0038
+        found missing for `vehicle_ref`/`run_ref`, now durable on both engines.
+
+        Two boundaries hold, as everywhere else in this store: the `outcomes`
+        `tenant_isolation` policy's WITH CHECK (keyed on the GUC set here) would
+        reject a row stamped with another tenant, and the row's own `tenant_id`
+        is what the GUC is set from, so the two cannot disagree.
+        """
+        self._use_tenant(outcome.tenant_id)
+        self._conn.execute(
+            "INSERT INTO outcomes (tenant_id, request_id, served, actual_pickup_at, on_time, "
+            "excess_ride_time_minutes, deadhead_minutes, vehicle_ref, run_ref) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (
+                str(outcome.tenant_id),
+                str(outcome.request_id),
+                1 if outcome.served else 0,
+                outcome.actual_pickup_at.isoformat() if outcome.actual_pickup_at else None,
+                None if outcome.on_time is None else (1 if outcome.on_time else 0),
+                outcome.excess_ride_time_minutes,
+                outcome.deadhead_minutes,
+                outcome.vehicle_ref,
+                outcome.run_ref,
+            ),
+        )
+        self._conn.commit()
+
+    def outcomes(self, tenant_id: TenantId) -> tuple[Outcome, ...]:
+        """Tenant-scoped read of recorded outcomes, ordered by `request_id`.
+
+        Defense in depth as elsewhere: the RLS policy (keyed on the GUC set here)
+        and the WHERE clause are both boundaries, either alone sufficient. The
+        ORDER BY is written identically to the SQLite store's so both engines
+        return the same sequence, not merely the same set.
+        """
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            "SELECT request_id, served, actual_pickup_at, on_time, excess_ride_time_minutes, "
+            "deadhead_minutes, vehicle_ref, run_ref FROM outcomes "
+            "WHERE tenant_id = %s ORDER BY request_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            Outcome(
+                tenant_id=tenant_id,
+                request_id=row[0],
+                served=bool(row[1]),
+                actual_pickup_at=datetime.fromisoformat(row[2]) if row[2] is not None else None,
+                on_time=None if row[3] is None else bool(row[3]),
+                excess_ride_time_minutes=row[4],
+                deadhead_minutes=row[5],
+                vehicle_ref=row[6],
+                run_ref=row[7],
             )
             for row in cur.fetchall()
         )

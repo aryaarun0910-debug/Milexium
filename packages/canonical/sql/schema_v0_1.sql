@@ -146,6 +146,16 @@ CREATE TABLE decision_events (
     UNIQUE (tenant_id, aggregate_id, idempotency_key)
 );
 
+-- `vehicle_ref` / `run_ref` are the canonical home ADR-0038 found missing: the
+-- vehicle/run assignment lived only on the Connect-layer OperatorTripRecord and
+-- was recorded as a `dropped` semantic loss on every row, so the one field the
+-- deadhead teardown depends on (it chains ONE vehicle's consecutive trips) could
+-- not survive a write to MilexiumDB. Additive and NULLABLE: an export that named
+-- neither is unattributable, and that is recorded as absence, never back-filled.
+-- Plain TEXT for the same reason vehicle_observations.vehicle_ref is -- they name
+-- the SOURCE system's vehicle/run, not a Milexium `Vehicle` aggregate, so there
+-- is deliberately no REFERENCES vehicles(vehicle_id) here. Portable subset only:
+-- nullable TEXT runs identically on SQLite and PostgreSQL 17.
 CREATE TABLE outcomes (
     tenant_id                    TEXT NOT NULL REFERENCES tenants(tenant_id),
     request_id                   TEXT NOT NULL,
@@ -154,6 +164,8 @@ CREATE TABLE outcomes (
     on_time                      INTEGER CHECK (on_time IN (0, 1)),
     excess_ride_time_minutes     REAL,
     deadhead_minutes             REAL,
+    vehicle_ref                  TEXT,
+    run_ref                      TEXT,
     PRIMARY KEY (tenant_id, request_id)
 );
 

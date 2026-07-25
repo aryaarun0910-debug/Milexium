@@ -9,9 +9,13 @@ roadmap's table/column intent; types and validation are new.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from packages.canonical.ids import (
+    PLATFORM_TENANT_ID,
+    PLATFORM_TENANT_NAME,
     DecisionEventId,
     DriverId,
     ModelVersionId,
@@ -35,6 +39,27 @@ class Tenant(_Canonical):
     tenant_id: TenantId
     name: str
     created_at: UtcDateTime
+
+
+PLATFORM_TENANT_CREATED_AT = datetime(2026, 7, 24, tzinfo=timezone.utc)
+"""The reserved tenant's registration instant: the date ADR-0040 was accepted.
+A FIXED value, not `now()`, so seeding it twice produces a byte-identical row --
+idempotency of the *value*, not just of the row count."""
+
+
+def platform_tenant() -> Tenant:
+    """The reserved platform tenant as a canonical `Tenant` row (ADR-0040).
+
+    The reserved id must be a REAL row in `tenants`, because every tenant-scoped
+    table has a foreign key to it -- a convention alone would fail the first
+    insert. Both `SqliteCanonicalStore` and `PostgresCanonicalStore` seed exactly
+    this row, idempotently, as part of store setup.
+    """
+    return Tenant(
+        tenant_id=PLATFORM_TENANT_ID,
+        name=PLATFORM_TENANT_NAME,
+        created_at=PLATFORM_TENANT_CREATED_AT,
+    )
 
 
 class ServiceRequest(_Canonical):
@@ -160,6 +185,36 @@ class DecisionEvent(_Canonical):
 
 
 class Outcome(_Canonical):
+    """What actually happened to one service request.
+
+    ``vehicle_ref``/``run_ref`` are the CANONICAL HOME ADR-0038 found missing.
+    Before them, the vehicle/run assignment lived only on the Connect-layer
+    ``OperatorTripRecord`` and was recorded as a ``dropped`` semantic loss on
+    every row -- so the single field the whole deadhead teardown depends on
+    (``packages/replay/teardown.py`` chains ONE vehicle's consecutive trips;
+    ADR-0038 makes ``vehicle_ref``-or-``run_ref`` a mandatory intake column for
+    exactly that reason) survived the in-memory handoff and would NOT have
+    survived a write to MilexiumDB.
+
+    WHY HERE AND NOWHERE ELSE. Which vehicle/run performed (or was assigned and
+    did not perform) a trip is a fact about *what happened*, not about what was
+    asked for, so it belongs on the outcome record -- sitting directly beside
+    ``deadhead_minutes``, the field derived from chaining it. It is deliberately
+    NOT duplicated onto ``ServiceRequest``: one fact, one home, so the two can
+    never disagree. A teardown needing the request's own times joins on
+    ``(tenant_id, request_id)``.
+
+    WHY PLAIN STRINGS, NOT ``VehicleId``. These name the SOURCE SYSTEM's entities
+    (an operator's own vehicle number, run or block id), not a Milexium
+    ``Vehicle`` aggregate -- the same reason ``VehicleObservation.vehicle_ref`` is
+    a plain string. Typing them as ``VehicleId`` would assert a canonical
+    aggregate that no operator export creates.
+
+    Both are optional and BOTH may be absent: a trip whose export named neither
+    is unattributable, and the teardown reports it as such rather than guessing
+    it onto a neighbouring run. Absent means absent; it is never back-filled.
+    """
+
     tenant_id: TenantId
     request_id: RequestId
     served: bool
@@ -167,6 +222,14 @@ class Outcome(_Canonical):
     on_time: bool | None = None
     excess_ride_time_minutes: float | None = None
     deadhead_minutes: float | None = None
+    vehicle_ref: str | None = Field(
+        default=None,
+        description="Source-system vehicle identifier, as the operator writes it. Never a VehicleId.",
+    )
+    run_ref: str | None = Field(
+        default=None,
+        description="Source-system run/block identifier, as the operator writes it.",
+    )
 
 
 class VehicleObservation(_Canonical):

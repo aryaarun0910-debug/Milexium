@@ -6,6 +6,8 @@ package only -- other packages read it, they do not redefine it in place.
 """
 
 from packages.canonical.ids import (
+    PLATFORM_TENANT_ID,
+    PLATFORM_TENANT_NAME,
     AggregateId,
     DecisionEventId,
     DriverId,
@@ -20,6 +22,7 @@ from packages.canonical.ids import (
 )
 from packages.canonical.time import BitemporalMeta, RequestTimes
 from packages.canonical.entities import (
+    PLATFORM_TENANT_CREATED_AT,
     DecisionAlternative,
     DecisionEvent,
     Driver,
@@ -34,6 +37,7 @@ from packages.canonical.entities import (
     Tenant,
     Vehicle,
     VehicleObservation,
+    platform_tenant,
 )
 from packages.canonical.state_machine import (
     ILLEGAL_TRANSITIONS_EXAMPLE,
@@ -63,6 +67,10 @@ __all__ = [
     "TenantId",
     "VehicleId",
     "new_id",
+    "PLATFORM_TENANT_ID",
+    "PLATFORM_TENANT_NAME",
+    "PLATFORM_TENANT_CREATED_AT",
+    "platform_tenant",
     "RequestTimes",
     "BitemporalMeta",
     "DecisionAlternative",

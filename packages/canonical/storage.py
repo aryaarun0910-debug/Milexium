@@ -19,7 +19,13 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from packages.canonical.entities import DecisionAlternative, DecisionEvent, Tenant
+from packages.canonical.entities import (
+    DecisionAlternative,
+    DecisionEvent,
+    Outcome,
+    Tenant,
+    platform_tenant,
+)
 from packages.canonical.events import DuplicateEventError, canonical_json, compute_hash
 from packages.canonical.ids import DecisionEventId, ScheduleRunId, TenantId, new_id
 from packages.canonical.vocab import DecisionEventType, ReasonCode
@@ -47,6 +53,7 @@ class SqliteCanonicalStore:
         self._conn = connection or sqlite3.connect(":memory:")
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        self._seed_platform_tenant()
 
     @classmethod
     def open(cls, path: str) -> "SqliteCanonicalStore":
@@ -54,6 +61,26 @@ class SqliteCanonicalStore:
 
     def close(self) -> None:
         self._conn.close()
+
+    def _seed_platform_tenant(self) -> None:
+        """Register the reserved platform tenant (ADR-0040), idempotently.
+
+        Records that belong to no customer -- the models in this repository are
+        trained on public data -- still carry a mandatory `tenant_id`, and every
+        tenant-scoped table has a FOREIGN KEY to `tenants`. So the reserved id
+        has to be a real row or the first platform-owned insert fails on the FK.
+        Seeding it is part of store setup, not a caller's responsibility.
+
+        `INSERT OR IGNORE` (Postgres: `ON CONFLICT DO NOTHING`) makes this a
+        no-op on a store whose database already has the row; `platform_tenant()`
+        pins a fixed `created_at`, so a re-seed cannot even change the value.
+        """
+        tenant = platform_tenant()
+        self._conn.execute(
+            "INSERT OR IGNORE INTO tenants (tenant_id, name, created_at) VALUES (?, ?, ?)",
+            (str(tenant.tenant_id), tenant.name, tenant.created_at.isoformat()),
+        )
+        self._conn.commit()
 
     def create_tenant(self, tenant: Tenant) -> None:
         self._conn.execute(
@@ -263,6 +290,69 @@ class SqliteCanonicalStore:
                 feasible=bool(row[3]),
                 failed_constraints=tuple(ReasonCode(x) for x in json.loads(row[4])),
                 objective_delta=row[5],
+            )
+            for row in cur.fetchall()
+        )
+
+    def record_outcome(self, outcome: Outcome) -> None:
+        """Persist what actually happened to one request, INCLUDING the vehicle
+        and run that performed it.
+
+        This is the write ADR-0038 had no home for: `vehicle_ref`/`run_ref` were
+        carried on the Connect-layer `OperatorTripRecord` only, so the field the
+        deadhead teardown chains on could not survive a write to MilexiumDB. It
+        now round-trips, in both stores (see
+        `conformance/property-tests/test_run_reference.py`).
+
+        The row's own `tenant_id` is the acting tenant -- an `Outcome` cannot
+        exist without one, so there is no separate `tenant_id` argument to
+        disagree with it. `(tenant_id, request_id)` is the primary key, so
+        recording an outcome twice for the same request raises rather than
+        silently overwriting the first answer.
+        """
+        self._conn.execute(
+            "INSERT INTO outcomes (tenant_id, request_id, served, actual_pickup_at, on_time, "
+            "excess_ride_time_minutes, deadhead_minutes, vehicle_ref, run_ref) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                str(outcome.tenant_id),
+                str(outcome.request_id),
+                1 if outcome.served else 0,
+                outcome.actual_pickup_at.isoformat() if outcome.actual_pickup_at else None,
+                None if outcome.on_time is None else (1 if outcome.on_time else 0),
+                outcome.excess_ride_time_minutes,
+                outcome.deadhead_minutes,
+                outcome.vehicle_ref,
+                outcome.run_ref,
+            ),
+        )
+        self._conn.commit()
+
+    def outcomes(self, tenant_id: TenantId) -> tuple[Outcome, ...]:
+        """Tenant-scoped read of recorded outcomes, ordered by `request_id`.
+
+        The WHERE clause is the isolation boundary, as everywhere else in this
+        module. Reconstructing an `Outcome` on read means the stored columns must
+        still validate as one -- a `run_ref` that came back as `''` or `'None'`
+        rather than NULL would be a round-trip failure, not a cosmetic one.
+        """
+        cur = self._conn.execute(
+            "SELECT request_id, served, actual_pickup_at, on_time, excess_ride_time_minutes, "
+            "deadhead_minutes, vehicle_ref, run_ref FROM outcomes "
+            "WHERE tenant_id = ? ORDER BY request_id",
+            (str(tenant_id),),
+        )
+        return tuple(
+            Outcome(
+                tenant_id=tenant_id,
+                request_id=row[0],
+                served=bool(row[1]),
+                actual_pickup_at=datetime.fromisoformat(row[2]) if row[2] is not None else None,
+                on_time=None if row[3] is None else bool(row[3]),
+                excess_ride_time_minutes=row[4],
+                deadhead_minutes=row[5],
+                vehicle_ref=row[6],
+                run_ref=row[7],
             )
             for row in cur.fetchall()
         )
