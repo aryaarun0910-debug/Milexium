@@ -28,11 +28,16 @@ client, the whole loop reachable, including `forecast`, `export_pack` and
 Not wired into a top-level `packages/__init__.py`; import directly as above.
 """
 
-from packages.sdk.client import IngestSummary, MilexiumClient
+from packages.sdk.client import (
+    TEARDOWN_MICROSECONDS_PER_SEGMENT,
+    IngestSummary,
+    MilexiumClient,
+)
 
 __all__ = [
     "MilexiumClient",
     "IngestSummary",
+    "TEARDOWN_MICROSECONDS_PER_SEGMENT",
 ]
 
 __version__ = "0.1.0"

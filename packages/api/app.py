@@ -50,7 +50,9 @@ Deliberately NOT done, with reasons rather than silence:
   exactly what an endpoint promising to persist nothing should not have. Both
   endpoints therefore take bounded JSON and refuse oversize bodies with 413,
   pointing bulk callers at the SDK (`client.teardown_deadhead`), which has no
-  size ceiling at all.
+  size ceiling -- and which is synchronous, so the 413 now says what that costs
+  (`client.estimate_teardown_seconds`) instead of presenting "no ceiling" as
+  free.
 - **No "tear down my raw export" endpoint.** Turning export rows into segments
   requires deciding which rows are revenue and which are deadhead, and
   `packages.replay.teardown` deliberately refuses to infer that from geometry
@@ -65,6 +67,65 @@ Deliberately NOT done, with reasons rather than silence:
   check, and no quota. A real deployment injects a Postgres-backed store
   (`packages.canonical` PostgresCanonicalStore) and puts tenant auth in front --
   none of which this slice fakes.
+- **An async job/poll path for `POST /teardowns`.** Considered and rejected for
+  this surface -- see `_TeardownRoute` below for the measurement and the three
+  reasons. It remains the right answer for a real deployment.
+
+TEARDOWN LATENCY ON THIS SURFACE (ADR-0056)
+ADR-0056 measured `packages.replay.teardown` and recorded a latency defect it
+found on the way past: ~46 s at a mid-size operator's year. Measuring THIS
+surface (Python 3.14, i7-10510U, in-process TestClient, synthetic segments)
+located where that actually bites, and it is not where the prose suggested:
+
+The SAME measurement, same code, run twice -- once with the machine busy and
+once with it quiet. Both are shown because the difference between them is the
+single most important caveat on every number here:
+
+| request                          | before (busy / quiet) | after (busy / quiet) |
+|----------------------------------|----------------------:|---------------------:|
+| 20,000 segments (the ceiling)    |     1.530 s / 0.607 s |    1.984 s / 0.542 s |
+| the SAME body again              |     1.530 s / 0.607 s |    0.046 s / 0.011 s |
+| 25,000 segments -> 413 (count)   |     0.595 s / 0.221 s |    0.620 s / 0.241 s |
+| 600,000 segments -> 413 (size)   |    31.269 s / 7.378 s |    0.076 s / 0.025 s |
+
+(each cell the minimum of 5 alternating rounds, with BOTH versions of this app
+live in one process so machine state hits them equally. ADR-0056 recorded
+wall-clock swinging ~2.8x with thermal state; between these two runs it swung
+4.2x. A before/after taken in separate processes minutes apart would have
+measured the laptop, not the change.)
+
+So the ABSOLUTE seconds are not a property of the code. The RATIOS are, and they
+are what this claims:
+
+- **Refusing a 600,000-segment body: 295-411x faster.** The defect.
+- **Repeating an identical 20,000-segment body: 33-55x faster.** The cache.
+- **A FIRST 20,000-segment teardown: unchanged.** After was 1.30x slower on the
+  busy run and 0.89x -- i.e. faster -- on the quiet one. Bracketing 1.0 in both
+  directions is what settles it. The cache does add one SHA-256 over the body to
+  every miss (26.9 ms at 20,000 segments, ~2-4% of the call); that is arithmetic,
+  not something this instrument can see.
+
+The accepted path was never 46 s: `MAX_TEARDOWN_SEGMENTS` already bounds it, and
+it STILL COSTS THAT -- the first row is the honest headline, not the second. The
+46 s lives on the SDK, which has no ceiling -- and the old 413 text sent bulk
+callers straight at it.
+
+What WAS broken here is the refusal: the segment-count guard is checked inside
+the handler, i.e. after FastAPI has validated every segment in the body, so a
+600k-segment request -- the top of ADR-0056's own operator-year band, exactly
+the request that ADR invites -- burnt 7-31 s of server CPU to compute nothing
+and answer 413. Two fixes, both at the surface, neither touching the analysis:
+
+1. `MAX_TEARDOWN_BODY_BYTES` refuses an oversize body from `content-length`,
+   BEFORE the body is read or parsed.
+2. A bounded, content-addressed result cache keyed on the raw request bytes, so
+   an identical repeat request is answered without re-parsing or re-analysing.
+
+Neither makes a first-time teardown faster, and neither touches the SDK's
+unbounded synchronous path -- `MilexiumClient.estimate_teardown_seconds` only
+makes that wait a decision instead of a surprise. An async job+poll path is
+still the right answer for a real deployment, and `_TeardownRoute` records the
+three things it needs first.
 
 The two new endpoints are also the only place this package names a *concrete*
 adapter (`OperatorExportAdapter`). That asymmetry is deliberate: the SDK core
@@ -78,10 +139,15 @@ not Validated, not Production.
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
+import threading
+from collections import OrderedDict
 from datetime import datetime, timezone
+from typing import Awaitable, Callable
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from packages.canonical import (
@@ -119,10 +185,226 @@ and already a multi-megabyte body. Above it the request is refused with 413 and
 the caller is pointed at the SDK, which has no ceiling -- better than silently
 truncating the input, which would understate every total in the answer."""
 
+MAX_TEARDOWN_BODY_BYTES = 8 * 1024 * 1024
+"""Ceiling on the RAW BODY of `POST /teardowns`, checked before the body is read
+or parsed -- the cheap outer guard in front of the exact `MAX_TEARDOWN_SEGMENTS`
+count guard.
+
+Why two guards and not one: the count is only knowable after every segment has
+been validated, so the count guard alone made a refusal cost as much as an
+answer. A 600,000-segment body (71 MB) took 7.4-31.3 s to reject depending only
+on how busy the laptop was -- ADR-0056's own operator-year band, spent computing
+nothing. The byte guard reads `content-length` and answers the same 413 in
+0.025-0.076 s: 295-411x faster on the same two runs.
+
+8 MiB is deliberately LOOSE, not tuned: the 20,000-segment measurement ran
+119 bytes/segment (2.37 MB), so this admits ~400 bytes/segment at the count
+ceiling and no realistic 20,000-segment body is refused by it. The tradeoff is
+stated rather than hidden -- a body with `run_ref` strings averaging over ~400
+bytes IS refused on size even though its segment count is legal, and the 413
+says so.
+
+What it does NOT fix, measured rather than glossed: a body BETWEEN
+`MAX_TEARDOWN_SEGMENTS` and 8 MiB still pays full validation before the count
+guard sees it -- 0.24-0.62 s at 25,000 segments, 3.88 s at 70,788 (the largest
+body that fits under the ceiling). The guard bounds wasted refusal work at a few
+seconds; it does not eliminate it. Closing that band would mean lowering the
+byte ceiling until it started refusing legal 20,000-segment bodies, which is a
+worse trade."""
+
 MAX_VALIDATION_ROWS = 1_000
 """Ceiling on rows in ONE `POST /operator-exports/validate` body. The endpoint
 exists to check a SAMPLE of an extract before real data is sent, so a small
-bound is the honest scope rather than a limitation; 413 above it."""
+bound is the honest scope rather than a limitation; 413 above it.
+
+NOT protected by a pre-parse byte guard -- see `_TeardownRoute`. That endpoint
+takes `list[dict]`, which is far cheaper per row than 20,000 Pydantic
+`VehicleSegment` models, so it is a smaller instance of the same shape rather
+than the one this packet measured. Named, not fixed."""
+
+DEFAULT_TEARDOWN_CACHE_ENTRIES = 16
+"""How many teardown results `create_app` keeps. Small on purpose: a result is
+tens of KB (43 KB at 20,000 segments), so 16 entries is under a megabyte, and an
+unbounded cache on an endpoint with no auth and no quota is a memory-growth
+primitive for anyone who can reach it. `create_app(teardown_cache_entries=0)`
+turns it off entirely."""
+
+TEARDOWN_CACHE_HEADER = "x-milexium-teardown-cache"
+"""`hit` | `miss` | `disabled`. A response header, not a response field: the
+teardown response body is the `DeadheadTeardown` itself and must stay
+byte-identical whether it was computed or replayed -- if caching could change
+the body it would be changing the answer, which is the one thing a cache must
+never do. Tested as such."""
+
+
+class _TeardownResultCache:
+    """Bounded LRU of serialised teardown responses, keyed by the SHA-256 of the
+    raw request body.
+
+    Sound because `teardown_deadhead` is a pure function of its arguments: it
+    reads no clock, no store and no randomness, so identical request bytes have
+    exactly one correct answer, forever. (`TeardownManifest.teardown_id` and
+    `segment_sha256` are the module's own statement of that -- the same export
+    torn down the same way pins the same id.) This cache does not make that
+    true; it relies on it, and the conformance suite asserts the replayed body
+    is byte-identical to a freshly computed one.
+
+    Keyed on the RAW BYTES rather than on `segment_sha256`, deliberately. The
+    fingerprint is order-independent and semantically exact, and it is also
+    ~50% of the runtime (ADR-0056) and only available after the parse -- keying
+    on it would leave the parse and the fingerprint on the warm path and save
+    roughly half. Hashing 2.37 MB of raw body costs ~5 ms and skips parse,
+    validation, analysis and serialisation alike. The price of that choice is
+    that the key is byte-exact: the same segments re-serialised with different
+    JSON key order or whitespace MISS. That is a weaker equivalence than the
+    teardown's own, and it is the honest trade -- a miss is merely slow, and a
+    cache that had to parse before it could look anything up would not be worth
+    having.
+    """
+
+    def __init__(self, capacity: int) -> None:
+        self._capacity = capacity
+        self._entries: "OrderedDict[str, tuple[int, str, bytes]]" = OrderedDict()
+        self._lock = threading.Lock()
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, key: str) -> "tuple[int, str, bytes] | None":
+        with self._lock:
+            entry = self._entries.get(key)
+            if entry is None:
+                self.misses += 1
+                return None
+            self._entries.move_to_end(key)
+            self.hits += 1
+            return entry
+
+    def put(self, key: str, entry: "tuple[int, str, bytes]") -> None:
+        with self._lock:
+            self._entries[key] = entry
+            self._entries.move_to_end(key)
+            while len(self._entries) > self._capacity:
+                self._entries.popitem(last=False)
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._entries)
+
+
+class _TeardownRoute(APIRoute):
+    """Wraps `POST /teardowns` with the two things that have to happen BEFORE
+    FastAPI validates the body, and therefore cannot live in the handler.
+
+    A route class, not middleware and not a handler change, for one reason: the
+    handler's declared body model is what generates the OpenAPI schema, and that
+    schema is the refusal surface (`is_guaranteed_saving` and `causal_proof` are
+    absent from `TeardownRequest`, and `additionalProperties: false` says so to
+    every generated client). Reading the raw body inside the handler is
+    impossible -- validation has already happened -- and taking a bare `Request`
+    to get at it would delete the schema. This wrapper sees the raw bytes and
+    leaves the contract untouched; `contracts/openapi/milexium-api-v0.1.json` is
+    unchanged by it, which the drift gate proves rather than asserts.
+
+    WHY NOT AN ASYNC JOB + POLL, which is the obvious answer:
+
+    1. **It would need auth this app does not have.** A job id handed back for
+       later collection is a bearer token over an operator's operational data,
+       and this app documents that it has no credential check and no per-request
+       tenant resolution. Async submission would be the first endpoint here to
+       create a server-side artifact someone else could ask for.
+    2. **It would not be async.** The teardown is CPU-bound Python holding the
+       GIL. A `BackgroundTask` or a bare `asyncio` hop runs it on the same event
+       loop, so the request that "returned immediately" blocks every other
+       request for the full duration -- strictly worse than blocking one caller.
+       A real async path needs a process pool or a queue, which is
+       infrastructure this slice does not have and should not fake.
+    3. **The accepted path is 1.5-2.0 s, not 46 s.** `MAX_TEARDOWN_SEGMENTS`
+       already bounds it. Building job submission, status polling, result
+       collection and expiry to move a ~2 s call off the request thread would be
+       a large amount of new state for a latency that is not the defect. The
+       defect was a 31 s refusal and an uncached repeat, and both are fixed here
+       without any state that outlives a request.
+
+    None of that says async is wrong. It says async needs auth, a worker pool
+    and a result store first, and this surface has none of the three. When it
+    does, the SDK's unbounded path -- which is where ADR-0056's 46 s actually
+    lives -- is the thing it should be built for.
+
+    Streaming/progress was rejected on simpler grounds: a teardown produces its
+    answer only at the end, so there is nothing to stream but a spinner.
+    """
+
+    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
+        original = super().get_route_handler()
+
+        async def guarded_and_cached(request: Request) -> Response:
+            # (1) Refuse on size before reading the stream. `content-length` is
+            # advisory, so the same bound is re-checked against the bytes we
+            # actually received; a chunked upload with no header is caught there.
+            declared = request.headers.get("content-length")
+            if declared is not None and declared.isdigit():
+                _refuse_oversize_body(int(declared), measured=False)
+            body = await request.body()
+            _refuse_oversize_body(len(body), measured=True)
+
+            cache: _TeardownResultCache | None = getattr(
+                request.app.state, "teardown_cache", None
+            )
+            if cache is None:
+                response = await original(request)
+                response.headers[TEARDOWN_CACHE_HEADER] = "disabled"
+                return response
+
+            key = hashlib.sha256(body).hexdigest()
+            cached = cache.get(key)
+            if cached is not None:
+                status_code, media_type, payload = cached
+                return Response(
+                    content=payload,
+                    status_code=status_code,
+                    media_type=media_type,
+                    headers={TEARDOWN_CACHE_HEADER: "hit"},
+                )
+
+            response = await original(request)
+            # A refusal is never cached, and the mechanism is worth stating
+            # precisely because it is not this `if`. Every non-200 on this route
+            # -- the count 413, a 422 from validation, the size 413 above -- is
+            # RAISED, and Starlette's exception middleware sits outside this
+            # wrapper, so a refusal never reaches this line at all and never
+            # gets the cache header either. The status check below is therefore
+            # a belt on top of braces: it is what would still hold the line if
+            # someone later made this route return an error Response instead of
+            # raising one. (Which is worth holding: a 413 depends on limits a
+            # redeploy can legitimately change, so replaying one would replay a
+            # refusal that may no longer be true.)
+            payload = getattr(response, "body", None)
+            if response.status_code == 200 and isinstance(payload, bytes):
+                cache.put(key, (response.status_code, response.media_type or "", payload))
+            response.headers[TEARDOWN_CACHE_HEADER] = "miss"
+            return response
+
+        return guarded_and_cached
+
+
+def _refuse_oversize_body(size: int, *, measured: bool) -> None:
+    if size <= MAX_TEARDOWN_BODY_BYTES:
+        return
+    seen = "received" if measured else "declared in content-length"
+    raise HTTPException(
+        status_code=413,
+        detail=(
+            f"request body is {size:,} bytes ({seen}), above this endpoint's ceiling of "
+            f"{MAX_TEARDOWN_BODY_BYTES:,}. It was refused WITHOUT being parsed: the "
+            "segment-count check further in costs a full validation pass over every "
+            "segment, so a body this size would have spent tens of seconds of server "
+            f"time to produce this same refusal. The segment ceiling is "
+            f"{MAX_TEARDOWN_SEGMENTS:,}; split the request by observation window, or "
+            "drive MilexiumClient.teardown_deadhead, which has no ceiling but IS "
+            "synchronous -- MilexiumClient.estimate_teardown_seconds(n) says roughly "
+            "what that will cost before you commit to waiting for it."
+        ),
+    )
 
 
 def in_memory_client(tenant_name: str = "Milexium API in-memory demo tenant") -> MilexiumClient:
@@ -378,14 +660,26 @@ class OperatorExportValidationResponse(BaseModel):
         return value
 
 
-def create_app(client: MilexiumClient | None = None) -> FastAPI:
+def create_app(
+    client: MilexiumClient | None = None,
+    *,
+    teardown_cache_entries: int = DEFAULT_TEARDOWN_CACHE_ENTRIES,
+) -> FastAPI:
     """Build the app over a `MilexiumClient`. The client is injectable so tests
     (and a real deployment swapping the in-memory store for a Postgres-backed
-    one) can supply their own; the default is a single in-memory tenant."""
+    one) can supply their own; the default is a single in-memory tenant.
+
+    `teardown_cache_entries=0` disables the teardown result cache. The cache is
+    per-app, not module-global, so two apps in one process never share one and a
+    test measuring the COLD path can ask for an app that has none.
+    """
     client = client or in_memory_client()
 
     app = FastAPI(title="Milexium API", version=API_VERSION, description=__doc__)
     app.state.client = client
+    app.state.teardown_cache = (
+        _TeardownResultCache(teardown_cache_entries) if teardown_cache_entries > 0 else None
+    )
 
     def get_client() -> MilexiumClient:
         return app.state.client
@@ -489,7 +783,16 @@ def create_app(client: MilexiumClient | None = None) -> FastAPI:
             ),
         )
 
-    @app.post("/teardowns", response_model=DeadheadTeardown, tags=["teardown"])
+    # The teardown endpoint alone gets `_TeardownRoute` -- the pre-parse size
+    # guard and the result cache are wrong for the other endpoints (nothing else
+    # here is expensive enough to be worth caching, and a cache in front of a
+    # store-reading endpoint would serve stale reads). Routed rather than
+    # decorated because a route class is per-router in FastAPI; the path,
+    # operation id, tags and schemas are identical either way, which the
+    # contract-drift gate checks.
+    teardown_router = APIRouter(route_class=_TeardownRoute)
+
+    @teardown_router.post("/teardowns", response_model=DeadheadTeardown, tags=["teardown"])
     async def teardown(
         body: TeardownRequest, c: MilexiumClient = Depends(get_client)
     ) -> DeadheadTeardown:
@@ -511,7 +814,10 @@ def create_app(client: MilexiumClient | None = None) -> FastAPI:
 
         Stateless: no segment, and nothing derived from one, is written to the
         canonical store. Verb POST because the body carries the input, not
-        because anything is created server-side.
+        because anything is created server-side. An identical repeat request may
+        be answered from `_TeardownResultCache` rather than recomputed -- the
+        response body is byte-identical either way, and
+        `x-milexium-teardown-cache` says which happened.
         """
         if len(body.segments) > MAX_TEARDOWN_SEGMENTS:
             raise HTTPException(
@@ -519,9 +825,11 @@ def create_app(client: MilexiumClient | None = None) -> FastAPI:
                 detail=(
                     f"{len(body.segments)} segments exceeds this endpoint's ceiling of "
                     f"{MAX_TEARDOWN_SEGMENTS}. The teardown is not truncated to fit, because a "
-                    "truncated teardown understates every total it reports; drive "
-                    "MilexiumClient.teardown_deadhead directly for a full export, or split the "
-                    "request by observation window."
+                    "truncated teardown understates every total it reports; split the request by "
+                    "observation window, or drive MilexiumClient.teardown_deadhead, which has no "
+                    "ceiling but IS synchronous -- ADR-0056 measured a mid-size operator's YEAR "
+                    "at ~46-55 s, so call MilexiumClient.estimate_teardown_seconds(n) first "
+                    "rather than discovering the wait by waiting."
                 ),
             )
         try:
@@ -633,6 +941,7 @@ def create_app(client: MilexiumClient | None = None) -> FastAPI:
             results=tuple(results),
         )
 
+    app.include_router(teardown_router)
     return app
 
 

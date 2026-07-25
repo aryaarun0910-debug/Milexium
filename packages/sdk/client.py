@@ -61,6 +61,19 @@ if TYPE_CHECKING:
     from packages.verify import ChainViolation
 
 
+TEARDOWN_MICROSECONDS_PER_SEGMENT = (31.3, 92.2)
+"""The measured per-segment cost band of `teardown_deadhead`, low and high.
+
+Straight out of ADR-0056's seven-rung ladder (40k to 5M real NYC TLC FHVHV
+segments on an i7-10510U under memory pressure). The band is wide because the
+ADR is honest about why: wall-clock swung ~2.8x with thermal state on the SAME
+rung, so the ladder proves the absence of superlinear blow-up and nothing
+tighter. It is a measurement of one laptop, not of an operator's server.
+
+Kept as a module constant, and as a range rather than a point, so nothing here
+can be read as a promise. A single number would invite exactly that."""
+
+
 @dataclass(frozen=True)
 class IngestSummary:
     """The structured result of one `ingest` call.
@@ -307,6 +320,35 @@ class MilexiumClient:
             unmeasured_segments=unmeasured_segments,
             unmeasured_reason=unmeasured_reason,
         )
+
+    @staticmethod
+    def estimate_teardown_seconds(segment_count: int) -> tuple[float, float]:
+        """Roughly what `teardown_deadhead` will cost for `segment_count`
+        segments, as a (low, high) range in seconds.
+
+        This exists because of what `teardown_deadhead` is: **synchronous, and
+        unbounded in input size.** The HTTP endpoint refuses above
+        `packages.api.app.MAX_TEARDOWN_SEGMENTS` and points bulk callers here,
+        so this is the path that carries the long wait ADR-0056 found -- a
+        mid-size operator's YEAR is ~300k-600k segments and lands at ~46-55 s.
+        Before this method the only way to learn that was to block for it. It
+        does not make the call faster; it makes the wait a decision.
+
+        NOT A GUARANTEE, and it must not be used as a timeout. It is linear
+        extrapolation from `TEARDOWN_MICROSECONDS_PER_SEGMENT`, which is one
+        laptop's measured band, and ADR-0056 explicitly declines to resolve n
+        from n log n -- so the shape is right and the constant is local. Real
+        hardware, a colder machine or a different segment mix all move it.
+        Memory is the other axis and is not modelled here at all (ADR-0056
+        measured ~1.1 KB/segment all-in, so ~600k segments is ~1 GB).
+
+        Raises ValueError on a negative count -- there is no such input, and
+        returning a negative duration for one would be worse than refusing.
+        """
+        if segment_count < 0:
+            raise ValueError(f"segment_count must not be negative, got {segment_count}")
+        low, high = TEARDOWN_MICROSECONDS_PER_SEGMENT
+        return (segment_count * low / 1e6, segment_count * high / 1e6)
 
     def verify(self, aggregate_id: str) -> "tuple[ChainViolation, ...]":
         """Run the independent hash-chain verifier over this aggregate's raw

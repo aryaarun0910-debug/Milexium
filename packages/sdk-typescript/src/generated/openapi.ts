@@ -179,7 +179,10 @@ export interface paths {
          *
          *     Stateless: no segment, and nothing derived from one, is written to the
          *     canonical store. Verb POST because the body carries the input, not
-         *     because anything is created server-side.
+         *     because anything is created server-side. An identical repeat request may
+         *     be answered from `_TeardownResultCache` rather than recomputed -- the
+         *     response body is byte-identical either way, and
+         *     `x-milexium-teardown-cache` says which happened.
          */
         post: operations["teardown_teardowns_post"];
         delete?: never;

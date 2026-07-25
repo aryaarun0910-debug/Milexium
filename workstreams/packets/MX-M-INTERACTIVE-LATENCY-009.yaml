@@ -1,0 +1,154 @@
+id: MX-M-INTERACTIVE-LATENCY-009
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+maturity: Demonstrated
+adr: null   # the orchestrator writes the ADR; this packet supplies the measurements and the limitations
+extends_adrs:
+  - architecture/decisions/0056-teardown-scale-measurement.md (the evidence; teardown.py MEASURED, never modified -- still byte-identical after this packet)
+  - architecture/decisions/0042-http-sdk-surface.md           (the surface the defect lives on)
+  - architecture/decisions/0039-deadhead-teardown.md          (the analysis, read-only)
+  - architecture/decisions/0026-polyglot-triggers.md          (the trigger that did NOT fire; unchanged)
+result: >
+  Both open entries closed, and MEASURING THE SURFACE MOVED THE DEFECT. ADR-0056
+  recorded "46 s synchronous on the interactive surface". On this machine the
+  ACCEPTED HTTP path was never 46 s -- MAX_TEARDOWN_SEGMENTS already bounded it at
+  1.53 s for a 20,000-segment (2.37 MB) body. What was actually broken was the
+  REFUSAL: the segment-count guard sits inside the handler, so FastAPI validated
+  every segment BEFORE the ceiling was consulted, and a 600,000-segment body --
+  the top of ADR-0056's own operator-year band, the exact request that ADR invites
+  -- burnt 7.4-31.3 s of server CPU to compute nothing and answer 413. Fixed with
+  a pre-parse byte guard (295-411x faster) and a content-addressed result cache
+  keyed on the raw request bytes (33-55x on an identical repeat of a
+  20,000-segment body). Ranges, not points, because the identical measurement run
+  twice on the same code swung 4.2x with nothing but how busy the laptop was --
+  ADR-0056 warned of 2.8x and this beat it. THE COLD PATH IS UNCHANGED: after was
+  1.30x slower on the busy run and 0.89x (faster) on the quiet one, bracketing
+  1.0 in both directions. The cache does add one 26.9 ms SHA-256 per miss, which
+  is arithmetic this instrument cannot resolve. Async job+poll was
+  REJECTED with three reasons (no auth to hand a job id to; a GIL-bound teardown
+  in a BackgroundTask blocks every other request, i.e. strictly worse; and 1.7 s
+  is not the defect). packages/replay/teardown.py is byte-identical. The stale TS
+  client was regenerated, both CI drift gates were proven to go RED and back to
+  GREEN by mutation, and a local half was added in BOTH languages so drift now
+  fails on a developer's machine and not only on a runner. 34 new tests
+  (28 pytest + 6 node); 11 mutation checks, every one GREEN -> RED -> restored.
+  Two of the 11 came back NOT PROVEN on the first pass and both were real: one
+  mutation was a no-op (it deleted only half the guard), and the other exposed
+  that `test_a_refusal_is_never_cached` was asserting an UNREACHABLE branch --
+  refusals are raised past the caching wrapper entirely -- so the test was
+  rewritten to assert that mechanism rather than its symptom.
+objective: >
+  Close the two entries left open under "Still open after this tranche": the
+  teardown latency ADR-0056 found on the ADR-0042 HTTP/SDK surface, and the
+  stale generated TypeScript client with no drift check covering it. Design the
+  latency fix AT THE SURFACE -- ADR-0056 already proved the analysis is linear and
+  that a rewrite would optimise the wrong thing (~50% of its runtime is the
+  optional audit fingerprint), so any change to packages/replay/teardown.py would
+  contradict the ADR's own central claim that it was measured, not modified.
+
+owned_paths:
+  - packages/api/app.py
+  - packages/sdk/{client,__init__}.py
+  - packages/sdk-typescript/test/generated-drift.test.ts
+  - packages/sdk-typescript/README.md
+  - packages/sdk-typescript/src/generated/openapi.ts  (REGENERATION ONLY -- npm run generate -w @milexium/sdk)
+  - contracts/openapi/milexium-api-v0.1.json          (REGENERATION ONLY -- py -3 contracts/generate.py)
+  - conformance/property-tests/test_api_teardown_latency.py
+  - conformance/property-tests/test_api_contract_drift.py
+  - workstreams/packets/MX-M-INTERACTIVE-LATENCY-009.yaml
+read_only_dependencies:
+  - packages/replay/teardown.py (BYTE-IDENTICAL. Read for the purity argument the cache rests on and for the ADR-0056 stage attribution; never edited, never imported differently)
+  - packages/canonical/, packages/connect/, packages/evidence/ (unchanged; the API composes them exactly as before)
+  - .github/workflows/ci.yml (the two drift gates were read and PROVEN, not edited -- they were already correct)
+normative_contracts:
+  - "ADR-0056: the fix is caching or async, NOT a language. teardown.py stays byte-identical."
+  - "ADR-0042: the OpenAPI document is the contract. A latency fix that moved the schema would be a breaking change wearing a performance costume."
+  - "ADR-0019 / blueprint-01: a teardown is a MODELLED localisation. A cache must never change the answer -- proved byte-for-byte, not asserted."
+  - "ADR-0026: this packet does not re-open the polyglot question. It is the surface fix ADR-0056 named."
+required_outputs:
+  - packages/api/app.py (pre-parse byte guard + bounded content-addressed result cache, both on a route class so the OpenAPI schema is untouched)
+  - packages/sdk/client.py (MilexiumClient.estimate_teardown_seconds, so the unbounded synchronous SDK path states its cost before it is paid)
+  - conformance/property-tests/test_api_teardown_latency.py (25 tests)
+  - conformance/property-tests/test_api_contract_drift.py (3 tests -- the CI contract gate, runnable locally)
+  - packages/sdk-typescript/test/generated-drift.test.ts (6 tests -- the CI TS gate's local half)
+  - packages/sdk-typescript/README.md (the drift section, and the client.ts gap named rather than left to be discovered)
+  - regenerated contracts/openapi/milexium-api-v0.1.json and packages/sdk-typescript/src/generated/openapi.ts
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_api_teardown_latency.py -q   # 25 passed"
+  - "py -3 -m pytest conformance/property-tests/test_api_contract_drift.py -q     # 3 passed"
+  - "py -3 -m pytest conformance/property-tests/test_api_teardown.py conformance/property-tests/test_api_endpoints.py conformance/property-tests/test_sdk_loop.py -q  # 37 passed, unchanged"
+  - "py -3 -m pytest packages/ conformance/ -q   # 1832 passed, 0 failed (18m28s). NOTE: the working tree also carried several other agents' concurrent uncommitted work, so 1832 is the state of the tree, not this packet's delta. This packet's own contribution is the 28 new pytest tests."
+  - "npm test -w @milexium/sdk        # 19 passed (13 pre-existing + 6 new)"
+  - "npm run typecheck -w @milexium/sdk  # clean"
+  - "py -3 contracts/generate.py && npm run generate -w @milexium/sdk  # both idempotent; no diff"
+machine_of_record:
+  - "Intel Core i7-10510U @ 1.80GHz, 4 physical / 8 logical cores, 16 GB"
+  - "Python 3.14.2 CPython, Node 24.13.0, Windows 11 (10.0.26200)"
+  - "Same class of machine as ADR-0056's ladder, so the numbers are comparable to it -- and inherit its ~2.8x thermal variance."
+what_it_must_answer:
+  - "WHERE DOES THE 46 s ACTUALLY BITE ON THIS SURFACE? Answer: not on the accepted path (bounded at 1.53 s by an existing ceiling) but on the REFUSAL path (31.27 s of validation to say no) and on every identical repeat (1.53 s each, forever)."
+  - "WHAT DOES THE COLD PATH COST AFTER THE FIX? Answer: the same 1.5-2.0 s. Stated first, not buried under the cache-hit number."
+  - "WHY NOT ASYNC? Answer: three reasons, recorded in _TeardownRoute's docstring, not in a commit message."
+  - "DOES THE CACHE EVER CHANGE THE ANSWER? Answer: no, and the test compares response bytes rather than trusting the argument."
+  - "DOES THE TS DRIFT GATE ACTUALLY GO RED? Answer: proved by injecting a canary path and a type-surface change, observing exit 1, restoring, and re-checking sha256."
+security_and_privacy_invariants:
+  - "packages/replay/teardown.py IS BYTE-IDENTICAL. ADR-0056's central claim is that it was measured, not modified; a latency packet that edited it would retroactively falsify the ADR. Verified by `git diff --exit-code -- packages/replay/`."
+  - "THE CACHE CANNOT CHANGE THE ANSWER. teardown_deadhead reads no clock, no store and no randomness (grep: zero occurrences of datetime.now/utcnow/time.time/random/uuid), so identical request bytes have exactly one correct answer. Asserted by comparing response BYTES between a computed and a replayed response, not by restating the argument."
+  - "THE CACHE IS BOUNDED. 16 entries by default (~700 KB at the 43 KB result size measured at 20,000 segments). An unbounded cache on an endpoint with no auth and no quota is a memory-growth primitive for anyone who can reach it. Eviction is asserted by test; create_app(teardown_cache_entries=0) turns it off entirely."
+  - "THE CACHE IS PER-APP, NOT MODULE-GLOBAL. A module global would leak results between apps in one process AND would make several tests in this packet vacuous. Asserted by test and mutation-checked."
+  - "REFUSALS ARE NEVER CACHED. A 413 depends on limits a redeploy can legitimately change; replaying one would replay a refusal that may no longer hold."
+  - "NO NEW DEPENDENCY. hashlib, threading, collections.OrderedDict -- stdlib. No Redis, no memcached, no process pool."
+  - "THE OPENAPI SCHEMA IS UNTOUCHED BY THE FIX. The route wrapper sees raw bytes without replacing the declared body model, so TeardownRequest still carries additionalProperties:false and still has no is_guaranteed_saving and no causal_proof. Asserted by test AND by the byte-exact contract drift gate."
+failure_injections:
+  - "oversize body that is ALSO syntactically unparseable -> 413 (size), not 422 (parse). The status code is a machine-independent decision procedure for which guard ran first; this is the ordering proof, and it deliberately does not use a stopwatch."
+  - "oversize body whose SEGMENT COUNT is legal (500 segments with very long run_refs) -> still 413 on bytes. Proves the byte ceiling is a second guard, not a restatement of the count ceiling."
+  - "body at exactly MAX_TEARDOWN_SEGMENTS -> still 200. Proves the new guard did not quietly shrink the advertised contract."
+  - "body just over MAX_TEARDOWN_SEGMENTS but under the byte ceiling -> the EXACT count message, not the approximate size one. The cheap guard does not shadow the precise one."
+  - "identical body twice -> byte-identical response, header hit; different body -> miss and a different answer; same segments with a different reduction_fraction -> miss and a different envelope."
+  - "capacity+1 distinct bodies -> the oldest is evicted and the newest survives."
+  - "two apps in one process -> the second never sees the first's cache."
+  - "negative segment_count into estimate_teardown_seconds -> ValueError, rather than a negative duration."
+  - "spec mutated with a canary path -> TS drift gate exit 1; packages/api/app.py mutated on the type surface -> BOTH gates exit 1; restored -> both exit 0 and all three files' sha256 match the start."
+evidence_to_emit:
+  - "before/after, minimum of 5 alternating rounds, BOTH app versions live in ONE process so machine state hits them equally. Run 1 = laptop busy, run 2 = laptop quiet, IDENTICAL CODE. accepted 20,000 segments: 1.530->1.984 / 0.607->0.542. same body repeated: 1.530->0.046 / 0.607->0.011. refused 25,000 (count guard, unchanged by design): 0.595->0.620 / 0.221->0.241. refused 100,000: 3.285->0.019 / 0.952->0.006. refused 600,000: 31.269->0.076 / 7.378->0.025."
+  - "the 4.2x gap between those two runs on the same code is the headline caveat: absolute seconds here describe the laptop. The defensible claims are the RATIOS -- refusal 295-411x, repeat 33-55x, cold path 0.89-1.30x (i.e. unchanged)."
+  - "order-rotated cold-path check, 9 rounds, gc.collect() before each timed call: BEFORE min 1.560 median 2.343; AFTER-miss min 1.708 median 2.594; AFTER-cache-off min 1.291 median 2.507; AFTER-hit min 0.028 median 0.051. The three cold variants are indistinguishable inside a spread that reaches 1.8x on an UNCHANGED variant."
+  - "stage breakdown at the 20,000-segment ceiling: json.loads 0.057s (3.8%), pydantic validate 0.468s (31.0%), teardown analysis 0.984s (65.1%), response dump 0.003s (0.2%). 43,345-byte response."
+  - "cache-key cost: SHA-256 over the 2.37 MB body 26.9 ms (vs 134.8 ms to merely json.loads it, vs 472 ms to hash the VALIDATED model -- which is why the key is the raw bytes)"
+  - "11 mutation checks, each GREEN -> RED -> restored with sha256 verified"
+upstream_blockers: []
+downstream_consumers:
+  - "ADR-0056's open consequence -- this is the 'caching or async' it named, with async explicitly deferred and its three blockers written down"
+  - "the design-partner funnel step 3 (free analysis) -- an operator posting their own export now gets a bounded refusal instead of a 31 s hang"
+  - "any future async job surface -- the three reasons in _TeardownRoute are its prerequisites list, not a rejection of the idea"
+limitations:
+  - "THE COLD PATH IS NOT FIXED. A first-time 20,000-segment teardown still costs 0.54-1.98 s over HTTP depending on machine state, and a first-time operator-year teardown on the SDK still costs ~46-55 s. The cache only ever helps the SECOND identical request. Quoting the 55x without this sentence would be marketing."
+  - "THE SAME BENCHMARK RUN TWICE ON IDENTICAL CODE DIFFERED BY 4.2x. ADR-0056 warned of 2.8x; this exceeded it. Every absolute second in this packet is therefore a property of a 2019 ultrabook under whatever else it was doing, and is quoted as a range. Only the ratios -- both halves measured in the same process seconds apart -- survive that."
+  - "THE CACHE KEY IS BYTE-EXACT, NOT SEMANTIC. The same segments re-serialised with different JSON key order, different whitespace, or +00:00 instead of Z will MISS. The teardown's own segment_sha256 is order-independent and would not, but computing it requires the parse and IS ~50% of the runtime (ADR-0056), so keying on it would save roughly half instead of ~98%. Deliberate trade; a miss is merely slow."
+  - "THE MEASURED SPEEDUP IS ON A LOOPBACK TestClient. No network, no TLS, no serialisation across a socket. On a real deployment the 27 ms hash and the 43 KB response transfer are unchanged but everything is offset by real network time, so the RATIO will be smaller than 55x."
+  - "THIS MACHINE CANNOT RESOLVE THE COLD-PATH REGRESSION THE CACHE ADDS. A miss now also computes one SHA-256 over the raw body (26.9 ms at 20,000 segments -- 1.6% of the busy-run call, 5.0% of the quiet-run call). The measured spread on an UNCHANGED variant reaches 1.8x, so the regression is real, bounded and arithmetic, and invisible to the instrument. Stated as arithmetic, not claimed as a measurement."
+  - "THE BYTE CEILING CAN REFUSE A LEGAL REQUEST. run_ref is an unbounded string, so 20,000 segments with run_refs averaging over ~400 bytes exceed 8 MiB and are refused on size despite a legal count. The 413 says exactly that. 8 MiB was chosen as ~3.4x the measured 20,000-segment body, not tuned."
+  - "THE REFUSAL IS ONLY CHEAP ABOVE THE BYTE CEILING. A body between MAX_TEARDOWN_SEGMENTS and 8 MiB (about 20,001-70,788 segments in the fixture) still pays full validation before the count guard: 0.24-0.62 s at 25,000 and 3.88 s at 70,788. The guard bounds wasted refusal work at a few seconds instead of eliminating it. Lowering the byte ceiling to close that band would start refusing legal 20,000-segment bodies."
+  - "THE 100,000-SEGMENT REFUSAL TEST IS THE SLOWEST THING THIS PACKET ADDS. Building and serialising a 11.85 MB fixture costs a few seconds of the ~40 s test file. It buys the one timing assertion in the suite; a cheaper fixture would have shrunk the 33x margin that keeps that assertion from flapping."
+  - "NO ASYNC PATH EXISTS. A single operator-year teardown is still a synchronous call that blocks its caller. estimate_teardown_seconds makes the wait a decision rather than a surprise; it does not shorten it."
+  - "THE CACHE IS PROCESS-LOCAL AND DIES ON RESTART. There is no shared cache across workers, so an N-worker deployment gets at best a 1/N hit rate on a round-robin load balancer. Not a defect of the design; a property of not having infrastructure."
+  - "TIMING SIDE CHANNEL, NAMED AND JUDGED NEGLIGIBLE. A fast response reveals that someone previously submitted the identical body. To observe it you must already possess the exact input bytes, so it discloses nothing you did not have. Worth naming because the app has no auth at all."
+  - "THE TS DRIFT GATE IS BLIND TO THE SPEC'S info BLOCK. Proved, not assumed: bumping API_VERSION changes the contract JSON and produces a BYTE-IDENTICAL openapi.ts, because openapi-typescript emits only paths/components/operations. Gate B is a 'the generated types moved' detector, not a 'the spec moved' detector; the chain holds only because gate A covers everything upstream. Anything that removes gate A silently halves the coverage."
+  - "THE LOCAL DRIFT HALVES ARE WEAKER THAN CI ON PURPOSE. The pytest gate compares parsed JSON (blind to formatting and to a bumped generator version); the node gate checks path/operation/schema COVERAGE, not byte equality. Both would have caught the historical 835-line staleness locally; neither replaces the byte-exact CI check."
+  - "THE TYPESCRIPT CLIENT STILL CANNOT CALL THE TEARDOWN. src/client.ts has methods for the six decision-loop endpoints only; /teardowns and /operator-exports/validate exist in the generated TYPES but have no client method, so a TypeScript caller cannot reach the endpoint this packet is about without hand-writing a fetch. Out of scope here, and now the most visible gap on that SDK."
+  - "POST /operator-exports/validate HAS THE SAME SHAPE OF DEFECT, UNFIXED. Its MAX_VALIDATION_ROWS guard is also checked after the body is parsed. It is a smaller instance -- list[dict] is far cheaper per row than a Pydantic VehicleSegment -- so it was named in the code and left alone rather than fixed unmeasured."
+  - "SYNTHETIC FIXTURES ONLY. Every segment in the new tests and every benchmark row is generated. No operator has sent Milexium any data, so the status stays Demonstrated; Validated is gated on a consented pilot, not on this work."
+  - "ONE MACHINE, ONE OPERATING SYSTEM. All numbers are Windows 11 / CPython 3.14 on a 2019 ultrabook, and they inherit ADR-0056's warning that wall-clock on this hardware swings ~2.8x with thermal state. The ratios (410x, 55x) are robust to that because both halves were measured in the same process minutes apart; the absolute seconds are not."
+notes: >
+  Did NOT edit packages/replay/**, packages/decide/**, packages/connect/**,
+  packages/core/**, outreach/**, IMPLEMENTATION_STATUS.md, docs/JOURNAL.md, any
+  ADR, .github/workflows/ci.yml, or git (no add, no commit, no push).
+  contracts/openapi/milexium-api-v0.1.json and
+  packages/sdk-typescript/src/generated/openapi.ts were REGENERATED, never
+  hand-edited -- they are downstream artifacts of packages/api/app.py and CI
+  fails if they are not regenerated, so leaving them stale would have opened the
+  exact defect this packet closes. Both diffs are description-only.
+  Two IMPLEMENTATION_STATUS entries are ready to close and are left for the
+  orchestrator: "Teardown latency on the interactive surface (ADR-0056)" and
+  "packages/sdk-typescript/src/generated/openapi.ts is stale".
