@@ -2,6 +2,90 @@
 
 Written at session limit. Read this before touching anything.
 
+---
+
+## UPDATE — second session limit, wave 6 in flight
+
+**Committed since the first handoff:** ADRs 0057–0061 + tranche-5 docs, one commit
+per packet, CI green. HEAD was `7003a41`. Suite ~1900.
+
+**SEVEN packets were still running when this session ended.** Their work is on
+disk, uncommitted, possibly half-written. **Do not `git add -A`.** Run the suite
+first to see what landed, then review and commit **per packet with file-level
+`git add`**. Next free ADR number: **0062**.
+
+| Packet | Owned paths |
+|---|---|
+| A — lifecycle decision record | `packages/canonical/**` |
+| H — intervention evaluation | `packages/replay/**` except `teardown.py` |
+| F — commingled exposure | `packages/decide/**` |
+| Demo — evidence walkthrough | `demo/**`, `docs/DEMO.md`, `artifacts/demo-walkthrough/` |
+| I — third-party verification | `packages/evidence/**` |
+| C — Cal-ITP GTFS block harvest | `packages/estate/**`, `data/catalog/**`, `tools/**` |
+| E — capacity forecast | `packages/forecast/**`, `benchmarks/quality/**` |
+
+### The Kent thread — this is the company's most valuable asset
+
+He replied twice on 2026-07-25, warmly, and: **engages free of charge**, corrected
+his own 2023 position gracefully, and **invited us to evaluate live agency
+deployments** — the only route to consented operator data and therefore to
+**Validated**. A reply is drafted in Gmail answering his two questions (we are
+UK/Loughborough; not yet APTA, joining) and asking for the smallest possible
+thing: before/after operational records for **one** agency.
+
+**The line that defines the opportunity**, verbatim:
+
+> *"I agree with you that there is insufficient new data to support any conclusion
+> that the new software has done any better, but I am persuaded that they are on
+> the right track."*
+
+**And the line that defines the wedge**, verbatim:
+
+> *"reduction in cost due to greater efficiency (and replacement of some human
+> resources with artificial intelligence)"*
+
+At several agencies, decisions formerly made by humans — including trip denials
+and time negotiations — are **now made by an AI**. Under the ADA those are
+appealable acts and the basis of pattern-or-practice findings. So the question
+that lands is **not** "can we improve your algorithms" (he published against that
+framing) but:
+
+> **When the AI denies a wheelchair user's trip, can the agency show why?**
+
+That is a liability his clients acquired this year and have probably not priced,
+and the answer to it is a decision record captured at decision time — Program A's
+lifecycle packet. Frame efficiency as **releasing capacity**, never rationing;
+frame compliance as proving an agency **exceeded** the floor, never that it
+cleared it. Both are his published positions.
+
+### Strategy decided this session: be the referee, not the competitor
+
+Do **not** try to reverse-engineer Trapeze/Ecolane/Via/Spare — proprietary,
+closed, legally messy, losing game. Instead **publish the honest public benchmark
+that does not exist**. ADR-0060 proves optimal DARP solutions at 0.00% gap to our
+own rigorous bound. Nobody in this industry runs a reproducible scoreboard.
+Kent writes **RFP evaluation criteria** — a referee is what his leverage needs,
+and it sidesteps his 2023 objection entirely (we are not polishing the artifact,
+we are measuring whether anything improved).
+
+### YC context
+
+F26 batch IS being announced (GodHands lists "Batch: Fall 2026"); an earlier
+claim in-session that it was unannounced was wrong — it came from reading a
+placeholder directory page. Of four F26 companies reviewed (Simantic, RunInfra,
+Degla, GodHands), **three show no customers** and Degla's headline demo is a
+*simulation*. Founder pedigree, a two-person team, and a **one-sentence
+description** are doing the work in those admissions. Milexium lacks the
+sentence — it has been described three different ways in one session. Candidate:
+**"We prove whether transit software actually worked."**
+
+### Deferred by the founder
+
+Website for Chris — **next session**. Build a comparison against Chris's version,
+then fuse the two. Not started, deliberately.
+
+---
+
 ## Committed, pushed, CI green
 
 | Commit | Packet | ADR |
