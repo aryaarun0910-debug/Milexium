@@ -4,6 +4,61 @@ Written at session limit. Read this before touching anything.
 
 ---
 
+## FINAL STATE AT SESSION CLOSE — read this first
+
+**HEAD = `5125601`. Everything committed is pushed and was CI-green at last
+check.** ADRs 0054–0062. Suite ~1900+.
+
+### START HERE next session, in this order
+
+1. **`py -3 -m pytest -q`** (~10–20 min on a quiet machine). Six packets were
+   mid-flight at close; this tells you what actually landed and what is broken.
+2. **Review each remaining packet's diff separately** and commit **per packet
+   with file-level `git add`** — never `git add -A`, never `git add <dir>`. A
+   directory-level add earlier this month swept a concurrent agent's half-written
+   work into an unrelated commit and left HEAD importing a symbol that did not
+   exist.
+3. **Next free ADR number: 0063.**
+4. **Send the Kent reply** if it is still sitting in Gmail drafts.
+
+### Uncommitted work on disk, by packet
+
+C (Cal-ITP GTFS harvest) **is committed** — `5125601`, ADR-0062, 120 tests. The
+other six were still running:
+
+| Packet | Owned paths | Evidence seen on disk |
+|---|---|---|
+| A — lifecycle decision record | `packages/canonical/**` | `test_lifecycle_record.py`, `test_lifecycle_rls.py` |
+| H — intervention evaluation | `packages/replay/**` except `teardown.py` | `test_intervention_eval.py`, `test_intervention_ntd.py` |
+| F — commingled exposure | `packages/decide/**` | `test_online_commitment.py` |
+| I — third-party pack verification | `packages/evidence/**` | — |
+| E — capacity forecast | `packages/forecast/**`, `benchmarks/quality/**` | `capacity_backtest.{py,json,md}` |
+| Demo — evidence walkthrough | `demo/**`, `docs/DEMO.md`, `artifacts/demo-walkthrough/` | `test_demo_walkthrough.py`, `artifacts/demo-walkthrough/` |
+
+**Do not assume any of it is complete or correct.** Each was told to report
+limitations; those reports are lost with the session, so **re-derive the honest
+limitations from the code and tests** before writing an ADR. Do not write an ADR
+that claims more than you can verify yourself.
+
+**`packages/replay/teardown.py` must stay byte-identical** — ADR-0056's central
+claim is that it was measured, not modified, and its benchmark numbers are pinned
+to those bytes. Check with `git diff --exit-code -- packages/replay/teardown.py`.
+
+### The one claim that must not become false
+
+We told Kent in writing that the platform *"records why each trip received the
+outcome it did — booked, offered, negotiated, denied or late — created at the
+moment of the decision rather than reconstructed afterwards."*
+
+**Verified true at session close**: `packages/canonical/state_machine.py` has the
+normative `ServiceRequestState` machine, `time.py` keeps requested/negotiated/
+scheduled/predicted windows separate, and `decide/ir.py`'s `Denial` carries
+hard-constraint reason codes. What was **missing** is the durable per-request
+history — that is packet A, in flight. If A did not land cleanly, **that gap is
+the top priority**, because it is the one sentence he may ask to see.
+
+---
+
 ## UPDATE — second session limit, wave 6 in flight
 
 **Committed since the first handoff:** ADRs 0057–0061 + tranche-5 docs, one commit
