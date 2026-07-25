@@ -1,0 +1,95 @@
+id: MX-E-SERVE-TIME-DRIFT-007
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+result: >
+  23 new tests (test_serve_time_drift.py), 0 skipped; whole suite 1224 passed.
+  REAL demonstration on the committed NYC Access-A-Ride hourly panel + the real
+  committed aar_model.json booster: serving on the untouched spring-2026
+  validation window against the model's own training-window reference flags
+  drift on 8 of 15 monitored features (month PSI 9.00, tmin_c 0.63, tmax_c 0.43
+  -- all "significant"; plus precip_mm/lag1/lag7/lag14/roll28 on corrected KS),
+  while a random exchangeable split of the SAME training window reports
+  no_drift. That is the winter->spring shift ADR-0030 blamed for the AAR
+  intervals overcovering (98.1% vs a 90% target) -- now detectable AT SERVE
+  TIME instead of in a post-hoc audit.
+objective: >
+  Connect ADR-0034's drift/change-point service to ADR-0030's forecast runtime.
+  Before this packet a model could drift arbitrarily far from its training
+  distribution and the runtime would keep serving confident point estimates
+  wrapped in valid-looking conformal intervals -- silently wrong, with a number
+  that says it is fine. Serve-time drift monitoring now compares the incoming
+  feature distribution against the model's training-window reference and
+  ATTACHES the verdict to the served forecast, including an explicit statement
+  that a drifted interval's coverage guarantee is not supported.
+owned_paths:
+  - packages/forecast/serve_drift.py
+  - packages/forecast/runtime.py (additive: forecast_monitored)
+  - packages/forecast/__init__.py (additive exports)
+  - conformance/property-tests/test_serve_time_drift.py
+  - workstreams/packets/MX-E-SERVE-TIME-DRIFT-007.yaml
+read_only_dependencies:
+  - packages/core/drift.py (PSI / KS -- Program D owns it, ADR-0034; imported, never modified)
+  - packages/core/model_registry.py (champion resolution)
+  - packages/canonical/entities.py (ForecastVintage, ModelVersion)
+  - realdata/panels/aar_hourly_borough.csv.gz (committed, tracked)
+  - realdata/panels/weather_daily.csv (committed, tracked)
+  - realdata/metrics_real.json (the AAR model's train/cal/valid spans)
+  - realdata/train_real_models.py (the feature recipe the reference derivation reproduces)
+  - realdata/output/aar_model.json (gitignored local booster; the end-to-end test skips without it)
+normative_contracts:
+  - blueprint/05-core-model-runtime-and-forecast.md (drift monitoring; champion/challenger)
+  - blueprint/01 + architecture/decisions/0001 (honesty: interval is not a probability or a guarantee)
+  - ADR-0016 (forecast runtime), ADR-0030 (serve-time conformal + the measured overcoverage)
+  - ADR-0034 (drift detection kept SEPARATE from action)
+required_outputs:
+  - packages/forecast/serve_drift.py
+  - packages/forecast/runtime.py::ForecastRuntime.forecast_monitored
+  - conformance/property-tests/test_serve_time_drift.py
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_serve_time_drift.py conformance/property-tests/test_forecast_all_models.py -q  # 39 passed"
+  - "py -3 -m pytest packages/ conformance/ -q  # 1224 passed"
+security_and_privacy_invariants:
+  - "REPORT, DO NOT DECIDE: a drift verdict never blocks, suppresses, widens or rewrites a forecast. MonitoredForecast.vintage is asserted byte-identical to the vintage the unmonitored forecast() path produces, under drift and under no drift. Acting on drift stays with the promotion controller and the operator (ADR-0034)."
+  - "INTERVAL HONESTY: a split-conformal interval is distribution-free only under EXCHANGEABILITY. Under detected drift the served object carries interval_guarantee='unsupported' plus a machine-readable interval_caveat naming the drifted features and refusing the nominal coverage claim. interval_caveat is None ONLY when drift was tested for and not found."
+  - "NO CONFIDENT NO-DRIFT WITHOUT EVIDENCE: status is three-valued. 'insufficient_data' is never folded into 'no_drift' (interval_guarantee='not_assessed', interval_guarantee_supported=False -- untested is not supported)."
+  - "REFERENCE IS DERIVED, NOT INVENTED: ModelVersion carries NO feature reference distribution; reference_from_model_artifact() returns None with a recorded reason rather than fabricating a baseline. Every DriftReference carries a ReferenceProvenance pinning the committed panel by SHA-256, the training window, row counts, subsample seed, the derivation recipe, and any skipped feature."
+  - "Program D's drift.py is imported read-only -- no second PSI/KS implementation exists to drift out of sync with the first."
+  - "No new dependencies (numpy/pandas/pydantic already present); no raw PII (features are aggregate public panels)."
+failure_injections:
+  - "in-distribution serve -> no_drift + unqualified interval (caveat is None)"
+  - "deliberately shifted features -> drift AND interval guarantee flagged unsupported"
+  - "forecast still returned in BOTH cases, and identical to the unmonitored serve (asserted explicitly, parametrized over both)"
+  - "1 / 0 / 5 / 29 serving rows -> insufficient_data, never a confident no_drift; boundary at exactly 30 does yield a verdict"
+  - "thin reference (10 rows) -> insufficient_data"
+  - "feature absent from the serving window -> computable=False with a note, not silently 'agrees with reference'"
+  - "constant reference feature -> PSI's bin edges collapse (Program D raises); recorded as a per-feature note, KS still runs, verdict survives"
+  - "hostile serving window (NaNs, unknown keys) -> a verdict, not an exception; forecast still served"
+  - "categorical zone column -> skipped with a recorded reason, never coerced to floats to manufacture a statistic"
+  - "30 independent in-distribution serves -> Bonferroni-corrected per-feature KS alpha keeps the false-drift rate low (uncorrected, 15 features at alpha=0.05 would flag a healthy serve ~half the time)"
+compatibility_matrix:
+  - "REAL DATA, labelled in-artifact: reference derived from the committed AAR borough-hour panel over the model's training window (<= 2025-09-03, 71,760 rows, subsampled to 5,000 with seed 0); serving window = the untouched spring-2026 validation window (10,800 rows) -> drift on 8/15 features; exchangeable random split of the training window (4,000 rows) -> no_drift."
+  - "REAL end-to-end: the committed aar_model.json booster (hash-verified by the runtime) serves a real spring-2026 forecast whose MonitoredForecast carries the drift verdict and the interval caveat on the same object as the point estimate."
+  - "SYNTHETIC cases (seeded numpy + a throwaway in-process booster) are labelled synthetic, and a synthetic reference reports is_traceable=False so a demonstration cannot masquerade as a derivation off committed data."
+evidence_to_emit:
+  - "23 tests in conformance/property-tests/test_serve_time_drift.py (0 skipped locally); 39 with test_forecast_all_models.py; 1224 whole-suite"
+  - "real AAR per-feature PSI/KS table (month 9.00 significant, tmin_c 0.63, tmax_c 0.43; 8/15 flagged) + the no_drift exchangeable control"
+  - "MonitoredForecast.summary() renders the point estimate, the interval, the caveat and the reference citation on one line -- the number and the warning are never separable"
+upstream_blockers: []
+downstream_consumers:
+  - "packages/core/promotion.py -- the controller that DECIDES what to do about a drift verdict this monitor only reports"
+  - "SDK / HTTP API forecast surface (a served interval should render its caveat)"
+  - "packages/evidence -- a drift verdict is auditable serve-time context for a forecast"
+limitations:
+  - "The reference is derived from the committed panel because ModelVersion cannot carry one. A future canonical field (Program A) would let the artifact ship its own reference and make the derivation unnecessary; until then the provenance record is what makes the baseline auditable."
+  - "Covariate (input) drift only. Concept drift -- the X->y relationship changing while the input distribution holds -- is NOT detected here; that needs eventual actuals and belongs with the promotion controller's evaluation gate."
+  - "Continuous features only. The trailing zone column of every zone-hour schema (borough/area/route/station_id) is categorical and is skipped with a recorded reason; a chi-square-style categorical drift test is not built."
+  - "packages.core.drift.cusum_change_point is deliberately NOT wired in: CUSUM monitors a metric STREAM over time, which is a different surface from a point-in-time serving batch. Serve-time streaming drift stays Specified."
+  - "The monitor detects that the exchangeability assumption is violated; it does not repair it. Serve-time recalibration under drift (weighted/adaptive conformal) is not built -- the interval is reported unchanged with its guarantee withdrawn, which is the honest option, not the useful one."
+  - "MIN_ROWS_FOR_STABLE_STATISTIC = 30 and the PSI band thresholds are Program D's industry rules of thumb, not operator-calibrated; the false-drift rate is measured on seeded synthetic serves only."
+  - "Status: Demonstrated on real aggregate public data. Never operator-Validated."
+notes: >
+  Did not touch packages/core/** (drift.py and model_registry.py imported
+  read-only), packages/connect, data/, canonical, replay, evidence, api, sdk,
+  contracts, pyproject, CI, IMPLEMENTATION_STATUS, JOURNAL, any ADR, or git.
+  Existing forecast/conformal conformance files are unchanged and still pass.

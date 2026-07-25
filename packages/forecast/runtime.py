@@ -27,6 +27,11 @@ from packages.canonical.time import _require_utc
 from packages.core.model_registry import ModelRegistry
 from packages.forecast.conformal import ConformalCalibration
 from packages.forecast.features import feature_names_for
+from packages.forecast.serve_drift import (
+    DriftReference,
+    MonitoredForecast,
+    assess_drift,
+)
 
 
 class NoChampionError(LookupError):
@@ -185,3 +190,54 @@ class ForecastRuntime:
             interval_high=high,
             eventual_actual=None,
         )
+
+    def forecast_monitored(
+        self,
+        task: str,
+        feature_row: dict,
+        *,
+        horizon_start: datetime,
+        horizon_end: datetime,
+        issued_at: datetime,
+        reference: DriftReference,
+        serving_window: list[dict] | None = None,
+        interval_half_width: float | None = None,
+        calibration: ConformalCalibration | None = None,
+    ) -> MonitoredForecast:
+        """Serve a forecast with a serve-time drift verdict ATTACHED.
+
+        Identical to `forecast` in what it predicts -- the returned
+        `MonitoredForecast.vintage` is exactly the vintage `forecast` would have
+        produced -- plus a `DriftVerdict` comparing the incoming feature
+        distribution against `reference`, the model's training-window baseline
+        (packages.forecast.serve_drift).
+
+        REPORT, DO NOT DECIDE. Drift never blocks, suppresses, widens or
+        rewrites the forecast; ADR-0034 kept detection separate from action so
+        a monitor cannot silently change what serves. Under detected drift the
+        result carries `interval_caveat`, an explicit statement that the
+        conformal interval's coverage guarantee is NOT supported, because that
+        guarantee holds only under exchangeability -- the very assumption
+        detected drift contradicts.
+
+        `serving_window` is the batch of recent feature rows the distribution
+        test runs on. A single feature row cannot support a PSI or a KS
+        statistic, so when it is omitted the window defaults to `[feature_row]`
+        and the verdict is honestly `insufficient_data` -- never a confident
+        `no_drift` inferred from one point.
+        """
+        vintage = self.forecast(
+            task,
+            feature_row,
+            horizon_start=horizon_start,
+            horizon_end=horizon_end,
+            issued_at=issued_at,
+            interval_half_width=interval_half_width,
+            calibration=calibration,
+        )
+        verdict = assess_drift(
+            reference,
+            serving_window if serving_window is not None else [feature_row],
+            target_coverage=calibration.target_coverage if calibration is not None else None,
+        )
+        return MonitoredForecast(vintage=vintage, drift=verdict)

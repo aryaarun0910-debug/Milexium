@@ -18,12 +18,21 @@ individual dispatch decisions -- the runtime records the numbers, it does not
 upgrade their status. Everything here is Demonstrated on public data; nothing
 becomes Validated without consented operator data.
 
-v0.2 scope: batch point-in-time prediction + interval + ForecastVintage
+v0.3 scope: batch point-in-time prediction + interval + ForecastVintage
 emission, gated on registry resolution and artifact hash verification, for
 every real model (AAR / Chicago TNP / MTA bus / MTA subway), with serve-time
 split-conformal prediction intervals at a target coverage (packages.forecast.
-conformal). Not built (Specified): online/streaming inference, drift/
-change-point services, model routing beyond champion lookup.
+conformal), and serve-time DRIFT MONITORING attached to the served forecast
+(packages.forecast.serve_drift): the incoming feature distribution is compared
+against the model's training-window reference using Program D's drift service
+(packages.core.drift, imported read-only), and a drifted forecast carries an
+explicit statement that its conformal interval's coverage guarantee is not
+supported -- because that guarantee holds only under exchangeability, which is
+precisely what detected drift contradicts. The monitor REPORTS; it never
+blocks, suppresses or rewrites a forecast (acting on drift belongs to the
+promotion controller and the operator, ADR-0034). Not built (Specified):
+online/streaming inference, categorical (zone-column) drift tests, serve-time
+recalibration under drift, model routing beyond champion lookup.
 """
 
 from packages.forecast.conformal import (
@@ -40,6 +49,22 @@ from packages.forecast.runtime import (
     ModelArtifact,
     NoChampionError,
 )
+from packages.forecast.serve_drift import (
+    ARTIFACT_CARRIES_NO_REFERENCE_REASON,
+    DEFAULT_KS_FAMILY_ALPHA,
+    DEFAULT_MAX_REFERENCE_SAMPLE,
+    MIN_ROWS_FOR_STABLE_STATISTIC,
+    DriftReference,
+    DriftVerdict,
+    FeatureDriftResult,
+    MonitoredForecast,
+    ReferenceProvenance,
+    assess_drift,
+    derive_reference_from_frame,
+    derive_reference_from_rows,
+    reference_from_model_artifact,
+    sha256_of_file,
+)
 
 __all__ = [
     "FEATURE_SCHEMAS",
@@ -54,6 +79,20 @@ __all__ = [
     "fit_two_sided_conformal",
     "fit_conformal_from_predictions",
     "empirical_coverage",
+    "ARTIFACT_CARRIES_NO_REFERENCE_REASON",
+    "DEFAULT_KS_FAMILY_ALPHA",
+    "DEFAULT_MAX_REFERENCE_SAMPLE",
+    "MIN_ROWS_FOR_STABLE_STATISTIC",
+    "DriftReference",
+    "DriftVerdict",
+    "FeatureDriftResult",
+    "MonitoredForecast",
+    "ReferenceProvenance",
+    "assess_drift",
+    "derive_reference_from_frame",
+    "derive_reference_from_rows",
+    "reference_from_model_artifact",
+    "sha256_of_file",
 ]
 
-CONTRACT_VERSION = "0.2.0"
+CONTRACT_VERSION = "0.3.0"
