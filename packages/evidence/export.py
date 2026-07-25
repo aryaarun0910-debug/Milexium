@@ -18,6 +18,15 @@ Field masking here is for sharing convenience, NOT HIPAA de-identification
 (blueprint 10) -- combinations of remaining fields can still re-identify, and
 the pack says so.
 
+Masking walks the WHOLE pack. ADR-0044 recorded the defect this replaced: the
+mask was applied to `raw_events` only, so the same values rode out untouched in
+`evidence` (the `EvidencePacket` dump, which embeds every event payload) -- a
+"redacted" pack still carrying what it claimed to have removed, silently. The
+walk here follows the data rather than a list of places the author remembered,
+`verify_evidence_pack` RE-DERIVES whether the masking claim actually holds
+instead of believing the manifest, and a post-redaction scan reports, in the
+artifact itself, any value masking could not reach.
+
 A pack may also carry a **deadhead teardown** (ADR-0039) -- the specific,
 checkable finding about a partner's own operation. It is carried the same way
 everything else here is carried: with its inputs embedded, so
@@ -45,6 +54,13 @@ from packages.evidence.teardown_evidence import (
 from packages.verify.hash_chain_verifier import verify_chain
 
 PACK_VERSION = "0.1.0"
+
+REDACTED_MARKER = "[REDACTED]"
+"""What a masked payload value becomes, everywhere in the pack. Deliberately a
+stated mask and never `None`, for the same reason
+`packages.evidence.teardown_evidence.REDACTED_RUN_REF` is: `None` would claim
+the source never carried the field, turning a redaction into a false statement
+about the data."""
 
 
 class PackManifest(BaseModel):
@@ -174,6 +190,136 @@ def build_evidence_pack(events, raw_rows, outcome=None, teardown=None) -> Eviden
     )
 
 
+# --------------------------------------------------------------------------- #
+# Masking: one walk, used to redact and RE-DERIVED to check the redaction held  #
+# --------------------------------------------------------------------------- #
+
+
+def _parsed_payload(row: dict) -> object:
+    """One raw event row's payload as data. `{}` when it cannot be read -- the
+    pre-existing behaviour, kept: an unreadable payload is masked down to
+    nothing rather than passed through unexamined."""
+    try:
+        return json.loads(row["payload_json"])
+    except (json.JSONDecodeError, TypeError, KeyError):
+        return {}
+
+
+def _mask_named_keys(value: object, keys: frozenset[str]) -> object:
+    """Return a copy of `value` with every named key masked WHEREVER it appears
+    -- at any depth, through dicts and lists alike.
+
+    Shape-agnostic on purpose. The defect this fixes (ADR-0044) was masking a
+    remembered list of places instead of the artifact, so a payload embedded
+    somewhere the masker did not know about survived redaction. A walk that
+    follows the data cannot go stale when the shape of `evidence` changes.
+
+    A named key present with a null value is masked like any other: the caller
+    said this key's values do not leave, and `redact_pack` has always masked
+    whatever was there.
+    """
+    if isinstance(value, dict):
+        return {
+            key: REDACTED_MARKER if key in keys else _mask_named_keys(item, keys)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_mask_named_keys(item, keys) for item in value]
+    return value
+
+
+def _named_payload_keys(redacted_fields: tuple[str, ...]) -> frozenset[str]:
+    """The bare payload key names out of a manifest's `redacted_fields`.
+
+    `redacted_fields` also carries structural path entries for a teardown's run
+    identifiers (`teardown.segments[].run_ref`); those are not payload keys, and
+    their masking is recorded by `TeardownEvidence.run_refs_redacted` and
+    reported on by `rederive_teardown`, not here.
+    """
+    return frozenset(f for f in redacted_fields if "." not in f and "[" not in f)
+
+
+def _unmasked_named_key_paths(pack: "EvidencePack", keys: frozenset[str]) -> tuple[str, ...]:
+    """Every place in `pack` where a key the manifest CLAIMS is redacted still
+    holds something other than the mask. Re-derived by walking the pack; the
+    manifest's own claim is never the evidence for itself."""
+    if not keys:
+        return ()
+    unmasked: list[str] = []
+
+    def walk(node: object, path: str) -> None:
+        if isinstance(node, dict):
+            for key, item in node.items():
+                where = f"{path}.{key}" if path else key
+                if key in keys:
+                    if item != REDACTED_MARKER:
+                        unmasked.append(where)
+                    continue
+                walk(item, where)
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                walk(item, f"{path}[{index}]")
+
+    walk(pack.evidence, "evidence")
+    walk(pack.outcome, "outcome")
+    for index, row in enumerate(pack.raw_events):
+        walk(_parsed_payload(row), f"raw_events[{index}].payload")
+    return tuple(unmasked)
+
+
+def _sensitive_string_values(pack: "EvidencePack", keys: frozenset[str]) -> frozenset[str]:
+    """Every non-empty string the mask is about to remove, read off the ORIGINAL
+    pack so the post-redaction scan knows what to look for. Strings nested under
+    a named key count: masking replaces the whole subtree, so everything in it
+    is a value that must not survive anywhere."""
+    if not keys:
+        return frozenset()
+    found: set[str] = set()
+
+    def walk(node: object, masked: bool) -> None:
+        if isinstance(node, dict):
+            for key, item in node.items():
+                walk(item, masked or key in keys)
+        elif isinstance(node, (list, tuple)):
+            for item in node:
+                walk(item, masked)
+        elif masked and isinstance(node, str) and node:
+            found.add(node)
+
+    walk(pack.evidence, False)
+    walk(pack.outcome, False)
+    for row in pack.raw_events:
+        walk(_parsed_payload(row), False)
+    return frozenset(found)
+
+
+def _residual_value_paths(node: object, values: frozenset[str]) -> tuple[str, ...]:
+    """Paths of every string in an already-redacted pack that still CONTAINS a
+    value the masking removed.
+
+    Reports locations only, never the value -- a leak report that quoted the
+    leak would be one. Compares string values only: a masked number or boolean
+    is indistinguishable from unrelated content (a sequence number, a `true`),
+    and a scan that flagged those would cry wolf on every pack.
+    """
+    if not values:
+        return ()
+    found: list[str] = []
+
+    def walk(item: object, where: str) -> None:
+        if isinstance(item, dict):
+            for key, child in item.items():
+                walk(child, f"{where}.{key}" if where else key)
+        elif isinstance(item, list):
+            for index, child in enumerate(item):
+                walk(child, f"{where}[{index}]")
+        elif isinstance(item, str) and any(value in item for value in values):
+            found.append(where or "<root>")
+
+    walk(node, "")
+    return tuple(found)
+
+
 class PackVerification(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -182,6 +328,16 @@ class PackVerification(BaseModel):
     chain_reverified: bool
     chain_violations: tuple[str, ...]
     reasons: tuple[str, ...]
+
+    masking_complete: bool | None = None
+    """RE-DERIVED, never read from the manifest: True when every payload key the
+    manifest lists as redacted is masked at EVERY occurrence in the pack, False
+    when one still holds an unmasked value, None when the manifest names no
+    redacted payload key (nothing to check -- deliberately distinct from "checked
+    and clean"). A pack that CLAIMS a redaction it did not perform fails here."""
+
+    unmasked_paths: tuple[str, ...] = ()
+    """Where an unmasked occurrence survives. Paths only, never values."""
 
     teardown_present: bool = False
     teardown_figures_rederived: bool | None = None
@@ -286,17 +442,38 @@ def verify_evidence_pack(pack: EvidencePack) -> PackVerification:
         # A check that was skipped by design is reported, never left implicit.
         reasons.extend(f"teardown: {r}" for r in teardown.reasons)
 
+    # The manifest's redaction claim is re-derived from the pack, not believed:
+    # "this was redacted" is exactly the kind of claim that failed silently
+    # before (ADR-0044), so it is checked like every other claim here.
+    masked_keys = _named_payload_keys(pack.manifest.redacted_fields)
+    unmasked_paths = _unmasked_named_key_paths(pack, masked_keys)
+    masking_complete: bool | None = None if not masked_keys else not unmasked_paths
+    reasons.extend(
+        f"redaction: {path} still holds an unmasked value for a key the manifest "
+        "lists as redacted"
+        for path in unmasked_paths
+    )
+
     if not pack.manifest.independently_verifiable:
         reasons.append(
             "pack is marked non-independently-verifiable (redacted); chain "
             "re-verification is not possible on masked events by design"
         )
+        if masked_keys:
+            reasons.append(
+                "redaction: the embedded EvidencePacket's per-event hashes and its "
+                "integrity_verified flag were computed over the ORIGINAL payloads, "
+                "so on a masked pack they record what was checked at export and are "
+                "not re-checkable from these bytes"
+            )
         return PackVerification(
             reverified=False,
             bundle_hash_matches=bundle_hash_matches,
             chain_reverified=False,
             chain_violations=(),
             reasons=tuple(reasons),
+            masking_complete=masking_complete,
+            unmasked_paths=unmasked_paths,
             teardown_present=pack.teardown is not None,
             teardown_figures_rederived=teardown.figures_rederived,
             teardown_fingerprint_rederived=teardown.fingerprint_rederived,
@@ -309,11 +486,20 @@ def verify_evidence_pack(pack: EvidencePack) -> PackVerification:
         reasons.extend(f"{v.kind} at seq {v.sequence}: {v.detail}" for v in violations)
 
     return PackVerification(
-        reverified=bundle_hash_matches and chain_reverified and teardown.passed,
+        reverified=(
+            bundle_hash_matches
+            and chain_reverified
+            and teardown.passed
+            # A pack claiming a redaction it did not perform is not re-verified,
+            # whatever else holds: the claim is part of what the pack asserts.
+            and masking_complete is not False
+        ),
         bundle_hash_matches=bundle_hash_matches,
         chain_reverified=chain_reverified,
         chain_violations=tuple(f"{v.kind}:{v.detail}" for v in violations),
         reasons=tuple(reasons),
+        masking_complete=masking_complete,
+        unmasked_paths=unmasked_paths,
         teardown_present=pack.teardown is not None,
         teardown_figures_rederived=teardown.figures_rederived,
         teardown_fingerprint_rederived=teardown.fingerprint_rederived,
@@ -329,6 +515,34 @@ _REDACTED_NOTE = (
     "tampering with the redacted pack as a whole."
 )
 
+_REDACTED_EVERYWHERE_CLAUSE = (
+    " Masking covers EVERY occurrence of a named key in this pack, at any "
+    "nesting depth: the raw event payloads, the embedded EvidencePacket "
+    "(`evidence`), and the outcome -- not raw_events alone. Consequence: that "
+    "EvidencePacket's per-event hashes and its integrity_verified flag were "
+    "computed over the ORIGINAL payloads, so here they record what was checked "
+    "at export and are NOT re-checkable from these bytes; verify_evidence_pack "
+    "reports that rather than re-running a check masked content cannot pass."
+)
+
+_REDACTION_SCAN_CLEAN = (
+    " A post-redaction scan of this pack's own serialized bytes found no masked "
+    "string value surviving anywhere in it. The scan compares string values "
+    "only: a masked number or boolean is indistinguishable from unrelated "
+    "content, so it is not scanned for."
+)
+
+_REDACTION_SCAN_RESIDUE = (
+    " WARNING -- this pack is NOT fully masked: a post-redaction scan found a "
+    "value the masking removed still present as free text at {paths}. Key-based "
+    "masking cannot reach a value that was copied into a string elsewhere (a "
+    "validation-error message quoting it, an identifier that happens to equal "
+    "it). It is stated here, in the artifact, rather than left for the recipient "
+    "to discover."
+)
+
+_RESIDUE_PATHS_SHOWN = 5
+
 _REDACTED_TEARDOWN_CLAUSE = (
     " The carried teardown's run identifiers are masked in both its ranking and "
     "its embedded segments, so no run leaves in this pack. Its minute and money "
@@ -340,46 +554,58 @@ _REDACTED_TEARDOWN_CLAUSE = (
 
 
 def redact_pack(pack: EvidencePack, sensitive_payload_keys: tuple[str, ...]) -> EvidencePack:
-    """Return a shareable copy with the named payload keys masked in every
-    embedded event, and every run identifier masked in a carried teardown.
-    Explicitly marks the result non-independently-verifiable (masking breaks
-    chain re-verification) and re-anchors the bundle checksum over the redacted
-    content so the redacted pack is still tamper-evident as a whole -- just not
-    chain-verifiable per event.
+    """Return a shareable copy with the named payload keys masked EVERYWHERE
+    they appear -- in every embedded raw event, in the embedded EvidencePacket
+    (`evidence`), and in the outcome -- and every run identifier masked in a
+    carried teardown. Explicitly marks the result non-independently-verifiable
+    (masking breaks chain re-verification) and re-anchors the bundle checksum
+    over the redacted content so the redacted pack is still tamper-evident as a
+    whole -- just not chain-verifiable per event.
+
+    The whole-pack walk is the point (ADR-0044). Masking `raw_events` alone left
+    the same values in `evidence`, which embeds every event payload, so the
+    artifact built specifically to be shareable still carried what it said it
+    had removed. Nothing here enumerates places to mask; it follows the data, so
+    a new payload-bearing field cannot silently reopen the leak.
 
     Teardown run identifiers are masked unconditionally rather than on request:
     a run reference is the operator's own operational identifier, and the
     redacted pack is the copy that leaves the building. (Nothing rider-linked is
     masked because a segment structurally cannot carry anything rider-linked --
-    see `packages/evidence/teardown_evidence.py`.)
+    see `packages/evidence/teardown_evidence.py`.) The teardown is masked by its
+    own module and is NOT walked for payload keys: its models carry fixed
+    structural fields that cannot hold an event payload.
 
     This is field masking for sharing, NOT HIPAA de-identification: remaining
-    fields may still re-identify. The manifest note says so.
+    fields may still re-identify. The manifest note says so, and also states the
+    result of a post-redaction scan for any masked value the walk could not
+    reach -- an incomplete redaction is reported, never left silent.
     """
+    keys = frozenset(sensitive_payload_keys)
+    removed_values = _sensitive_string_values(pack, keys)
+
     masked_events = []
     for row in pack.raw_events:
         new_row = dict(row)
         if "payload_json" in new_row:
-            try:
-                payload = json.loads(new_row["payload_json"])
-            except (json.JSONDecodeError, TypeError):
-                payload = {}
-            for key in sensitive_payload_keys:
-                if key in payload:
-                    payload[key] = "[REDACTED]"
-            new_row["payload_json"] = canonical_json(payload)
+            new_row["payload_json"] = canonical_json(
+                _mask_named_keys(_parsed_payload(new_row), keys)
+            )
         masked_events.append(new_row)
     masked = tuple(masked_events)
+
+    masked_evidence = _mask_named_keys(pack.evidence, keys)
+    masked_outcome = _mask_named_keys(pack.outcome, keys) if pack.outcome is not None else None
 
     teardown = None if pack.teardown is None else redact_teardown_evidence(pack.teardown)
     teardown_dump = teardown.model_dump(mode="json") if teardown is not None else None
     redacted_fields = tuple(sensitive_payload_keys)
-    note = _REDACTED_NOTE
+    note = _REDACTED_NOTE + _REDACTED_EVERYWHERE_CLAUSE
     if teardown is not None:
         redacted_fields += ("teardown.top_runs[].run_ref", "teardown.segments[].run_ref")
         note += _REDACTED_TEARDOWN_CLAUSE
 
-    bundle_sha256 = _bundle_hash(pack.evidence, masked, pack.outcome, teardown_dump)
+    bundle_sha256 = _bundle_hash(masked_evidence, masked, masked_outcome, teardown_dump)
     manifest = pack.manifest.model_copy(
         update={
             "bundle_sha256": bundle_sha256,
@@ -388,6 +614,27 @@ def redact_pack(pack: EvidencePack, sensitive_payload_keys: tuple[str, ...]) -> 
             "note": note,
         }
     )
-    return pack.model_copy(
-        update={"manifest": manifest, "raw_events": masked, "teardown": teardown}
+    redacted = pack.model_copy(
+        update={
+            "manifest": manifest,
+            "evidence": masked_evidence,
+            "raw_events": masked,
+            "outcome": masked_outcome,
+            "teardown": teardown,
+        }
+    )
+
+    # Scan the redacted pack as a recipient would read it. Only the note differs
+    # between what is scanned and what is returned, and the note carries paths,
+    # never values, so it can neither hide nor become a leak.
+    residue = _residual_value_paths(redacted.model_dump(mode="json"), removed_values)
+    if residue:
+        shown = ", ".join(residue[:_RESIDUE_PATHS_SHOWN])
+        if len(residue) > _RESIDUE_PATHS_SHOWN:
+            shown += f" (+{len(residue) - _RESIDUE_PATHS_SHOWN} more)"
+        note += _REDACTION_SCAN_RESIDUE.format(paths=shown)
+    else:
+        note += _REDACTION_SCAN_CLEAN
+    return redacted.model_copy(
+        update={"manifest": redacted.manifest.model_copy(update={"note": note})}
     )
