@@ -42,17 +42,38 @@ a third persistent Program D store exists.
 `packages/canonical` ships the same contract as TWO classes
 (`SqliteCanonicalStore` / `PostgresCanonicalStore`) because its PostgreSQL half
 carries row-level security the SQLite half cannot have (ADR-0018), so the two
-genuinely diverge. Program D's stores have no tenant dimension and therefore no
-RLS: the ONLY engine difference is the DB-API placeholder and how a connection
-is opened. Duplicating the SQL to mirror the canonical file layout would buy
-nothing and would let the two copies drift; instead the store logic exists once
-over an engine-parametrised `CoreDatabase`, opened by
-`CoreDatabase.sqlite(...)` or `CoreDatabase.postgres(...)`. What the canonical
-pattern actually asserts -- one contract, two engines, proven by
-`[sqlite]`/`[postgres]`-parametrised conformance
+genuinely diverge. Program D's store logic instead exists ONCE over an
+engine-parametrised `CoreDatabase`, opened by `CoreDatabase.sqlite(...)` or
+`CoreDatabase.postgres(...)`: the per-engine difference is confined to the
+DB-API placeholder, how a connection is opened, and (PostgreSQL only) applying
+`core_rls_postgres.sql` and setting the session GUC. Duplicating the store logic
+to mirror the canonical file layout would buy nothing and would let the two
+copies drift. What the canonical pattern actually asserts -- one contract, two
+engines, proven by `[sqlite]`/`[postgres]`-parametrised conformance
 (`conformance/property-tests/test_core_persistence.py`) -- is preserved, and
 contract drift between engines becomes structurally impossible rather than
 merely tested for.
+
+TENANT SCOPING (MX-D-TENANT-ISOLATION-006, closing an ADR-0041 limitation).
+`PersistentFeatureStore` is constructed FOR ONE TENANT and cannot be constructed
+without one -- `tenant_id` is a required constructor argument, not an optional
+per-call parameter, so there is no way to reach the table unscoped. Every
+statement it issues names `tenant_id`, and on PostgreSQL every operation also
+sets the `milexium.tenant_id` GUC that
+`packages/core/sql/core_rls_postgres.sql`'s policies key on, so the boundary is
+enforced by the DATABASE and the WHERE clause is the second of two independent
+boundaries rather than the only one. See
+`conformance/property-tests/test_core_tenant_isolation.py`, which proves the
+policy with the WHERE clause deliberately deleted.
+
+The IN-MEMORY `FeatureStore` above stays tenant-free ON PURPOSE. It is a
+reference implementation held in one process by one caller, with no shared
+table for a second operator's rows to sit in -- the entire gap being closed here
+is that a shared TABLE existed. Giving it a tenant parameter would add a
+dimension it cannot enforce (a Python dict key is not a boundary) and would
+break the method-for-method signature parity `test_core_persistence.py` checks
+structurally. The tenant therefore enters through the constructor, which that
+parity check already excludes, and the two classes stay honestly comparable.
 
 The leakage guarantee survives persistence because the strict `<` is evaluated
 by the DATABASE: `knowledge_time < :as_of` is a SQL predicate over fixed-width
@@ -60,6 +81,9 @@ canonical ISO-8601 UTC text (`_iso_utc`), whose lexicographic order is its
 chronological order. A future row is never fetched and then filtered in Python
 -- it is never fetched at all. `conformance/property-tests/test_core_persistence.py`
 re-runs the ADR-0034 mechanical future-corruption discipline through this path.
+Tenant scoping does not weaken it: `tenant_id = ?` is an ADDITIONAL conjunct on
+the same predicate, so a read returns the INTERSECTION of "my tenant's rows" and
+"strictly in the past" and neither conjunct can rescue a row the other excludes.
 """
 
 from __future__ import annotations
@@ -71,9 +95,14 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
+from packages.canonical.ids import TenantId
 from packages.canonical.time import UtcDateTime, _require_utc
 
 CORE_SCHEMA_PATH = Path(__file__).parent / "sql" / "core_v0_1.sql"
+# Postgres-only: RLS is not in the portable subset, so it is a separate file
+# applied only by `CoreDatabase.postgres`, exactly as packages/canonical splits
+# schema_v0_1.sql from rls_postgres.sql.
+CORE_RLS_PATH = Path(__file__).parent / "sql" / "core_rls_postgres.sql"
 
 # ADR-0006: the local dev role is `milexium_dev`, never the Postgres superuser,
 # and its password is read from the user profile at connection time -- never
@@ -211,9 +240,10 @@ class CoreDatabase:
     """A connection to a database carrying `packages/core/sql/core_v0_1.sql`.
 
     The single point at which SQLite and PostgreSQL differ for Program D: the
-    DB-API placeholder (`?` vs `%s`), how the DDL is applied, and (PostgreSQL
-    only) the disposable per-instance schema. Every statement above this class
-    is written once, with `?` placeholders, and runs on both engines.
+    DB-API placeholder (`?` vs `%s`), how the DDL is applied, (PostgreSQL only)
+    the disposable per-instance schema, and (PostgreSQL only) row-level
+    security. Every statement above this class is written once, with `?`
+    placeholders, and runs on both engines.
 
     PostgreSQL instances get a dedicated schema (`mx_core_<uuid>` by default),
     created at construction and torn down by `drop_schema()` -- the same
@@ -222,6 +252,17 @@ class CoreDatabase:
     disposable `:memory:` default. `CREATE SCHEMA IF NOT EXISTS` plus the DDL's
     own `IF NOT EXISTS` means REOPENING a named schema (or an on-disk SQLite
     file) is idempotent -- which is exactly the persistence claim under test.
+
+    TENANT ISOLATION IS ASYMMETRIC BETWEEN THE ENGINES, and that asymmetry is
+    stated rather than papered over. On PostgreSQL, `postgres()` applies
+    `core_rls_postgres.sql` after the portable DDL and `use_tenant()` sets the
+    `milexium.tenant_id` GUC its policies key on, so the tenant boundary is
+    enforced by the database. SQLite has no row-level security to apply, so
+    there the boundary is the stores' `tenant_id = ?` predicates alone --
+    `use_tenant()` is a deliberate no-op. This is the same split ADR-0018 made
+    for the canonical stores: SQLite is the demo/reference engine, PostgreSQL is
+    the production target, and only the production target is claimed to enforce
+    isolation below the application.
     """
 
     def __init__(
@@ -259,7 +300,13 @@ class CoreDatabase:
     ) -> "CoreDatabase":
         """Open the natively installed PostgreSQL 17 dev instance (ADR-0006) and
         apply the SAME `core_v0_1.sql`, unmodified -- the portability claim
-        (ADR-0002) is that the file needs no per-engine edit."""
+        (ADR-0002) is that the file needs no per-engine edit -- then the
+        Postgres-only `core_rls_postgres.sql` on top of it.
+
+        The RLS file is applied INSIDE the same schema (search_path is already
+        set), so its unqualified table names resolve to the tables just created,
+        and it is written to be re-appliable because this classmethod is how a
+        named schema is REOPENED."""
         import psycopg
         from psycopg import sql as pg_sql
 
@@ -274,8 +321,34 @@ class CoreDatabase:
             cur.execute(pg_sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(ident))
             cur.execute(pg_sql.SQL("SET search_path TO {}").format(ident))
             cur.execute(CORE_SCHEMA_PATH.read_text(encoding="utf-8"))
+            cur.execute(CORE_RLS_PATH.read_text(encoding="utf-8"))
         connection.commit()
         return cls(connection, placeholder="%s", schema=schema_name)
+
+    # -- tenant scoping ----------------------------------------------------- #
+    def use_tenant(self, tenant_id: object) -> None:
+        """Point the session's RLS key (`milexium.tenant_id`) at `tenant_id`.
+
+        Called by both Program D stores before EVERY read and write, so no
+        operation ever depends on a value some earlier operation happened to
+        leave behind, and two stores sharing one connection for two different
+        tenants cannot read each other's rows by accident of ordering. Session
+        scope (`is_local=false`) because these stores commit per operation.
+
+        A NO-OP ON SQLITE, deliberately: there is no row-level security to key,
+        so the stores' own `tenant_id = ?` predicates are the whole boundary
+        there. Same GUC name as `packages/canonical/postgres_storage.py`, so a
+        connection carrying both contracts cannot be scoped to two different
+        tenants at once.
+
+        `set_config` takes the value as a BOUND PARAMETER -- never
+        string-interpolated into SQL.
+        """
+        if self._placeholder == "?":
+            return
+        self._conn.execute(
+            "SELECT set_config('milexium.tenant_id', %s, false)", (str(tenant_id),)
+        )
 
     # -- statement execution ------------------------------------------------ #
     def _cursor(self, statement: str, params: tuple):
@@ -341,10 +414,33 @@ class PersistentFeatureStore:
     reaches Python. Ties at an identical knowledge time resolve to the last
     write via `write_sequence DESC` -- the same "latest recorded version wins"
     rule the in-memory store applies by scanning in append order.
+
+    TENANT SCOPING. The store is bound to ONE tenant at construction and there
+    is no unscoped way to reach the table: `tenant_id` is required, every
+    statement below names it, and on PostgreSQL every operation first points the
+    `milexium.tenant_id` GUC at it so the `core_rls_postgres.sql` policy is the
+    outer boundary and the predicate the inner one. The tenant conjunct is added
+    ALONGSIDE `knowledge_time < ?`, never in place of it, so the leakage
+    guarantee is unchanged in strength -- a cross-tenant as-of read returns
+    nothing however permissive the timestamp is.
     """
 
-    def __init__(self, database: CoreDatabase) -> None:
+    def __init__(self, database: CoreDatabase, tenant_id: TenantId) -> None:
         self._db = database
+        # Validated as a canonical TenantId rather than accepted as any string:
+        # a malformed tenant would otherwise become a silently distinct, and
+        # permanently unreadable, partition of the table.
+        self._tenant_id = str(TenantId(str(tenant_id)))
+
+    @property
+    def tenant_id(self) -> TenantId:
+        """The single tenant this store reads and writes. Read-only: rebinding
+        it would turn one object into a cross-tenant path."""
+        return TenantId(self._tenant_id)
+
+    def _scope(self) -> None:
+        """Point the session at this store's tenant before any statement."""
+        self._db.use_tenant(self._tenant_id)
 
     # -- writes ------------------------------------------------------------- #
     def write(
@@ -370,17 +466,19 @@ class PersistentFeatureStore:
             value=float(value),
             knowledge_time=knowledge_time,
         )
+        self._scope()
         next_sequence = int(
             self._db.query(
                 "SELECT COALESCE(MAX(write_sequence), 0) + 1 FROM feature_values "
-                "WHERE entity_id = ? AND feature_name = ?",
-                (entity_id, feature_name),
+                "WHERE tenant_id = ? AND entity_id = ? AND feature_name = ?",
+                (self._tenant_id, entity_id, feature_name),
             )[0][0]
         )
         self._db.execute(
-            "INSERT INTO feature_values (entity_id, feature_name, value, "
-            "knowledge_time, write_sequence) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO feature_values (tenant_id, entity_id, feature_name, value, "
+            "knowledge_time, write_sequence) VALUES (?, ?, ?, ?, ?, ?)",
             (
+                self._tenant_id,
                 entity_id,
                 feature_name,
                 observation.value,
@@ -401,13 +499,20 @@ class PersistentFeatureStore:
         The strict `<` is in the WHERE clause, so a row stamped exactly at
         `as_of` (or later) is never returned by the engine -- the leakage
         guarantee is enforced at the storage layer, not re-implemented above it.
+
+        `tenant_id = ?` sits BESIDE it, as another conjunct of the same
+        predicate, so the result is the intersection of the two rules: another
+        tenant's value is invisible at every `as_of`, and this tenant's future
+        value is invisible whatever the tenant.
         """
         _require_utc(as_of)
+        self._scope()
         rows = self._db.query(
             "SELECT value FROM feature_values "
-            "WHERE entity_id = ? AND feature_name = ? AND knowledge_time < ? "
+            "WHERE tenant_id = ? AND entity_id = ? AND feature_name = ? "
+            "AND knowledge_time < ? "
             "ORDER BY knowledge_time DESC, write_sequence DESC LIMIT 1",
-            (entity_id, feature_name, _iso_utc(as_of)),
+            (self._tenant_id, entity_id, feature_name, _iso_utc(as_of)),
         )
         return float(rows[0][0]) if rows else None
 
@@ -422,11 +527,12 @@ class PersistentFeatureStore:
         -- identical resolution to `get_feature`, run once.
         """
         _require_utc(as_of)
+        self._scope()
         rows = self._db.query(
             "SELECT feature_name, value FROM feature_values "
-            "WHERE entity_id = ? AND knowledge_time < ? "
+            "WHERE tenant_id = ? AND entity_id = ? AND knowledge_time < ? "
             "ORDER BY feature_name, knowledge_time, write_sequence",
-            (entity_id, _iso_utc(as_of)),
+            (self._tenant_id, entity_id, _iso_utc(as_of)),
         )
         result: dict[str, float] = {}
         for feature_name, value in rows:
@@ -439,11 +545,15 @@ class PersistentFeatureStore:
         order -- the audit view, distinct from the as-of read. Unlike the as-of
         read this deliberately applies NO time filter: the audit view shows
         everything that was ever written, including values a point-in-time read
-        would refuse to show."""
+        would refuse to show. It applies no time filter; it does still apply the
+        TENANT filter -- an audit view is an audit view of one operator's own
+        writes, never of everyone's."""
+        self._scope()
         rows = self._db.query(
             "SELECT value, knowledge_time FROM feature_values "
-            "WHERE entity_id = ? AND feature_name = ? ORDER BY write_sequence",
-            (entity_id, feature_name),
+            "WHERE tenant_id = ? AND entity_id = ? AND feature_name = ? "
+            "ORDER BY write_sequence",
+            (self._tenant_id, entity_id, feature_name),
         )
         return tuple(
             FeatureValue(
@@ -456,6 +566,18 @@ class PersistentFeatureStore:
         )
 
     def entities(self) -> frozenset[str]:
+        """Every entity THIS TENANT has written a value for.
+
+        The tenant filter matters more here than anywhere else in the class: an
+        unscoped `SELECT DISTINCT entity_id` would enumerate every operator's
+        entity ids -- which is a membership disclosure even though the ids are
+        opaque, because it says how many entities another operator runs.
+        """
+        self._scope()
         return frozenset(
-            row[0] for row in self._db.query("SELECT DISTINCT entity_id FROM feature_values")
+            row[0]
+            for row in self._db.query(
+                "SELECT DISTINCT entity_id FROM feature_values WHERE tenant_id = ?",
+                (self._tenant_id,),
+            )
         )

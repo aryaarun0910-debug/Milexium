@@ -31,6 +31,18 @@ audit trail. Both engines run `packages/core/sql/core_v0_1.sql`; see
 `packages/core/feature_store.py` for the `CoreDatabase` adapter and why the
 persistence plumbing lives there.
 
+TENANT SCOPING (MX-D-TENANT-ISOLATION-006, closing an ADR-0041 limitation).
+`PersistentPromotionController` is constructed FOR ONE TENANT and cannot be
+constructed without one. Every statement it issues names `tenant_id`, and on
+PostgreSQL every operation first points the `milexium.tenant_id` GUC at it so
+`packages/core/sql/core_rls_postgres.sql`'s policies -- not the WHERE clause --
+are the boundary. `PromotionController`, the IN-MEMORY reference, stays
+tenant-free: it is one caller's object graph in one process, with no shared
+table for a second operator's rows to sit in, and a dict key is not a boundary
+worth advertising as one. The tenant therefore enters through the constructor,
+which `test_core_persistence.py`'s method-for-method signature parity check
+already excludes, so the two classes stay honestly comparable.
+
 Status: Demonstrated on the conformance suite, not operator-Validated.
 """
 
@@ -40,7 +52,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from packages.canonical.ids import ModelVersionId
+from packages.canonical.ids import ModelVersionId, TenantId
 from packages.canonical.time import UtcDateTime, _require_utc
 from packages.core.feature_store import CoreDatabase, _iso_utc
 from packages.core.model_registry import ModelRegistry
@@ -429,41 +441,76 @@ class PersistentPromotionController:
     transaction and committed together, so a crash can never leave a champion
     who was promoted by no recorded decision, nor a decision that claims a
     promotion which did not happen.
+
+    ONE TENANT PER CONTROLLER. `tenant_id` is a required constructor argument,
+    so there is no unscoped path to these tables. Two operators running the same
+    task name -- which is the normal case; `forecast.demand` is not a
+    customer-specific string -- each keep their own champion, their own
+    challenger pool and their own ledger, and neither can see or overwrite the
+    other's. The sequence columns are per-tenant for the reason
+    core_v0_1.sql states: under RLS the MAX() that assigns them only ever sees
+    the acting tenant's rows, so a global counter and the isolation boundary
+    cannot both hold.
     """
 
-    def __init__(self, registry: ModelRegistry, database: CoreDatabase) -> None:
+    def __init__(
+        self, registry: ModelRegistry, database: CoreDatabase, tenant_id: TenantId
+    ) -> None:
         self._registry = registry
         self._db = database
+        # Validated as a canonical TenantId rather than accepted as any string:
+        # a malformed tenant would otherwise become a silently distinct, and
+        # permanently unreadable, partition of the ledger.
+        self._tenant_id = str(TenantId(str(tenant_id)))
+
+    @property
+    def tenant_id(self) -> TenantId:
+        """The single tenant whose roles and ledger this controller governs.
+        Read-only: rebinding it would turn one object into a cross-tenant path."""
+        return TenantId(self._tenant_id)
+
+    def _scope(self) -> None:
+        """Point the session at this controller's tenant before any statement.
+        A no-op on SQLite (no RLS to key); on PostgreSQL it is what makes the
+        policy, rather than the WHERE clause, the boundary."""
+        self._db.use_tenant(self._tenant_id)
 
     # -- state reads (the persistent analogue of the in-memory dicts) -------- #
     def _champion_id(self, task: str) -> ModelVersionId | None:
+        self._scope()
         rows = self._db.query(
-            "SELECT champion_id FROM promotion_champions WHERE task = ?", (task,)
+            "SELECT champion_id FROM promotion_champions "
+            "WHERE tenant_id = ? AND task = ?",
+            (self._tenant_id, task),
         )
         return ModelVersionId(rows[0][0]) if rows else None
 
     def _challenger_ids(self, task: str) -> list[ModelVersionId]:
+        self._scope()
         return [
             ModelVersionId(row[0])
             for row in self._db.query(
                 "SELECT model_version_id FROM promotion_challengers "
-                "WHERE task = ? ORDER BY enrol_sequence",
-                (task,),
+                "WHERE tenant_id = ? AND task = ? ORDER BY enrol_sequence",
+                (self._tenant_id, task),
             )
         ]
 
     def _canary_row(self, task: str) -> tuple[ModelVersionId, float] | None:
+        self._scope()
         rows = self._db.query(
             "SELECT model_version_id, traffic_fraction FROM promotion_canaries "
-            "WHERE task = ?",
-            (task,),
+            "WHERE tenant_id = ? AND task = ?",
+            (self._tenant_id, task),
         )
         return (ModelVersionId(rows[0][0]), float(rows[0][1])) if rows else None
 
     def _next(self, statement: str, params: tuple = ()) -> int:
         """Next value of an application-assigned sequence column. Portable
         (COALESCE(MAX(...), 0) + 1) rather than SERIAL/AUTOINCREMENT, whose
-        spellings differ per engine -- see core_v0_1.sql."""
+        spellings differ per engine -- see core_v0_1.sql. Every caller below
+        scopes the MAX() to this tenant, so the counter is per-tenant, which is
+        what the composite primary keys require under RLS."""
         return int(self._db.query(statement, params)[0][0])
 
     # -- challengers -------------------------------------------------------- #
@@ -477,16 +524,18 @@ class PersistentPromotionController:
             )
         if model_version_id in self._challenger_ids(task):
             return
+        self._scope()
         self._db.execute(
-            "INSERT INTO promotion_challengers (task, model_version_id, enrol_sequence) "
-            "VALUES (?, ?, ?)",
+            "INSERT INTO promotion_challengers (tenant_id, task, model_version_id, "
+            "enrol_sequence) VALUES (?, ?, ?, ?)",
             (
+                self._tenant_id,
                 task,
                 str(model_version_id),
                 self._next(
                     "SELECT COALESCE(MAX(enrol_sequence), 0) + 1 "
-                    "FROM promotion_challengers WHERE task = ?",
-                    (task,),
+                    "FROM promotion_challengers WHERE tenant_id = ? AND task = ?",
+                    (self._tenant_id, task),
                 ),
             ),
         )
@@ -498,13 +547,16 @@ class PersistentPromotionController:
             raise RoleAssignmentError(
                 f"{model_version_id!r} is not a challenger for {task!r}"
             )
+        self._scope()
         self._db.execute(
-            "DELETE FROM promotion_challengers WHERE task = ? AND model_version_id = ?",
-            (task, str(model_version_id)),
+            "DELETE FROM promotion_challengers "
+            "WHERE tenant_id = ? AND task = ? AND model_version_id = ?",
+            (self._tenant_id, task, str(model_version_id)),
         )
         self._db.execute(
-            "DELETE FROM promotion_canaries WHERE task = ? AND model_version_id = ?",
-            (task, str(model_version_id)),
+            "DELETE FROM promotion_canaries "
+            "WHERE tenant_id = ? AND task = ? AND model_version_id = ?",
+            (self._tenant_id, task, str(model_version_id)),
         )
         self._db.commit()
 
@@ -531,16 +583,24 @@ class PersistentPromotionController:
         # DELETE + INSERT rather than an upsert: ON CONFLICT is spelled
         # compatibly on both engines but is a later addition to each, and the
         # two statements are unambiguous in the portable subset (ADR-0002).
-        self._db.execute("DELETE FROM promotion_canaries WHERE task = ?", (task,))
+        self._scope()
         self._db.execute(
-            "INSERT INTO promotion_canaries (task, model_version_id, traffic_fraction) "
-            "VALUES (?, ?, ?)",
-            (task, str(model_version_id), fraction),
+            "DELETE FROM promotion_canaries WHERE tenant_id = ? AND task = ?",
+            (self._tenant_id, task),
+        )
+        self._db.execute(
+            "INSERT INTO promotion_canaries (tenant_id, task, model_version_id, "
+            "traffic_fraction) VALUES (?, ?, ?, ?)",
+            (self._tenant_id, task, str(model_version_id), fraction),
         )
         self._db.commit()
 
     def clear_canary(self, task: str) -> None:
-        self._db.execute("DELETE FROM promotion_canaries WHERE task = ?", (task,))
+        self._scope()
+        self._db.execute(
+            "DELETE FROM promotion_canaries WHERE tenant_id = ? AND task = ?",
+            (self._tenant_id, task),
+        )
         self._db.commit()
 
     def route(self, task: str, roll: float) -> ModelVersionId | None:
@@ -602,46 +662,58 @@ class PersistentPromotionController:
         """Install `challenger_id` as champion. Uncommitted -- the caller commits
         it together with the decision that authorised it."""
         outgoing = self._champion_id(task)
+        self._scope()
         if outgoing is not None:
             self._db.execute(
-                "INSERT INTO promotion_champion_history (task, stack_position, champion_id) "
-                "VALUES (?, ?, ?)",
+                "INSERT INTO promotion_champion_history (tenant_id, task, stack_position, "
+                "champion_id) VALUES (?, ?, ?, ?)",
                 (
+                    self._tenant_id,
                     task,
                     self._next(
                         "SELECT COALESCE(MAX(stack_position), 0) + 1 "
-                        "FROM promotion_champion_history WHERE task = ?",
-                        (task,),
+                        "FROM promotion_champion_history WHERE tenant_id = ? AND task = ?",
+                        (self._tenant_id, task),
                     ),
                     str(outgoing),
                 ),
             )
-        self._db.execute("DELETE FROM promotion_champions WHERE task = ?", (task,))
         self._db.execute(
-            "INSERT INTO promotion_champions (task, champion_id) VALUES (?, ?)",
-            (task, str(challenger_id)),
+            "DELETE FROM promotion_champions WHERE tenant_id = ? AND task = ?",
+            (self._tenant_id, task),
         )
         self._db.execute(
-            "DELETE FROM promotion_challengers WHERE task = ? AND model_version_id = ?",
-            (task, str(challenger_id)),
+            "INSERT INTO promotion_champions (tenant_id, task, champion_id) "
+            "VALUES (?, ?, ?)",
+            (self._tenant_id, task, str(challenger_id)),
         )
         self._db.execute(
-            "DELETE FROM promotion_canaries WHERE task = ? AND model_version_id = ?",
-            (task, str(challenger_id)),
+            "DELETE FROM promotion_challengers "
+            "WHERE tenant_id = ? AND task = ? AND model_version_id = ?",
+            (self._tenant_id, task, str(challenger_id)),
+        )
+        self._db.execute(
+            "DELETE FROM promotion_canaries "
+            "WHERE tenant_id = ? AND task = ? AND model_version_id = ?",
+            (self._tenant_id, task, str(challenger_id)),
         )
 
     def _record_decision(self, decision: PromotionDecision) -> None:
         """Append one row to the promotion ledger. Uncommitted; append-only --
         there is no UPDATE or DELETE against `promotion_decisions` anywhere in
         this module, on purpose."""
+        self._scope()
         self._db.execute(
-            "INSERT INTO promotion_decisions (decision_sequence, task, challenger_id, "
-            "incumbent_id, metric_name, challenger_metric, incumbent_metric, "
+            "INSERT INTO promotion_decisions (tenant_id, decision_sequence, task, "
+            "challenger_id, incumbent_id, metric_name, challenger_metric, incumbent_metric, "
             "higher_is_better, min_improvement, margin, promoted, decided_at, rationale) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
+                self._tenant_id,
                 self._next(
-                    "SELECT COALESCE(MAX(decision_sequence), 0) + 1 FROM promotion_decisions"
+                    "SELECT COALESCE(MAX(decision_sequence), 0) + 1 "
+                    "FROM promotion_decisions WHERE tenant_id = ?",
+                    (self._tenant_id,),
                 ),
                 decision.task,
                 str(decision.challenger_id),
@@ -670,10 +742,11 @@ class PersistentPromotionController:
         re-enrolment and the rollback record are one transaction."""
         _require_utc(decided_at)
         current = self._champion_id(task)
+        self._scope()
         top = self._db.query(
             "SELECT stack_position, champion_id FROM promotion_champion_history "
-            "WHERE task = ? ORDER BY stack_position DESC LIMIT 1",
-            (task,),
+            "WHERE tenant_id = ? AND task = ? ORDER BY stack_position DESC LIMIT 1",
+            (self._tenant_id, task),
         )
         if current is None or not top:
             raise NoRollbackTargetError(
@@ -683,25 +756,32 @@ class PersistentPromotionController:
         previous = ModelVersionId(previous_raw)
 
         self._db.execute(
-            "DELETE FROM promotion_champion_history WHERE task = ? AND stack_position = ?",
-            (task, int(stack_position)),
+            "DELETE FROM promotion_champion_history "
+            "WHERE tenant_id = ? AND task = ? AND stack_position = ?",
+            (self._tenant_id, task, int(stack_position)),
         )
-        self._db.execute("DELETE FROM promotion_champions WHERE task = ?", (task,))
         self._db.execute(
-            "INSERT INTO promotion_champions (task, champion_id) VALUES (?, ?)",
-            (task, str(previous)),
+            "DELETE FROM promotion_champions WHERE tenant_id = ? AND task = ?",
+            (self._tenant_id, task),
+        )
+        self._db.execute(
+            "INSERT INTO promotion_champions (tenant_id, task, champion_id) "
+            "VALUES (?, ?, ?)",
+            (self._tenant_id, task, str(previous)),
         )
         if current not in self._challenger_ids(task):
+            self._scope()
             self._db.execute(
-                "INSERT INTO promotion_challengers (task, model_version_id, enrol_sequence) "
-                "VALUES (?, ?, ?)",
+                "INSERT INTO promotion_challengers (tenant_id, task, model_version_id, "
+                "enrol_sequence) VALUES (?, ?, ?, ?)",
                 (
+                    self._tenant_id,
                     task,
                     str(current),
                     self._next(
                         "SELECT COALESCE(MAX(enrol_sequence), 0) + 1 "
-                        "FROM promotion_challengers WHERE task = ?",
-                        (task,),
+                        "FROM promotion_challengers WHERE tenant_id = ? AND task = ?",
+                        (self._tenant_id, task),
                     ),
                 ),
             )
@@ -713,11 +793,15 @@ class PersistentPromotionController:
             reason=reason,
         )
         self._db.execute(
-            "INSERT INTO promotion_rollbacks (rollback_sequence, task, from_champion_id, "
-            "to_champion_id, decided_at, reason) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO promotion_rollbacks (tenant_id, rollback_sequence, task, "
+            "from_champion_id, to_champion_id, decided_at, reason) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
+                self._tenant_id,
                 self._next(
-                    "SELECT COALESCE(MAX(rollback_sequence), 0) + 1 FROM promotion_rollbacks"
+                    "SELECT COALESCE(MAX(rollback_sequence), 0) + 1 "
+                    "FROM promotion_rollbacks WHERE tenant_id = ?",
+                    (self._tenant_id,),
                 ),
                 record.task,
                 str(record.from_champion_id),
@@ -750,11 +834,16 @@ class PersistentPromotionController:
         )
 
     def decisions(self) -> tuple[PromotionDecision, ...]:
-        """The whole ledger, in decision order across every task -- the same
-        global ordering the in-memory controller's append-ordered list gives.
+        """THIS TENANT's whole ledger, in decision order across every task -- the
+        same ordering the in-memory controller's append-ordered list gives.
         Ordering and completeness are the audit-trail claim: ORDER BY the
         application-assigned `decision_sequence`, never by an engine's row
-        order."""
+        order.
+
+        "Complete" now means complete for one operator. That is the stronger
+        reading, not a weaker one: an audit trail that mixed two operators'
+        decisions would be evidence neither of them could be shown."""
+        self._scope()
         return tuple(
             PromotionDecision(
                 task=row[0],
@@ -773,11 +862,14 @@ class PersistentPromotionController:
             for row in self._db.query(
                 "SELECT task, challenger_id, incumbent_id, metric_name, challenger_metric, "
                 "incumbent_metric, higher_is_better, min_improvement, margin, promoted, "
-                "decided_at, rationale FROM promotion_decisions ORDER BY decision_sequence"
+                "decided_at, rationale FROM promotion_decisions "
+                "WHERE tenant_id = ? ORDER BY decision_sequence",
+                (self._tenant_id,),
             )
         )
 
     def rollbacks(self) -> tuple[RollbackRecord, ...]:
+        self._scope()
         return tuple(
             RollbackRecord(
                 task=row[0],
@@ -788,6 +880,7 @@ class PersistentPromotionController:
             )
             for row in self._db.query(
                 "SELECT task, from_champion_id, to_champion_id, decided_at, reason "
-                "FROM promotion_rollbacks ORDER BY rollback_sequence"
+                "FROM promotion_rollbacks WHERE tenant_id = ? ORDER BY rollback_sequence",
+                (self._tenant_id,),
             )
         )

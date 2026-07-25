@@ -30,6 +30,18 @@ Four claims are under test here:
    and rollback records persist and read back complete and in order across a
    reopen.
 
+EXTENDED BY MX-D-TENANT-ISOLATION-006. Both persistent classes now require a
+`tenant_id` at construction (see `TENANT` below), because ADR-0041's tables
+carried no tenant column and no row-level security -- the limitation that ADR
+named as "must be closed before a second operator's data lands in them". Every
+test in this file therefore runs as one tenant; the isolation itself (the
+policy, the cross-tenant denials, the FORCE-lifted collapse) is proved in
+`conformance/property-tests/test_core_tenant_isolation.py`, which is the
+adversarial half. What is added HERE is the part that belongs here: that the
+four claims above are unchanged under tenant scoping -- in particular that the
+leakage guarantee still holds when the as-of predicate is conjoined with a
+tenant predicate, re-run below rather than assumed.
+
 The PostgreSQL parameter SKIPS cleanly (never fails) when the `milexium_dev`
 instance is unreachable, so this suite stays green on a machine where it was
 never provisioned. The SQLite parameter always runs, against a real on-disk file
@@ -74,6 +86,11 @@ from packages.core.promotion import (
 _AAR_DAILY = Path(__file__).resolve().parents[2] / "realdata" / "panels" / "aar_daily.csv"
 
 TASK = "forecast.demand"
+
+# The single operator every test in this file acts as. A canonical `TenantId`
+# (UUIDv7), minted once per session -- the persistent stores refuse to be built
+# without one, which is the point: there is no unscoped way to reach the tables.
+TENANT = new_id(TenantId)
 
 # Every table core_v0_1.sql defines, in the order the file declares them.
 _CORE_TABLES = (
@@ -244,14 +261,82 @@ def test_core_schema_applies_unmodified_on_this_engine(engine) -> None:
         assert database.query(f"SELECT COUNT(*) FROM {table}")[0][0] == 0
 
 
+def test_every_program_d_table_carries_a_not_null_tenant_id(engine) -> None:
+    """MX-D-TENANT-ISOLATION-006, at the schema layer, on both engines.
+
+    ADR-0041 shipped these seven tables with no tenant column at all. A NULLABLE
+    one would have been barely better: `tenant_id = current_setting(...)` is
+    never true for NULL, so a null-tenant row would be invisible under the
+    PostgreSQL policy and simultaneously present in the table -- unreadable,
+    undeletable through the store, and permanently unattributable. NOT NULL is
+    what makes "every row belongs to exactly one operator" a property of the
+    storage rather than of the code that happened to write it.
+
+    Read out of each engine's own catalog, so a column that exists only in the
+    file's text (or only on one engine) fails here.
+    """
+    database = engine.open()
+    for table in _CORE_TABLES:
+        if engine.kind == "sqlite":
+            columns = {
+                row[1]: bool(row[3])  # name -> notnull
+                for row in database.query(f"PRAGMA table_info({table})")
+            }
+        else:
+            columns = {
+                row[0]: row[1] == "NO"
+                for row in database.query(
+                    "SELECT column_name, is_nullable FROM information_schema.columns "
+                    "WHERE table_schema = ? AND table_name = ?",
+                    (database.schema, table),
+                )
+            }
+        assert "tenant_id" in columns, f"{table} has no tenant_id column"
+        assert columns["tenant_id"] is True, f"{table}.tenant_id is nullable"
+
+
+def test_tenant_id_leads_every_program_d_primary_key(engine) -> None:
+    """The tenant column is FIRST in every primary key, not merely present.
+
+    Two things follow from the ordering, and only from it. Uniqueness becomes
+    per-tenant -- two operators can each hold a champion for `forecast.demand`,
+    which they must, since the task name is not customer-specific -- and the
+    tenant predicate leads the index that serves the as-of read, so conjoining
+    it does not demote `knowledge_time < t` to a filter over a wider scan.
+    """
+    database = engine.open()
+    for table in _CORE_TABLES:
+        if engine.kind == "sqlite":
+            # PRAGMA's `pk` column is the 1-based position within the key.
+            key = sorted(
+                ((row[5], row[1]) for row in database.query(f"PRAGMA table_info({table})") if row[5]),
+            )
+            first = key[0][1]
+        else:
+            rows = database.query(
+                "SELECT a.attname FROM pg_index i "
+                "JOIN pg_class c ON c.oid = i.indrelid "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "JOIN pg_attribute a ON a.attrelid = c.oid "
+                "AND a.attnum = i.indkey[0] "
+                "WHERE n.nspname = ? AND c.relname = ? AND i.indisprimary",
+                (database.schema, table),
+            )
+            first = rows[0][0]
+        assert first == "tenant_id", (
+            f"{table}'s primary key starts with {first!r}, not tenant_id -- uniqueness "
+            "would be global rather than per-tenant"
+        )
+
+
 def test_reopening_the_same_storage_is_idempotent_and_keeps_data(engine) -> None:
     """Reopening applies the DDL again (IF NOT EXISTS): it must neither fail nor
     wipe what is already there. This is the precondition for every
     survives-a-restart test below."""
-    first = PersistentFeatureStore(engine.open())
+    first = PersistentFeatureStore(engine.open(), TENANT)
     first.write(entity_id="z-1", feature_name="f", value=7.0, knowledge_time=_utc(2026, 1, 1))
 
-    second = PersistentFeatureStore(engine.open())  # re-applies core_v0_1.sql
+    second = PersistentFeatureStore(engine.open(), TENANT)  # re-applies core_v0_1.sql
     assert second.get_feature("z-1", "f", as_of=_utc(2026, 1, 2)) == 7.0
 
 
@@ -259,7 +344,7 @@ def test_reopening_the_same_storage_is_idempotent_and_keeps_data(engine) -> None
 # 3. Feature store: the strict past-only read, through persistence (SYNTHETIC)
 # --------------------------------------------------------------------------- #
 def test_asof_read_returns_latest_strictly_past_value(engine) -> None:
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     store.write(entity_id="z-1", feature_name="lag1", value=10.0, knowledge_time=_utc(2026, 1, 1))
     store.write(entity_id="z-1", feature_name="lag1", value=20.0, knowledge_time=_utc(2026, 1, 2))
     store.write(entity_id="z-1", feature_name="lag1", value=30.0, knowledge_time=_utc(2026, 1, 3))
@@ -270,7 +355,7 @@ def test_asof_read_excludes_a_value_stamped_exactly_at_t(engine) -> None:
     """THE FAILURE INJECTION, through the database: a read at t must NOT see a
     value stamped at t. Strictness lives in the SQL predicate
     (`knowledge_time < ?`), so the row is never fetched, not fetched-then-hidden."""
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     store.write(entity_id="z-1", feature_name="f", value=1.0, knowledge_time=_utc(2026, 1, 1))
     store.write(entity_id="z-1", feature_name="f", value=99.0, knowledge_time=_utc(2026, 1, 2))
     assert store.get_feature("z-1", "f", as_of=_utc(2026, 1, 2)) == 1.0
@@ -278,14 +363,14 @@ def test_asof_read_excludes_a_value_stamped_exactly_at_t(engine) -> None:
 
 
 def test_asof_read_before_any_knowledge_time_sees_nothing(engine) -> None:
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     store.write(entity_id="z-1", feature_name="f", value=5.0, knowledge_time=_utc(2026, 6, 1))
     assert store.get_feature("z-1", "f", as_of=_utc(2026, 1, 1)) is None
     assert store.get_features("z-1", as_of=_utc(2026, 1, 1)) == {}
 
 
 def test_get_features_returns_per_feature_latest_strictly_past(engine) -> None:
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     store.write(entity_id="z-1", feature_name="lag1", value=1.0, knowledge_time=_utc(2026, 1, 1))
     store.write(entity_id="z-1", feature_name="lag1", value=2.0, knowledge_time=_utc(2026, 1, 5))
     store.write(entity_id="z-1", feature_name="roll7", value=3.0, knowledge_time=_utc(2026, 1, 2))
@@ -298,7 +383,7 @@ def test_same_knowledge_time_last_write_wins(engine) -> None:
     In memory that falls out of scanning in append order; here it is
     `write_sequence DESC`, an explicit stored column -- so the tie-break is a
     property of the rows, readable by anything, not of a scan order."""
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     store.write(entity_id="z-1", feature_name="f", value=1.0, knowledge_time=_utc(2026, 1, 1))
     store.write(entity_id="z-1", feature_name="f", value=1.5, knowledge_time=_utc(2026, 1, 1))
     assert store.get_feature("z-1", "f", as_of=_utc(2026, 1, 2)) == 1.5
@@ -306,7 +391,7 @@ def test_same_knowledge_time_last_write_wins(engine) -> None:
 
 
 def test_entities_are_isolated(engine) -> None:
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     store.write(entity_id="z-1", feature_name="f", value=1.0, knowledge_time=_utc(2026, 1, 1))
     store.write(entity_id="z-2", feature_name="f", value=2.0, knowledge_time=_utc(2026, 1, 1))
     assert store.get_feature("z-1", "f", as_of=_utc(2026, 1, 2)) == 1.0
@@ -316,7 +401,7 @@ def test_entities_are_isolated(engine) -> None:
 
 
 def test_naive_timestamps_are_rejected_before_anything_is_stored(engine) -> None:
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     with pytest.raises(ValueError):
         store.write(entity_id="z-1", feature_name="f", value=1.0, knowledge_time=datetime(2026, 1, 1))
     with pytest.raises(ValueError):
@@ -330,7 +415,7 @@ def test_history_is_the_append_only_audit_view(engine) -> None:
     """The audit view retains everything ever written, including values an as-of
     read would refuse to show -- and round-trips the entity, so a successful read
     proves the stored columns still validate as a `FeatureValue`."""
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     first = store.write(entity_id="z-1", feature_name="f", value=1.0, knowledge_time=_utc(2026, 1, 1))
     second = store.write(entity_id="z-1", feature_name="f", value=2.0, knowledge_time=_utc(2026, 1, 2))
     assert store.history("z-1", "f") == (first, second)
@@ -341,7 +426,7 @@ def test_double_precision_values_round_trip_bit_identically(engine) -> None:
     float4: these values would come back CHANGED on the production engine and
     unchanged on the reference one, silently breaking the bit-identical claim the
     leakage tests make. Exact `==`, deliberately -- not pytest.approx."""
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     values = [math.pi, 0.1 + 0.2, 1.0 / 3.0, 1e-300, 1.2345678901234567e8, -2.718281828459045]
     for index, value in enumerate(values):
         store.write(
@@ -363,7 +448,7 @@ def test_persistent_and_in_memory_stores_agree_on_every_asof_read(engine) -> Non
         ("z-2", "lag1", 99.0, _utc(2026, 1, 2)),
     ]
     reference = FeatureStore()
-    persistent = PersistentFeatureStore(engine.open())
+    persistent = PersistentFeatureStore(engine.open(), TENANT)
     for entity_id, feature_name, value, knowledge_time in writes:
         for store in (reference, persistent):
             store.write(
@@ -395,13 +480,13 @@ def test_persistent_and_in_memory_stores_agree_on_every_asof_read(engine) -> Non
 def test_feature_values_survive_a_reopen(engine) -> None:
     """The gap this packet closes, stated at its simplest: write, drop the
     connection, open a new one over the same storage, read the same answers."""
-    first = PersistentFeatureStore(engine.open())
+    first = PersistentFeatureStore(engine.open(), TENANT)
     first.write(entity_id="z-1", feature_name="f", value=1.0, knowledge_time=_utc(2026, 1, 1))
     first.write(entity_id="z-1", feature_name="f", value=2.0, knowledge_time=_utc(2026, 1, 5))
     before_history = first.history("z-1", "f")
     first._db.close()
 
-    restarted = PersistentFeatureStore(engine.open())
+    restarted = PersistentFeatureStore(engine.open(), TENANT)
     assert restarted.get_feature("z-1", "f", as_of=_utc(2026, 1, 3)) == 1.0
     assert restarted.get_feature("z-1", "f", as_of=_utc(2026, 1, 6)) == 2.0
     assert restarted.history("z-1", "f") == before_history
@@ -451,7 +536,7 @@ def test_real_panel_asof_read_is_strictly_past_through_persistence(engine) -> No
     observed day, never day d's own (same-stamp) value -- read back out of the
     database, not out of a Python dict."""
     rows = _load_aar_daily()
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     _write_series(store, _ENTITY, rows)
     assert store.get_feature(_ENTITY, _FEATURE, as_of=rows[2][0]) == rows[1][1]
 
@@ -474,7 +559,7 @@ def test_real_panel_future_corruption_leaves_past_bit_identical_through_persiste
     a slightly harsher setup than a clean rebuild, not a laxer one.
     """
     rows = _load_aar_daily()
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     _write_series(store, _ENTITY, rows)
     dates = [d for d, _ in rows]
     rng = np.random.default_rng(0)
@@ -517,7 +602,7 @@ def test_real_panel_stored_rows_corrupted_in_place_leave_past_bit_identical(engi
     """
     rows = _load_aar_daily()
     database = engine.open()
-    store = PersistentFeatureStore(database)
+    store = PersistentFeatureStore(database, TENANT)
     _write_series(store, _ENTITY, rows)
     dates = [d for d, _ in rows]
     cutoff = dates[len(dates) // 2]
@@ -528,20 +613,41 @@ def test_real_panel_stored_rows_corrupted_in_place_leave_past_bit_identical(engi
     # the cutoff. Raw SQL on purpose -- the store's own API cannot do this. The
     # storage form of the timestamp is re-derived here rather than imported from
     # the module under test, so this tamper does not inherit a bug from it.
+    #
+    # `use_tenant` first: on PostgreSQL this UPDATE runs under core_rls_postgres.sql,
+    # whose USING clause would otherwise hide the very rows the tamper is meant to
+    # reach -- and a tamper that silently touched NOTHING would make the assertions
+    # below pass for the wrong reason. The tenant is named in the WHERE clause too,
+    # so the tamper is the same statement on SQLite, which has no policy.
+    database.use_tenant(TENANT)
     database.execute(
         "UPDATE feature_values SET value = ? "
-        "WHERE entity_id = ? AND feature_name = ? AND knowledge_time > ?",
-        (987654321.0, _ENTITY, _FEATURE, cutoff.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")),
+        "WHERE tenant_id = ? AND entity_id = ? AND feature_name = ? AND knowledge_time > ?",
+        (
+            987654321.0,
+            str(TENANT),
+            _ENTITY,
+            _FEATURE,
+            cutoff.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00"),
+        ),
     )
     database.commit()
     database.close()
 
-    restarted = PersistentFeatureStore(engine.open())
+    restarted = PersistentFeatureStore(engine.open(), TENANT)
     for label_time, expected in baseline.items():
         assert restarted.get_feature(_ENTITY, _FEATURE, as_of=label_time) == expected, (
             f"in-place future corruption changed a past read at {label_time}"
         )
     assert baseline  # the cutoff actually exercised some past reads
+    # AND the tamper really landed. Under row-level security a raw UPDATE issued
+    # with the wrong (or no) tenant in scope silently matches ZERO rows, which
+    # would make every bit-identical assertion above vacuously true. A read after
+    # the cutoff must therefore SEE the corruption.
+    assert restarted.get_feature(_ENTITY, _FEATURE, as_of=dates[-1]) == 987654321.0, (
+        "the in-place tamper matched no rows -- the leakage assertions above would "
+        "have been proving nothing at all"
+    )
 
 
 @pytest.mark.skipif(not _AAR_DAILY.exists(), reason="real AAR daily panel absent")
@@ -551,7 +657,7 @@ def test_real_panel_corruption_would_change_a_future_read_through_persistence(en
     the bit-identical results above could be an inert no-op corruption rather than
     the strict-past rule at work."""
     rows = _load_aar_daily()
-    store = PersistentFeatureStore(engine.open())
+    store = PersistentFeatureStore(engine.open(), TENANT)
     _write_series(store, _ENTITY, rows)
     dates = [d for d, _ in rows]
     cutoff = dates[len(dates) // 2]
@@ -576,7 +682,7 @@ def test_promotion_gate_and_roles_persist_across_a_reopen(engine) -> None:
     a, b = _model_version(), _model_version()
     registry = _registry_with(a, b)
     database = engine.open()
-    controller = PersistentPromotionController(registry, database)
+    controller = PersistentPromotionController(registry, database, TENANT)
 
     controller.register_challenger(TASK, a.model_version_id)
     controller.evaluate_and_maybe_promote(
@@ -587,7 +693,7 @@ def test_promotion_gate_and_roles_persist_across_a_reopen(engine) -> None:
     controller.set_canary(TASK, b.model_version_id, 0.25)
     database.close()
 
-    restarted = PersistentPromotionController(registry, engine.open())
+    restarted = PersistentPromotionController(registry, engine.open(), TENANT)
     assert restarted.champion(TASK) == a.model_version_id
     assert restarted.challengers(TASK) == (b.model_version_id,)
     assert restarted.canary(TASK) == (b.model_version_id, 0.25)
@@ -604,7 +710,7 @@ def test_the_ledger_records_rejected_challengers_as_durably_as_promoted_ones(eng
     a, b, c = _model_version(), _model_version(), _model_version()
     registry = _registry_with(a, b, c)
     database = engine.open()
-    controller = PersistentPromotionController(registry, database)
+    controller = PersistentPromotionController(registry, database, TENANT)
 
     controller.register_challenger(TASK, a.model_version_id)
     controller.evaluate_and_maybe_promote(
@@ -625,7 +731,7 @@ def test_the_ledger_records_rejected_challengers_as_durably_as_promoted_ones(eng
     before = controller.decisions()
     database.close()
 
-    restarted = PersistentPromotionController(registry, engine.open())
+    restarted = PersistentPromotionController(registry, engine.open(), TENANT)
     after = restarted.decisions()
     assert after == before  # complete, and equal field-for-field
     assert [d.promoted for d in after] == [True, False, True]  # and in decision order
@@ -642,7 +748,7 @@ def test_rollback_records_persist_in_order(engine) -> None:
     a, b, c = _model_version(), _model_version(), _model_version()
     registry = _registry_with(a, b, c)
     database = engine.open()
-    controller = PersistentPromotionController(registry, database)
+    controller = PersistentPromotionController(registry, database, TENANT)
 
     for index, version in enumerate((a, b, c)):
         controller.register_challenger(TASK, version.model_version_id)
@@ -661,7 +767,7 @@ def test_rollback_records_persist_in_order(engine) -> None:
     before = controller.rollbacks()
     database.close()
 
-    restarted = PersistentPromotionController(registry, engine.open())
+    restarted = PersistentPromotionController(registry, engine.open(), TENANT)
     assert restarted.rollbacks() == before
     assert [r.reason for r in restarted.rollbacks()] == ["canary error spike", "still degraded"]
     assert [r.from_champion_id for r in restarted.rollbacks()] == [
@@ -678,7 +784,7 @@ def test_a_challenger_cannot_become_champion_without_passing_the_gate(engine) ->
     to champion: a refused challenger stays a challenger, and nothing else in the
     module writes `promotion_champions`."""
     a, b = _model_version(), _model_version()
-    controller = PersistentPromotionController(_registry_with(a, b), engine.open())
+    controller = PersistentPromotionController(_registry_with(a, b), engine.open(), TENANT)
     controller.register_challenger(TASK, a.model_version_id)
     controller.evaluate_and_maybe_promote(
         TASK, a.model_version_id, metric_name="wape", challenger_metric=0.2,
@@ -696,7 +802,7 @@ def test_a_challenger_cannot_become_champion_without_passing_the_gate(engine) ->
 
 def test_an_unregistered_challenger_cannot_be_gated(engine) -> None:
     a, b = _model_version(), _model_version()
-    controller = PersistentPromotionController(_registry_with(a, b), engine.open())
+    controller = PersistentPromotionController(_registry_with(a, b), engine.open(), TENANT)
     controller.register_challenger(TASK, a.model_version_id)
     with pytest.raises(RoleAssignmentError):
         controller.evaluate_and_maybe_promote(
@@ -708,7 +814,7 @@ def test_an_unregistered_challenger_cannot_be_gated(engine) -> None:
 
 def test_rolling_back_with_no_prior_champion_is_refused(engine) -> None:
     a = _model_version()
-    controller = PersistentPromotionController(_registry_with(a), engine.open())
+    controller = PersistentPromotionController(_registry_with(a), engine.open(), TENANT)
     controller.register_challenger(TASK, a.model_version_id)
     controller.evaluate_and_maybe_promote(
         TASK, a.model_version_id, metric_name="wape", challenger_metric=0.2,
@@ -725,19 +831,24 @@ def test_canary_traffic_fraction_is_bounded_in_python_and_in_the_database(engine
     constraint that also stops a writer which bypassed the controller entirely."""
     a, b = _model_version(), _model_version()
     database = engine.open()
-    controller = PersistentPromotionController(_registry_with(a, b), database)
+    controller = PersistentPromotionController(_registry_with(a, b), database, TENANT)
     controller.register_challenger(TASK, a.model_version_id)
     for bad in (1.0, 1.5, -0.1):
         with pytest.raises(TrafficFractionError):
             controller.set_canary(TASK, a.model_version_id, bad)
     assert controller.canary(TASK) is None
 
-    # And the database refuses it too, on both engines.
+    # And the database refuses it too, on both engines. Stamped with the acting
+    # tenant on purpose: the CHECK constraint is what must reject this row, so the
+    # row is made legal in every OTHER respect first -- a foreign tenant_id would
+    # be refused by the RLS policy instead and prove a different thing (that case
+    # has its own test in test_core_tenant_isolation.py).
+    database.use_tenant(TENANT)
     with pytest.raises(_INTEGRITY_ERRORS):
         database.execute(
-            "INSERT INTO promotion_canaries (task, model_version_id, traffic_fraction) "
-            "VALUES (?, ?, ?)",
-            (TASK, str(a.model_version_id), 1.0),
+            "INSERT INTO promotion_canaries (tenant_id, task, model_version_id, "
+            "traffic_fraction) VALUES (?, ?, ?, ?)",
+            (str(TENANT), TASK, str(a.model_version_id), 1.0),
         )
 
 
@@ -747,7 +858,7 @@ def test_the_registrys_own_champion_pointer_is_never_touched(engine) -> None:
     single pointer, and the two never fight over one piece of state."""
     a = _model_version()
     registry = _registry_with(a)
-    controller = PersistentPromotionController(registry, engine.open())
+    controller = PersistentPromotionController(registry, engine.open(), TENANT)
     controller.register_challenger(TASK, a.model_version_id)
     controller.evaluate_and_maybe_promote(
         TASK, a.model_version_id, metric_name="wape", challenger_metric=0.2,
@@ -765,7 +876,7 @@ def test_persistent_and_in_memory_controllers_agree_on_a_full_lifecycle(engine) 
     most plausibly drift."""
     a, b, c = _model_version(), _model_version(), _model_version()
     reference = PromotionController(_registry_with(a, b, c))
-    persistent = PersistentPromotionController(_registry_with(a, b, c), engine.open())
+    persistent = PersistentPromotionController(_registry_with(a, b, c), engine.open(), TENANT)
 
     for controller in (reference, persistent):
         controller.register_challenger(TASK, a.model_version_id)
@@ -803,8 +914,8 @@ def test_feature_store_and_promotion_ledger_share_one_database(engine) -> None:
     failing on the other's tables -- and neither disturbs the other's rows."""
     a = _model_version()
     database = engine.open()
-    features = PersistentFeatureStore(database)
-    controller = PersistentPromotionController(_registry_with(a), database)
+    features = PersistentFeatureStore(database, TENANT)
+    controller = PersistentPromotionController(_registry_with(a), database, TENANT)
 
     features.write(entity_id="z-1", feature_name="f", value=3.0, knowledge_time=_utc(2026, 1, 1))
     controller.register_challenger(TASK, a.model_version_id)
