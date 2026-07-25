@@ -1,0 +1,39 @@
+{
+  "dataset_id": "calitp-gtfs-datasets",
+  "owner_and_source": "California Department of Transportation (Caltrans), California Integrated Travel Program (Cal-ITP) -- 'Cal-ITP GTFS-Ingest Pipeline Dataset' on data.ca.gov (CKAN package cal-itp-gtfs-ingest-pipeline-dataset, id de6f1544-b162-4d16-997b-c183912c8e62), resource e4ca5bd4-e9ce-40aa-a58a-3a6d78b042bd. This is Cal-ITP's own feed register, not a GTFS table. No API key, no registration, plain HTTPS.",
+  "license_and_commercial_rights": "Creative Commons Attribution (CC-BY); COMMERCIAL USE IS PERMITTED. Verified 2026-07-25 by reading the publisher's own machine-readable CKAN record rather than trusting data/ACQUISITION_PLAN.md: https://data.ca.gov/api/3/action/package_show?id=cal-itp-gtfs-ingest-pipeline-dataset returns license_id='cc-by', license_title='Creative Commons Attribution', license_url='http://www.opendefinition.org/licenses/cc-by', rights='No restrictions on public use', accessLevel='public', isopen=true, organization='Caltrans'. The commercial-use verdict does not depend on the version: every published CC-BY version (2.5, 3.0, 4.0) grants commercial use. THE VERSION IS NOT PINNED BY THE SOURCE -- the acquisition plan expected the CKAN license field to confirm it and it does not; license_url is the Open Definition's version-agnostic cc-by entry, which itself lists 4.0, 3.0 and 2.5. Licence text Milexium attributes under: https://creativecommons.org/licenses/by/4.0/ -- recorded as OUR choice of the current version, not as the publisher's declaration. Required attribution: 'California Integrated Travel Program (Cal-ITP), California Department of Transportation'; contact calitp@dot.ca.gov. PUBLISHER USE NOTE, quoted verbatim from the CKAN notes field: 'Cal-ITP collects the GTFS feeds from a statewide list every night and aggregates it into a statewide table for analysis purposes only. Do not use for trip planner ingestion, rather is meant to be used for statewide analytics and other use cases. Note: These data may or may or may not have passed GTFS-Validation' -- Milexium's use (statewide scheduled-deadhead analytics) is inside that stated intent, and these bytes must NOT be served to a passenger trip planner. SCOPE LIMIT: this grant is Caltrans' over ITS aggregation. The ~200 underlying per-operator feeds keep their own upstream terms; this record does not launder them and is NOT authority to fetch any agency feed directly.",
+  "decision_tasks_enabled": [
+    "connect.gtfs_feed_discovery",
+    "replay.deadhead_teardown"
+  ],
+  "geography": "California, statewide -- Cal-ITP's nightly ingest list",
+  "time_coverage": "current register; refreshed and republished monthly (CKAN accrualPeriodicity R/P1M)",
+  "source_url": "https://data.ca.gov/dataset/de6f1544-b162-4d16-997b-c183912c8e62/resource/e4ca5bd4-e9ce-40aa-a58a-3a6d78b042bd/download/gtfs_datasets.csv",
+  "expected_download_gb": 0.000255,
+  "expected_expanded_gb": 0.000255,
+  "expected_retained_gb": 0.000255,
+  "schema_and_format": "CSV: source_record_id, name, type, regional_feed_type, base64_url, url, schedule_to_use_for_rt_validation_base64_url, schedule_to_use_for_rt_validation_url, has_authentication, authentication_contact_details. It decodes base64_url -- the opaque key on every other table -- into a human-readable feed name and its upstream URL, and it flags which feeds are regional (many agencies under one key) and which upstream feeds require authentication. THE has_authentication COLUMN IS A RIGHTS SIGNAL, not a convenience: a feed Caltrans had to authenticate to is one whose operator gates access, which is exactly the kind of upstream term the CC-BY grant over Caltrans' aggregation does not extend to. It is recorded so any future per-agency acquisition starts from evidence rather than from an assumption.",
+  "sensitive_fields": [
+    "authentication_contact_details -- may carry an operator staff contact. Not read, not joined, not reproduced in any derived artifact."
+  ],
+  "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use.",
+  "source_checksum": null,
+  "canonical_contract": "none-yet -- a feed register, the California analogue of the already-held ntd-gtfs-weblinks. Connect-layer input that says which feeds exist and where; no canonical entity is derived from it.",
+  "quality_tests": [
+    {
+      "name": "header_carries_base64_url_and_name",
+      "description": "the first line contains base64_url and name -- the decode from opaque feed key to readable feed identity is the entire purpose"
+    },
+    {
+      "name": "base64_url_decodes_to_the_url_column",
+      "description": "for every row, base64-decoding base64_url reproduces the url column, proving the key really is the feed URL and that joins on it are joins on feed identity rather than on an arbitrary surrogate"
+    }
+  ],
+  "acceptance_threshold": "downloads over plain HTTPS with no credential, is CSV, > 50 KB, header contains base64_url, name and url.",
+  "retention_and_deletion": "retain: 255 KB, and it is the only decode from the base64_url key to a named feed. Reproducible monthly.",
+  "derived_artifacts": [
+    "data/catalog/calitp-scheduled-deadhead.summary.json",
+    "data/catalog/calitp-scheduled-deadhead.md"
+  ],
+  "zone": "raw/public"
+}

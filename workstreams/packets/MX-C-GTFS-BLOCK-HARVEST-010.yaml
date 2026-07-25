@@ -1,0 +1,210 @@
+id: MX-C-GTFS-BLOCK-HARVEST-010
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+adr: none — this packet acquires under the EXISTING governance (blueprint 17,
+  ADR-0032/ADR-0036) and consumes Program A's EXISTING scheduling entities
+  (ADR-0047). It introduces no new mechanism and amends no contract, so it
+  writes no ADR.
+objective: >
+  Close the gap between INFERRED and RECONSTRUCTED deadhead. Everything the
+  estate could previously say about non-revenue vehicle time came from the NTD
+  Service form — one self-reported number per operator, per mode, per YEAR.
+  GTFS trips.txt carries block_id, a day's chained vehicle work, and chaining
+  consecutive trips within a block yields a measured DeadheadSegment: the exact
+  Program A entity that had no real data feeding it. De-risk that capability on
+  the Cal-ITP statewide assembly (CC-BY, keyless, ~200 California operators)
+  rather than the national harvest, whose rights position depends on an FTA
+  answer the founder has not received. Report honestly what fraction of
+  agencies can be measured at all, and label the result SCHEDULED deadhead
+  everywhere it appears so it is never mistaken for NTD's operated figure.
+owned_paths:
+  - data/catalog/calitp-gtfs-trips.manifest.json
+  - data/catalog/calitp-gtfs-stop-times.manifest.json
+  - data/catalog/calitp-gtfs-stops.manifest.json
+  - data/catalog/calitp-gtfs-routes.manifest.json
+  - data/catalog/calitp-gtfs-agency.manifest.json
+  - data/catalog/calitp-gtfs-frequencies.manifest.json
+  - data/catalog/calitp-gtfs-datasets.manifest.json
+  - data/catalog/calitp-gtfs-*.acquired.json          # seven acquired-records
+  - data/catalog/calitp-scheduled-deadhead.summary.json   # committed derived summary
+  - data/catalog/calitp-scheduled-deadhead.md             # the honest narrative
+  - tools/derive_scheduled_deadhead.py
+  - conformance/property-tests/test_gtfs_block_deadhead.py
+  - conformance/property-tests/test_estate_calitp_manifests.py
+  - workstreams/packets/MX-C-GTFS-BLOCK-HARVEST-010.yaml
+  - data/raw/public/**       # gitignored raw zone acquire() writes to
+  - data/canonical/**        # gitignored derived zone the segment JSONL lands in
+read_only_dependencies:
+  - packages/canonical/entities.py  (Block, RunPiece, DeadheadSegment, DeadheadKind
+    — READ and CONSTRUCTED, never modified. Six other agents were working
+    concurrently; packages/canonical/** was not touched by this packet.)
+  - packages/canonical/ids.py       (DeadheadSegmentId, PLATFORM_TENANT_ID, new_id)
+  - packages/replay/teardown.py     (VehicleSegment/run_ref semantics — read to
+    confirm the emitted rows map field-for-field; NOT modified)
+  - packages/estate/manifest.py     (AcquisitionManifest + load_manifest — import only)
+  - packages/estate/acquire.py      (acquire(..., back_with_object_store=True) — call only)
+  - data/ACQUISITION_PLAN.md        (the plan this executes item 3 of; NOT edited)
+  - data/README.md                  (zone layout and what is gitignored; NOT edited)
+normative_contracts:
+  - blueprint/17 (governed estate; every retained byte carries a manifest with
+    declared rights; raw objects immutable and content-addressed)
+  - ADR-0032 / ADR-0036 (local MinIO backing; local disk authoritative, object
+    store additive under the SAME sha256)
+  - ADR-0047 (the scheduling entity family: DeadheadSegment's field semantics,
+    and DeadheadKind's rule that the kind is carried by the source and never
+    inferred)
+  - ADR-0040 (PLATFORM_TENANT_ID owns records derived from public data that
+    belong to no customer — which is exactly what public GTFS is)
+required_outputs:
+  - seven committed acquisition manifests with a real, verified CC-BY rights
+    statement naming the licence text URL actually read
+  - seven acquired-records proving the objects passed the governed pipeline
+    (free-space guard -> quarantine -> checksum -> content-addressed promotion)
+  - tools/derive_scheduled_deadhead.py — the block-chaining derivation
+  - data/catalog/calitp-scheduled-deadhead.summary.json — machine-readable findings
+  - data/catalog/calitp-scheduled-deadhead.md — the scheduled-vs-operated narrative
+  - two conformance suites, mutation-checked
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_gtfs_block_deadhead.py -q"
+  - "py -3 -m pytest conformance/property-tests/test_estate_calitp_manifests.py -q"
+  - "py -3 tools/derive_scheduled_deadhead.py   # regenerates both derived artifacts"
+security_and_privacy_invariants:
+  - "HARD CONSTRAINT HONOURED: no paid services, no paid cloud. All seven
+    objects download with plain unauthenticated curl from data.ca.gov. The only
+    object store touched is the local MinIO at localhost:9000. California TIDES
+    — by some distance the best dataset in the acquisition plan — was NOT
+    acquired, because it is served from a requester-pays GCS bucket and would
+    require a billing-enabled Google Cloud project. It stays out."
+  - "RIGHTS VERIFIED FROM THE SOURCE, NOT FROM THE PLAN. The acquisition plan's
+    own §5 says its sizes are estimates and its licence reads may be stale, so
+    the CKAN record was fetched and read directly:
+    https://data.ca.gov/api/3/action/package_show?id=cal-itp-gtfs-ingest-pipeline-dataset
+    returns license_id='cc-by', rights='No restrictions on public use',
+    accessLevel='public', isopen=true, organization='Caltrans'."
+  - "THE PLAN'S EXPECTATION ABOUT THE LICENCE VERSION DID NOT HOLD, AND THE
+    MANIFEST SAYS SO. The plan directed us to 'capture license_id / license_url
+    from the CKAN API into the manifest rather than assuming 4.0'. We did — and
+    license_url is http://www.opendefinition.org/licenses/cc-by, the Open
+    Definition's VERSION-AGNOSTIC entry, which itself lists 4.0, 3.0 and 2.5.
+    The source therefore still does not pin a version. The manifests record
+    https://creativecommons.org/licenses/by/4.0/ as OUR choice of the current
+    text, explicitly not as Caltrans' declaration. The commercial-use verdict is
+    unaffected: every published CC-BY version grants commercial use."
+  - "THE PUBLISHER'S OWN USE NOTE IS CARRIED VERBATIM. Caltrans states the
+    assembly is 'for analysis purposes only. Do not use for trip planner
+    ingestion'. That is not a CC-BY term and does not restrict commercial use,
+    but it is the publisher's stated intent and is preserved in all seven
+    manifests so a later reader cannot wire these bytes into a passenger-facing
+    planner without seeing it."
+  - "THE GRANT IS NOT LAUNDERED DOWNSTREAM. CC-BY covers CALTRANS' AGGREGATION.
+    The ~200 upstream operator feeds keep their own terms — several of them the
+    revocable click-through kind the estate has already refused (CTA, CapMetro,
+    511 SF Bay). Every manifest carries an explicit SCOPE LIMIT saying this
+    record is NOT authority to fetch any agency feed directly, and a test
+    asserts that sentence is present."
+  - "NO SECRETS TOUCHED. MinIO credentials stay in the gitignored
+    infra/compose/.env and were reached only through the existing
+    acquire(back_with_object_store=True) seam. No source_url carries a key or
+    token, and a test asserts it."
+  - "NO BULK DATA COMMITTED. data/raw/ and data/canonical/ are gitignored by
+    pre-existing rules (.gitignore lines 33-35, verified with git check-ignore).
+    Only the seven manifests, seven acquired-records, and the two small derived
+    summaries enter git."
+  - "NO PERSONAL DATA. GTFS schedules contain no rider or operator identity.
+    gtfs_datasets.csv carries an authentication_contact_details column that may
+    hold operator staff contacts; it is declared in sensitive_fields, and is
+    never read, joined, or reproduced in any derived artifact."
+failure_injections:
+  - "The 'probably public domain' shortcut: rejected structurally. The estate's
+    base gate only blocks the literal words unknown/tbd/todo/?, so
+    test_estate_calitp_manifests adds seven stricter assertions — the rights
+    must name the licence, take an explicit commercial position, cite the
+    machine-readable field they were read from, record the version as OUR
+    choice, carry the CC-BY attribution obligation, carry the publisher's use
+    note verbatim, and state the upstream scope limit."
+  - "Silent divergence of the ledger: all seven manifests must carry a
+    BYTE-IDENTICAL rights statement. Seven slightly different answers to one
+    legal question would mean an auditor's verdict depended on which file they
+    opened."
+  - "After-midnight service: GTFS writes a 01:10 arrival on the following
+    morning as 25:10:00. Wrapping that to a 24-hour clock sorts the last trip of
+    a block before the first and turns a 20-minute gap into minus 23 hours.
+    Asserted, and mutation-checked."
+  - "block_id reused across physical vehicles: produces trips that overlap in
+    time. These are DROPPED and COUNTED rather than chained into fictional
+    movements — and the count is published, because a high overlap rate means
+    that agency's block_id is not a real vehicle block."
+  - "Layover mistaken for deadhead: a gap that begins and ends at the SAME stop
+    is the schedule asserting the vehicle does not move. No DeadheadSegment is
+    emitted for it; it is reported separately as layover-in-place. This is the
+    single easiest way to overstate the measurement."
+  - "Frequency-defined trips: their stop_times rows are relative TEMPLATES, not
+    absolute schedules. Chaining them would place a vehicle at a clock time it
+    never occupies. frequencies.csv is acquired purely as an exclusion list."
+  - "Guessing the deadhead kind: DeadheadKind's contract forbids inferring the
+    classification from geometry or timing, and warns specifically that a wrong
+    'interline' inflates the number an interlining change is judged by. Every
+    emitted segment is 'other'. Mutation-checked with the most tempting wrong
+    version — inferring 'interline' when the route changes."
+  - "Minting a canonical Block: Block requires pull_out_at/pull_in_at and GTFS
+    publishes neither. Setting them to the first departure and last arrival
+    would redefine a block as its revenue envelope and erase the pull-out/pull-in
+    exclusion by construction. No Block is created; block_id stays None."
+  - "The label getting separated from the data: asserted IN the artifacts, not
+    just in docstrings. Every JSONL row carries measurement='scheduled_deadhead'
+    per-row (a file-level label would not survive a split-and-rejoin), and the
+    summary's incomparability note is asserted to name the definitional gap
+    BEFORE the operational one."
+compatibility_matrix:
+  - "Seven objects acquired through the real pipeline against the live
+    data.ca.gov endpoints; all seven mirrored into the running local MinIO with
+    object_store_key == sha256"
+  - "All 24 manifests in data/catalog/ (17 pre-existing + 7 new) still load
+    through load_manifest — the existing ledger is unbroken"
+  - "Emitted rows validate as packages.canonical.entities.DeadheadSegment with
+    no modification to Program A's definitions"
+upstream_blockers: []
+downstream_consumers:
+  - packages/replay/teardown.py — the waiting consumer ADR-0047 named. Emitted
+    segments map field-for-field onto VehicleSegment(kind='deadhead'), with
+    run_ref carrying the GTFS block so empty time is attributable rather than
+    landing in `unattributable`.
+  - Program F decide — a measured scheduled-deadhead distribution is the first
+    empirical prior for what an interlining change is worth.
+  - The national harvest (ACQUISITION_PLAN item 2) — this packet is its
+    feasibility gate. It is NOT unblocked by this packet; it remains blocked on
+    the FTA written answer.
+notes: >
+  STATUS IS **Demonstrated**, NOT Validated, and the distinction is load-bearing.
+  Public GTFS is not operator-consented data: no California operator agreed to
+  Milexium measuring their deadhead, no operator has confirmed these figures
+  describe their service, and nothing here has been checked against an
+  operator's own scheduling system. Validated requires that confirmation. What
+  is demonstrated is that the reconstruction runs end-to-end on real
+  multi-operator data through the governed estate and produces canonical
+  entities Program A already defines.
+
+  WHAT WAS DELIBERATELY NOT DONE. The national 1,214-agency harvest was not
+  attempted — its rights basis is an FTA statement that conflicts with live
+  agency click-through licences, and the founder's email has not been answered.
+  California TIDES was not acquired (requester-pays GCS; a paid cloud
+  relationship). gtfsrt.io was not touched (no data licence stated; the bytes
+  are verbatim upstream agency feeds carrying their own terms). No calendar.csv
+  was acquired, so service_ids are grouped but not resolved to real dates —
+  which is why the emitted instants are anchored to one NOMINAL reference
+  service date and say so in every row.
+
+  THE HONEST HEADLINE. This measures what a timetable IMPLIES, not what
+  vehicles DID. It excludes pull-out and pull-in entirely, which on many
+  operators is the largest deadhead component; it cannot see lateness,
+  short-turns, swaps or pull-downs; and it can only measure agencies that
+  publish block_id at all. The numbers in
+  data/catalog/calitp-scheduled-deadhead.summary.json must never be subtracted
+  from an NTD operated-deadhead figure. Where the two are discussed together,
+  the difference is FIRST definitional and only SECOND operational — and this
+  packet cannot say how much is which.
+evidence_to_emit:
+  - "SEE data/catalog/calitp-scheduled-deadhead.summary.json — the measured
+    figures are recorded there rather than duplicated here, so there is one
+    place for them to be right."

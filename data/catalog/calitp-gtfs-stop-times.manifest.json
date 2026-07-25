@@ -1,0 +1,38 @@
+{
+  "dataset_id": "calitp-gtfs-stop-times",
+  "owner_and_source": "California Department of Transportation (Caltrans), California Integrated Travel Program (Cal-ITP) -- 'Cal-ITP GTFS-Ingest Pipeline Dataset' on data.ca.gov (CKAN package cal-itp-gtfs-ingest-pipeline-dataset, id de6f1544-b162-4d16-997b-c183912c8e62), resource d31eef2f-e223-4ca4-a86b-170acc6b2590. No API key, no registration, plain HTTPS.",
+  "license_and_commercial_rights": "Creative Commons Attribution (CC-BY); COMMERCIAL USE IS PERMITTED. Verified 2026-07-25 by reading the publisher's own machine-readable CKAN record rather than trusting data/ACQUISITION_PLAN.md: https://data.ca.gov/api/3/action/package_show?id=cal-itp-gtfs-ingest-pipeline-dataset returns license_id='cc-by', license_title='Creative Commons Attribution', license_url='http://www.opendefinition.org/licenses/cc-by', rights='No restrictions on public use', accessLevel='public', isopen=true, organization='Caltrans'. The commercial-use verdict does not depend on the version: every published CC-BY version (2.5, 3.0, 4.0) grants commercial use. THE VERSION IS NOT PINNED BY THE SOURCE -- the acquisition plan expected the CKAN license field to confirm it and it does not; license_url is the Open Definition's version-agnostic cc-by entry, which itself lists 4.0, 3.0 and 2.5. Licence text Milexium attributes under: https://creativecommons.org/licenses/by/4.0/ -- recorded as OUR choice of the current version, not as the publisher's declaration. Required attribution: 'California Integrated Travel Program (Cal-ITP), California Department of Transportation'; contact calitp@dot.ca.gov. PUBLISHER USE NOTE, quoted verbatim from the CKAN notes field: 'Cal-ITP collects the GTFS feeds from a statewide list every night and aggregates it into a statewide table for analysis purposes only. Do not use for trip planner ingestion, rather is meant to be used for statewide analytics and other use cases. Note: These data may or may or may not have passed GTFS-Validation' -- Milexium's use (statewide scheduled-deadhead analytics) is inside that stated intent, and these bytes must NOT be served to a passenger trip planner. SCOPE LIMIT: this grant is Caltrans' over ITS aggregation. The ~200 underlying per-operator feeds keep their own upstream terms; this record does not launder them and is NOT authority to fetch any agency feed directly.",
+  "decision_tasks_enabled": [
+    "replay.deadhead_teardown",
+    "connect.standards_conformance"
+  ],
+  "geography": "California, statewide -- every operator on Cal-ITP's nightly ingest list",
+  "time_coverage": "current statewide snapshot; refreshed and republished monthly (CKAN accrualPeriodicity R/P1M, metadata_modified 2026-07-21). Times are SCHEDULED clock times on a service day, not observed times.",
+  "source_url": "https://data.ca.gov/dataset/de6f1544-b162-4d16-997b-c183912c8e62/resource/d31eef2f-e223-4ca4-a86b-170acc6b2590/download/stop_times.csv",
+  "expected_download_gb": 2.8348,
+  "expected_expanded_gb": 2.8348,
+  "expected_retained_gb": 2.8348,
+  "schema_and_format": "CSV, 23 columns: base64_url, trip_id, arrival_time, departure_time, stop_id, stop_sequence, stop_headsign, pickup_type, drop_off_type, continuous_pickup, continuous_drop_off, shape_dist_traveled, timepoint, arrival_sec, departure_sec, start_pickup_drop_off_window, end_pickup_drop_off_window, mean_duration_factor, mean_duration_offset, safe_duration_factor, safe_duration_offset, pickup_booking_rule_id, drop_off_booking_rule_id. arrival_sec/departure_sec are Cal-ITP additions: seconds from service-day start, which is the ONLY correct arithmetic basis for block chaining because GTFS clock times legitimately exceed 24:00:00 for after-midnight service (a trip ending '25:10:00' is 90600 s, and treating it as 01:10 would produce a negative gap). This is the largest object in the packet at ~2.83 GB and MUST be streamed, never loaded whole.",
+  "sensitive_fields": [],
+  "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use; the retained digest is recorded in calitp-gtfs-stop-times.acquired.json.",
+  "source_checksum": null,
+  "canonical_contract": "packages.canonical.entities.DeadheadSegment (Program A, ADR-0047). The first departure and last arrival of each trip become the boundaries between which a DeadheadSegment's started_at/ended_at are computed; the first and last stop_id become from_stop_ref/to_stop_ref. No canonical entity is created for a stop time itself -- StopTimeObservation is TELEMETRY (what a vehicle was observed doing) and this is a SCHEDULE, so mapping these rows onto it would assert observation where none exists.",
+  "quality_tests": [
+    {
+      "name": "header_carries_trip_key_and_second_offsets",
+      "description": "the first line contains base64_url, trip_id, stop_sequence and both arrival_sec and departure_sec -- without the second offsets, after-midnight trips cannot be ordered correctly"
+    },
+    {
+      "name": "second_offsets_agree_with_clock_times",
+      "description": "on a sample of rows, arrival_sec equals the HH:MM:SS arrival_time parsed as seconds-from-service-day-start, so the Cal-ITP-added column can be trusted rather than re-derived"
+    }
+  ],
+  "acceptance_threshold": "downloads over plain HTTPS with no credential, is CSV, > 1 GB, header contains base64_url, trip_id, stop_sequence, arrival_sec and departure_sec.",
+  "retention_and_deletion": "retain WHILE the deadhead derivation is being iterated, then reconsider. This single object is ~97% of the packet's bytes and is only ever read to produce a per-trip first-departure/last-arrival summary that is four orders of magnitude smaller. Once that summary is stable and evidenced, the raw object is a candidate for eviction: it is reproducible from the same URL, and the acquired-record preserves its content address either way.",
+  "derived_artifacts": [
+    "data/catalog/calitp-scheduled-deadhead.summary.json",
+    "data/catalog/calitp-scheduled-deadhead.md",
+    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with tools/derive_scheduled_deadhead.py)"
+  ],
+  "zone": "raw/public"
+}

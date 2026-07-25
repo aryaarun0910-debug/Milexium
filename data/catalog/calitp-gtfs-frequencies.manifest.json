@@ -1,0 +1,37 @@
+{
+  "dataset_id": "calitp-gtfs-frequencies",
+  "owner_and_source": "California Department of Transportation (Caltrans), California Integrated Travel Program (Cal-ITP) -- 'Cal-ITP GTFS-Ingest Pipeline Dataset' on data.ca.gov (CKAN package cal-itp-gtfs-ingest-pipeline-dataset, id de6f1544-b162-4d16-997b-c183912c8e62), resource 48542c8f-8ce1-43e3-a965-6c68771d6fe5. No API key, no registration, plain HTTPS.",
+  "license_and_commercial_rights": "Creative Commons Attribution (CC-BY); COMMERCIAL USE IS PERMITTED. Verified 2026-07-25 by reading the publisher's own machine-readable CKAN record rather than trusting data/ACQUISITION_PLAN.md: https://data.ca.gov/api/3/action/package_show?id=cal-itp-gtfs-ingest-pipeline-dataset returns license_id='cc-by', license_title='Creative Commons Attribution', license_url='http://www.opendefinition.org/licenses/cc-by', rights='No restrictions on public use', accessLevel='public', isopen=true, organization='Caltrans'. The commercial-use verdict does not depend on the version: every published CC-BY version (2.5, 3.0, 4.0) grants commercial use. THE VERSION IS NOT PINNED BY THE SOURCE -- the acquisition plan expected the CKAN license field to confirm it and it does not; license_url is the Open Definition's version-agnostic cc-by entry, which itself lists 4.0, 3.0 and 2.5. Licence text Milexium attributes under: https://creativecommons.org/licenses/by/4.0/ -- recorded as OUR choice of the current version, not as the publisher's declaration. Required attribution: 'California Integrated Travel Program (Cal-ITP), California Department of Transportation'; contact calitp@dot.ca.gov. PUBLISHER USE NOTE, quoted verbatim from the CKAN notes field: 'Cal-ITP collects the GTFS feeds from a statewide list every night and aggregates it into a statewide table for analysis purposes only. Do not use for trip planner ingestion, rather is meant to be used for statewide analytics and other use cases. Note: These data may or may or may not have passed GTFS-Validation' -- Milexium's use (statewide scheduled-deadhead analytics) is inside that stated intent, and these bytes must NOT be served to a passenger trip planner. SCOPE LIMIT: this grant is Caltrans' over ITS aggregation. The ~200 underlying per-operator feeds keep their own upstream terms; this record does not launder them and is NOT authority to fetch any agency feed directly.",
+  "decision_tasks_enabled": [
+    "replay.deadhead_teardown",
+    "connect.standards_conformance"
+  ],
+  "geography": "California, statewide -- every operator on Cal-ITP's nightly ingest list",
+  "time_coverage": "current statewide snapshot; refreshed and republished monthly (CKAN accrualPeriodicity R/P1M)",
+  "source_url": "https://data.ca.gov/dataset/de6f1544-b162-4d16-997b-c183912c8e62/resource/48542c8f-8ce1-43e3-a965-6c68771d6fe5/download/frequencies.csv",
+  "expected_download_gb": 1.46e-05,
+  "expected_expanded_gb": 1.46e-05,
+  "expected_retained_gb": 1.46e-05,
+  "schema_and_format": "CSV keyed on (base64_url, trip_id, start_time), carrying end_time, headway_secs, exact_times. ACQUIRED PURELY AS AN EXCLUSION LIST, which is why a 15 KB file gets its own governance record. For a frequency-defined trip, the stop_times row is a TEMPLATE of relative offsets, not an absolute schedule -- the trip actually runs many times between start_time and end_time at headway_secs. Chaining such a trip by its template times would place a vehicle at a clock time it never occupies and manufacture a deadhead gap that does not exist. Every trip appearing here is excluded from the derivation and counted separately, rather than being silently mis-timed.",
+  "sensitive_fields": [],
+  "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use.",
+  "source_checksum": null,
+  "canonical_contract": "none-yet -- a negative filter, not data Milexium maps onto any canonical entity. Its whole job is to keep rows OUT of packages.canonical.entities.DeadheadSegment.",
+  "quality_tests": [
+    {
+      "name": "header_carries_trip_key_and_headway",
+      "description": "the first line contains base64_url, trip_id and headway_secs -- the trip key is what the exclusion joins on"
+    },
+    {
+      "name": "exclusion_list_is_small_relative_to_trips",
+      "description": "the distinct excluded (base64_url, trip_id) count is a small fraction of all trips; if frequency-defined trips ever dominate, the headline deadhead figure would be describing a small minority of service and must say so"
+    }
+  ],
+  "acceptance_threshold": "downloads over plain HTTPS with no credential, is CSV, and the header contains base64_url, trip_id and headway_secs. An EMPTY body (header only) is an acceptable outcome and means no California feed uses frequency-based service -- it is not a download failure.",
+  "retention_and_deletion": "retain: 15 KB, and losing it would silently re-admit mis-timed trips into the derivation. Reproducible monthly.",
+  "derived_artifacts": [
+    "data/catalog/calitp-scheduled-deadhead.summary.json",
+    "data/catalog/calitp-scheduled-deadhead.md"
+  ],
+  "zone": "raw/public"
+}

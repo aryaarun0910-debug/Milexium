@@ -1,0 +1,38 @@
+{
+  "dataset_id": "calitp-gtfs-trips",
+  "owner_and_source": "California Department of Transportation (Caltrans), California Integrated Travel Program (Cal-ITP) -- 'Cal-ITP GTFS-Ingest Pipeline Dataset' on data.ca.gov (CKAN package cal-itp-gtfs-ingest-pipeline-dataset, id de6f1544-b162-4d16-997b-c183912c8e62), resource 0e4da89e-9330-43f8-8de9-305cb7d4918f. Cal-ITP fetches every California transit operator's GTFS nightly and concatenates one statewide CSV per GTFS table, preserving feed identity in a base64_url column. No API key, no registration, plain HTTPS.",
+  "license_and_commercial_rights": "Creative Commons Attribution (CC-BY); COMMERCIAL USE IS PERMITTED. Verified 2026-07-25 by reading the publisher's own machine-readable CKAN record rather than trusting data/ACQUISITION_PLAN.md: https://data.ca.gov/api/3/action/package_show?id=cal-itp-gtfs-ingest-pipeline-dataset returns license_id='cc-by', license_title='Creative Commons Attribution', license_url='http://www.opendefinition.org/licenses/cc-by', rights='No restrictions on public use', accessLevel='public', isopen=true, organization='Caltrans'. The commercial-use verdict does not depend on the version: every published CC-BY version (2.5, 3.0, 4.0) grants commercial use. THE VERSION IS NOT PINNED BY THE SOURCE -- the acquisition plan expected the CKAN license field to confirm it and it does not; license_url is the Open Definition's version-agnostic cc-by entry, which itself lists 4.0, 3.0 and 2.5. Licence text Milexium attributes under: https://creativecommons.org/licenses/by/4.0/ -- recorded as OUR choice of the current version, not as the publisher's declaration. Required attribution: 'California Integrated Travel Program (Cal-ITP), California Department of Transportation'; contact calitp@dot.ca.gov. PUBLISHER USE NOTE, quoted verbatim from the CKAN notes field: 'Cal-ITP collects the GTFS feeds from a statewide list every night and aggregates it into a statewide table for analysis purposes only. Do not use for trip planner ingestion, rather is meant to be used for statewide analytics and other use cases. Note: These data may or may or may not have passed GTFS-Validation' -- Milexium's use (statewide scheduled-deadhead analytics) is inside that stated intent, and these bytes must NOT be served to a passenger trip planner. SCOPE LIMIT: this grant is Caltrans' over ITS aggregation. The ~200 underlying per-operator feeds keep their own upstream terms; this record does not launder them and is NOT authority to fetch any agency feed directly.",
+  "decision_tasks_enabled": [
+    "replay.deadhead_teardown",
+    "connect.standards_conformance"
+  ],
+  "geography": "California, statewide -- every operator on Cal-ITP's nightly ingest list",
+  "time_coverage": "current statewide snapshot; the assembly is refreshed and republished monthly (CKAN accrualPeriodicity R/P1M, metadata_modified 2026-07-21). Not a historical archive: one service-change generation, not a time series.",
+  "source_url": "https://data.ca.gov/dataset/de6f1544-b162-4d16-997b-c183912c8e62/resource/0e4da89e-9330-43f8-8de9-305cb7d4918f/download/trips.csv",
+  "expected_download_gb": 0.0727,
+  "expected_expanded_gb": 0.0727,
+  "expected_retained_gb": 0.0727,
+  "schema_and_format": "CSV, 11 columns: base64_url, route_id, service_id, trip_id, trip_headsign, trip_short_name, direction_id, block_id, shape_id, wheelchair_accessible, bikes_allowed. THE REASON THIS PACKET EXISTS IS THE block_id COLUMN: it is the agency's own chained day of vehicle work, and consecutive trips sharing a block_id are the same physical vehicle. base64_url is the feed key -- trip_id is unique only WITHIN a feed, so every join must be on (base64_url, trip_id). block_id is optional in GTFS and is frequently blank; the emptiness rate is itself a finding, recorded in data/catalog/calitp-scheduled-deadhead.md.",
+  "sensitive_fields": [],
+  "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use, because the statewide assembly is rebuilt nightly and republished monthly, so no stable digest is publishable ahead of the pull. The digest actually retained is recorded in calitp-gtfs-trips.acquired.json.",
+  "source_checksum": null,
+  "canonical_contract": "packages.canonical.entities.Block and packages.canonical.entities.DeadheadSegment (Program A, ADR-0047). trips.block_id maps to Block.block_ref and DeadheadSegment.block_ref; trips.service_id maps to Block.service_ref. Both are SOURCE refs and stay plain strings, exactly as those entities require -- they name an external agency's entities, never a Milexium aggregate.",
+  "quality_tests": [
+    {
+      "name": "header_carries_base64_url_and_block_id",
+      "description": "the first line contains both base64_url (the feed key every join needs) and block_id (the field the whole packet depends on); without either the file is unusable for block chaining"
+    },
+    {
+      "name": "trip_key_is_unique_per_feed",
+      "description": "(base64_url, trip_id) is unique -- if it is not, the stop_times join would fan out and inflate every derived deadhead figure"
+    }
+  ],
+  "acceptance_threshold": "downloads over plain HTTPS with no credential, is CSV, > 10 MB, header contains base64_url, trip_id and block_id, and at least one row carries a non-empty block_id.",
+  "retention_and_deletion": "retain. Small (~73 MB) and the single most load-bearing file in the packet -- it is the only place the block chaining lives. Reproducible monthly from the same URL; a fresher pull supersedes and the superseded object may be deleted once its acquired-record is superseded.",
+  "derived_artifacts": [
+    "data/catalog/calitp-scheduled-deadhead.summary.json",
+    "data/catalog/calitp-scheduled-deadhead.md",
+    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with tools/derive_scheduled_deadhead.py)"
+  ],
+  "zone": "raw/public"
+}
