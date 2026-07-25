@@ -51,14 +51,21 @@
 -- suite pins BOTH halves: that a reset session really does read back '', and that
 -- deny-all holds anyway.
 --
--- NO ASYMMETRIC POLICY HERE. rls_postgres.sql has one (model_versions, ADR-0040:
--- platform-owned models readable by every tenant, writable by none). Nothing in
--- Program D's runtime state is platform-owned -- a feature value and a promotion
--- decision belong to the operator whose data produced them -- so every policy
--- below is symmetric: what you may read, you may write. `USING` governs which
--- existing rows are visible (SELECT/UPDATE/DELETE); `WITH CHECK` governs which new
--- rows are permitted (INSERT/UPDATE), so a session acting as tenant B cannot even
--- write a row stamped with tenant A's id.
+-- ONE POLICY BELOW IS ASYMMETRIC, AND IT IS NEW (MX-D-REGISTRY-PERSISTENCE-009).
+-- Until schema version 3 this file could say "no asymmetric policy here": nothing
+-- in Program D's runtime state was platform-owned, because a feature value and a
+-- promotion decision belong to the operator whose data produced them. The model
+-- CATALOG is the exception, and it is the exception for the reason ADR-0040
+-- reserved a platform tenant in the first place -- the five models this
+-- repository actually has evaluation evidence for are trained on public data
+-- (NYC TLC, Chicago TNP, MTA, NTD) and belong to no customer.
+-- `core_model_versions` therefore carries the SAME asymmetric policy
+-- `model_versions` carries in packages/canonical/sql/rls_postgres.sql, including
+-- ADR-0043's tightening, rather than a second design for the same rule. Every
+-- other policy in this file stays symmetric: what you may read, you may write.
+-- `USING` governs which existing rows are visible (SELECT/UPDATE/DELETE);
+-- `WITH CHECK` governs which new rows are permitted (INSERT/UPDATE), so a session
+-- acting as tenant B cannot even write a row stamped with tenant A's id.
 --
 -- WHY `DROP POLICY IF EXISTS` FIRST, unlike rls_postgres.sql.
 -- `PostgresCanonicalStore` always creates a fresh schema, so it applies its RLS
@@ -89,6 +96,24 @@
 -- half of every policy below rejects any row whose tenant_id does not equal the
 -- session GUC, and no GUC is set during a migration. Reversed, the copy would
 -- move nothing while reporting success.
+--
+-- THE HAZARD ADR-0055 NAMED, NOW FACED (MX-D-REGISTRY-PERSISTENCE-009). That
+-- ordering saved the 1 -> 2 migration only because version 1 PREDATES this file
+-- -- there were no policies to see through. From version 2 onward there are, and
+-- ADR-0055 recorded the consequence in its limitations: "a 2 -> N migration that
+-- counts or copies rows with no GUC in scope sees ZERO rows and 'succeeds'
+-- having moved nothing". The 2 -> 3 migration counts rows, so it is the first to
+-- meet this. It does NOT hope: `migrations._migrate_2_to_3` calls
+-- `CoreDatabase.suspend_row_level_security()` (DISABLE on every table this file
+-- guards, plus `SET LOCAL row_security = off` so PostgreSQL itself ERRORS rather
+-- than filtering silently if anything was missed), then REFUSES with
+-- `RowSecurityInForceError` if `pg_class.relrowsecurity` is still true for any
+-- table it is about to read -- so a future edit that drops the suspension fails
+-- loudly instead of recording a confident zero. It then re-applies this file
+-- BEFORE its own transaction commits, so the window in which these tables are
+-- unguarded is never committed and never visible to another session (and
+-- `ALTER TABLE` holds ACCESS EXCLUSIVE throughout it anyway). A migration that
+-- raises rolls that DISABLE back with everything else.
 --
 -- ONE PROGRAM D TABLE IS DELIBERATELY ABSENT FROM THIS FILE:
 -- `core_schema_migrations`, the schema-version ledger. It holds no operator
@@ -162,5 +187,68 @@ ALTER TABLE promotion_canaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE promotion_canaries FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON promotion_canaries;
 CREATE POLICY tenant_isolation ON promotion_canaries
+    USING (tenant_id = current_setting('milexium.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+-- --------------------------------------------------------------------------
+-- SCHEMA VERSION 3: THE MODEL CATALOG (MX-D-REGISTRY-PERSISTENCE-009)
+--
+-- THE ONE ASYMMETRIC POLICY IN THIS FILE. `core_model_versions` holds the
+-- `ModelVersion` catalog, and ADR-0040's reserved `PLATFORM_TENANT_ID` names the
+-- models that belong to no customer. Those have to be READABLE BY EVERY TENANT
+-- AND WRITABLE BY NONE OF THEM: a strict `tenant_id = GUC` would make the
+-- platform's own models invisible to the customers who must run them, which is
+-- the entire reason the reserved tenant exists.
+--
+--   USING      admits the platform id  -> any SCOPED tenant may READ a platform model.
+--   WITH CHECK OMITS the platform id   -> a session acting as a customer CANNOT
+--                                         write a platform-stamped row.
+--
+-- This mirrors `packages/canonical/sql/rls_postgres.sql`'s `model_versions`
+-- clause deliberately, character for character in the parts that matter, so an
+-- in-memory resolution (`ModelRegistry._is_visible_to`), a canonical-store read
+-- and a Program D read cannot disagree about what a tenant may see. The literal
+-- below is the same value as `packages/canonical/ids.PLATFORM_TENANT_ID`;
+-- conformance/property-tests/test_model_registry_persistence.py asserts the two
+-- have not drifted apart, and proves the asymmetry adversarially.
+--
+-- THE EMPTY-STRING TRAP LIVES IN THIS CLAUSE AND NOWHERE ELSE IN THIS FILE
+-- (ADR-0043). Every other policy here survives a RESET session only INCIDENTALLY,
+-- because `tenant_id = ''` is false for any real UUIDv7. The platform branch has
+-- no such accident protecting it: `tenant_id = '<PLATFORM>'` is true regardless
+-- of the GUC, so without the second conjunct an UNSET or RESET session would read
+-- every platform model and this file's advertised deny-all default would be false
+-- for the one table that has rows nobody owns. `current_setting(name, true)`
+-- returns NULL only when the GUC was NEVER set; after `RESET` (or `SET x = ''`)
+-- it returns the EMPTY STRING, which an `IS NOT NULL` guard happily accepts -- a
+-- fix written that way does NOT work and cost ADR-0043 a failed attempt. So the
+-- test is `coalesce(..., '') <> ''`, explicitly, and no guard in this file is
+-- written as `IS NOT NULL`.
+--
+-- HONEST LIMIT, the same one ADR-0043 records: the GUC *is* the identity, so a
+-- session that sets `milexium.tenant_id` to the platform id IS acting as the
+-- platform and may write platform rows -- that is how the platform seeds its own
+-- catalog. What is proved impossible is a session acting as a CUSTOMER forging
+-- one.
+ALTER TABLE core_model_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE core_model_versions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON core_model_versions;
+CREATE POLICY tenant_isolation ON core_model_versions
+    USING (tenant_id = current_setting('milexium.tenant_id', true)
+           OR (tenant_id = '00000000-0000-7000-8000-000000000000'
+               AND coalesce(current_setting('milexium.tenant_id', true), '') <> ''))
+    WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));
+
+-- AND THE REGISTRY'S CHAMPION POINTER IS SYMMETRIC, deliberately, even though it
+-- points AT rows that may be platform-owned. Which model an operator has chosen
+-- to serve is that operator's decision and nobody else's business -- there is no
+-- such thing as a platform-owned champion pointer, and admitting the platform id
+-- here would have let one tenant read (and, without the asymmetry, write) another
+-- operator's serving choice. A platform MODEL is shared; the CHOICE to run it is
+-- not.
+ALTER TABLE core_model_champions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE core_model_champions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON core_model_champions;
+CREATE POLICY tenant_isolation ON core_model_champions
     USING (tenant_id = current_setting('milexium.tenant_id', true))
     WITH CHECK (tenant_id = current_setting('milexium.tenant_id', true));

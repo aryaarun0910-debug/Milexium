@@ -424,11 +424,20 @@ class PersistentPromotionController:
 
     It COMPOSES `ModelRegistry` read-only, exactly as the in-memory controller
     does -- the registry's own ADR-0010 single-pointer champion is still never
-    touched, so the two mechanisms do not fight over one piece of state. Note
-    the asymmetry this creates and which this class does NOT resolve: the
-    controller's roles now survive a restart, the registry's catalog does not.
-    A caller must re-register its `ModelVersion`s on startup before a restored
-    controller can validate them.
+    touched, so the two mechanisms do not fight over one piece of state.
+
+    THE ASYMMETRY THIS CLASS ONCE CREATED IS CLOSED, and by something outside it.
+    Its roles survived a restart while the registry's catalog did not, so a
+    restored controller held a `champion_id` it could not resolve until a caller
+    re-registered the `ModelVersion`s from memory it also no longer had.
+    `packages/core/model_registry.PersistentModelRegistry`
+    (MX-D-REGISTRY-PERSISTENCE-009) is the durable catalog; passing one here
+    instead of a `ModelRegistry` makes both halves survive together, and its
+    `unregistered_references()` lists exactly what a database migrated from
+    schema version 2 still needs re-registered before this controller can
+    validate against it. Passing the in-memory class remains supported and
+    remains what the reference tests use -- this class composes the CONTRACT, not
+    a particular backend, and it deliberately does not choose one for its caller.
 
     Two ledgers and three role tables. `promotion_decisions` and
     `promotion_rollbacks` are append-only and globally ordered by their sequence

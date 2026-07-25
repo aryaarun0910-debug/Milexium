@@ -101,7 +101,7 @@ from packages.canonical.time import UtcDateTime, _require_utc
 # One-directional: this module imports the migration runner, and the runner
 # imports `_iso_utc` back from here only INSIDE a function (see
 # `packages/core/migrations._now_iso`), so there is no import cycle.
-from packages.core.migrations import migrate, split_statements
+from packages.core.migrations import ALL_CORE_TABLES, migrate, split_statements
 
 CORE_SCHEMA_PATH = Path(__file__).parent / "sql" / "core_v0_1.sql"
 # Postgres-only: RLS is not in the portable subset, so it is a separate file
@@ -416,6 +416,73 @@ class CoreDatabase:
             return
         for statement in split_statements(CORE_RLS_PATH.read_text(encoding="utf-8")):
             self._conn.execute(statement)
+
+    def row_security_in_force(self, tables: tuple[str, ...]) -> tuple[str, ...]:
+        """Which of `tables` would filter this session's reads through a
+        row-level-security policy, in `tables` order.
+
+        The evidence a migration needs BEFORE it believes a row count, and the
+        reason it cannot get that evidence from the rows themselves: under a
+        policy with no `milexium.tenant_id` in scope a `SELECT` returns zero
+        rows, and zero rows is a perfectly ordinary answer meaning "empty". The
+        table's catalog state is the only thing that tells the two apart.
+
+        `relrowsecurity` only, not `relforcerowsecurity` -- see
+        `packages.core.migrations._require_countable_rows` for why a
+        force-aware check would be resting on who owns the table.
+
+        Returns `()` on SQLite, which has no row-level security: there, nothing
+        can hide a row from a statement that asked for it, so a count is always
+        a count."""
+        if self._placeholder == "?":
+            return ()
+        guarded = {
+            row[0]
+            for row in self.query(
+                "SELECT c.relname FROM pg_class c "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = current_schema() AND c.relrowsecurity"
+            )
+        }
+        return tuple(table for table in tables if table in guarded)
+
+    def suspend_row_level_security(self) -> None:
+        """Take row-level security out of the way for the REST OF THIS
+        TRANSACTION, so a migration can see the rows it has to reason about.
+
+        WHY A MIGRATION NEEDS THIS AND AN APPLICATION NEVER DOES. Every store in
+        this package acts FOR one tenant and sets the GUC to say so. A migration
+        acts for the database: there is no tenant it could name, and naming one
+        would be worse than naming none, because then it would see exactly one
+        operator's rows and confidently report on all of them. The policies have
+        to come off, and the only question is whether that is done deliberately
+        and provably or discovered later.
+
+        TWO STATEMENTS, and the second is the one that makes this safe to get
+        wrong. `DISABLE ROW LEVEL SECURITY` lifts the filter; `SET LOCAL
+        row_security = off` tells PostgreSQL to RAISE rather than filter if any
+        table this missed is read anyway. Silence is what a policy does; an
+        error is what a migration needs. `SET LOCAL` expires at the end of the
+        transaction with no cleanup to forget.
+
+        WHAT THIS DOES NOT DO IS OPEN A WINDOW. The `DISABLE` is DDL, it is
+        transactional on PostgreSQL, and every caller re-applies
+        `core_rls_postgres.sql` before its own commit -- so no other session ever
+        observes an unguarded table (they cannot even try: `ALTER TABLE` holds
+        ACCESS EXCLUSIVE for the duration), and a migration that raises has the
+        `DISABLE` rolled back with everything else it did. It also grants nothing:
+        this connection OWNS these tables and could have issued `NO FORCE` at any
+        moment. What is bought is that the lowering is written down, bounded, and
+        checked (`row_security_in_force`) rather than assumed.
+
+        A no-op on SQLite, which has no policies to suspend."""
+        if self._placeholder == "?":
+            return
+        self._conn.execute("SET LOCAL row_security = off")
+        for table in ALL_CORE_TABLES:
+            self._conn.execute(
+                f"ALTER TABLE IF EXISTS {table} DISABLE ROW LEVEL SECURITY"
+            )
 
     def schema_version(self) -> int | None:
         """The Program D schema version this database records, or `None` if it

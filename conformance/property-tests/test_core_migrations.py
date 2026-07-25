@@ -396,8 +396,8 @@ def test_the_statement_splitter_is_pinned_to_the_files_it_splits() -> None:
     counts = {
         CORE_MIGRATIONS_SCHEMA_PATH: 1,  # the ledger table
         CORE_SCHEMA_V1_PATH: 8,  # 7 tables + the as-of index
-        CORE_SCHEMA_PATH: 8,  # 7 tables + the as-of index
-        CORE_RLS_PATH: 28,  # 7 tables x (ENABLE, FORCE, DROP POLICY, CREATE POLICY)
+        CORE_SCHEMA_PATH: 11,  # 9 tables + the as-of and catalog indexes
+        CORE_RLS_PATH: 36,  # 9 tables x (ENABLE, FORCE, DROP POLICY, CREATE POLICY)
     }
     for path, expected in counts.items():
         statements = split_statements(path.read_text(encoding="utf-8"))
@@ -445,7 +445,7 @@ def test_an_empty_database_is_detected_as_version_zero(engine) -> None:
     assert detect_shape(engine.raw()) == 0
 
 
-def test_a_current_database_is_detected_as_version_two(engine) -> None:
+def test_a_current_database_is_detected_as_the_current_version(engine) -> None:
     assert detect_shape(engine.open()) == CURRENT_SCHEMA_VERSION
 
 
@@ -468,7 +468,7 @@ def test_a_pre_tenant_database_is_stamped_with_what_it_was_before_being_moved(
 ) -> None:
     """The inference happens exactly ONCE in a database's life. Version 1 is
     recorded as 'adopted' -- recognised and stamped, nothing changed -- and only
-    then does version 2 get applied on top of a recorded fact rather than a fresh
+    then does the chain get applied on top of a recorded fact rather than a fresh
     guess."""
     engine.create_version_1().close()
     ledger = applied_migrations(engine.open(legacy_tenant_id=new_id(TenantId)))
@@ -476,6 +476,7 @@ def test_a_pre_tenant_database_is_stamped_with_what_it_was_before_being_moved(
     assert [(row.version, row.applied_by) for row in ledger] == [
         (1, "adopted"),
         (2, "migrated"),
+        (3, "migrated"),
     ]
 
 
@@ -647,7 +648,10 @@ def test_an_empty_pre_tenant_database_needs_no_tenant_decision(engine) -> None:
     migrated = engine.open()
 
     assert migrated.schema_version() == CURRENT_SCHEMA_VERSION
-    note = applied_migrations(migrated)[-1].note
+    # Version 2's note specifically, not the last one: the chain is longer than
+    # one step now, and "the tenant question was not asked" is a fact about the
+    # migration that had a tenant question to ask.
+    note = next(row.note for row in applied_migrations(migrated) if row.version == 2)
     assert "no rows existed" in note
     assert "none was invented" in note
 
@@ -725,7 +729,7 @@ def test_the_ledger_records_each_version_exactly_once(engine) -> None:
         migrate(database)
 
     versions = [row.version for row in applied_migrations(database)]
-    assert versions == sorted(set(versions)) == [1, 2]
+    assert versions == sorted(set(versions)) == [1, 2, 3]
 
 
 # =========================================================================

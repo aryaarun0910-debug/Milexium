@@ -34,7 +34,8 @@
 --
 --  c. THE APPLICATION-ASSIGNED SEQUENCES ARE NOW PER-TENANT
 --     (`decision_sequence`, `rollback_sequence`, `stack_position`,
---     `enrol_sequence`). This is forced, not stylistic: under row-level security
+--     `enrol_sequence`, and `registered_sequence` on the version-3 catalog).
+--     This is forced, not stylistic: under row-level security
 --     `SELECT MAX(decision_sequence) FROM promotion_decisions` sees only the
 --     acting tenant's rows, so a GLOBAL sequence would be re-derived per tenant
 --     and two tenants would collide on the same primary key -- the isolation
@@ -101,7 +102,12 @@
 --   * a change here is a NEW SCHEMA VERSION. Adding a column, widening a CHECK
 --     or changing a primary key means bumping `CURRENT_SCHEMA_VERSION` and
 --     adding a `Migration` beside it. A change made here alone reaches new
---     databases and silently misses every existing one.
+--     databases and silently misses every existing one. That rule was followed
+--     to add the version-3 model catalog at the foot of this file
+--     (MX-D-REGISTRY-PERSISTENCE-009), and the previous shape is preserved
+--     verbatim in `legacy/core_v0_2_pre_catalog.sql` -- which the 1 -> 2 step now
+--     applies, so each migration produces exactly its own version's shape rather
+--     than overshooting to whatever this file happens to say today.
 --   * the shape this file produces must stay identical to the shape the
 --     migration chain produces. conformance/property-tests/test_core_migrations.py
 --     asserts exactly that, by comparing a migrated database's columns against a
@@ -221,5 +227,84 @@ CREATE TABLE IF NOT EXISTS promotion_canaries (
     model_version_id  TEXT NOT NULL,
     traffic_fraction  DOUBLE PRECISION NOT NULL
         CHECK (traffic_fraction >= 0 AND traffic_fraction < 1),
+    PRIMARY KEY (tenant_id, task)
+);
+
+-- ---------------------------------------------------------------------------
+-- SCHEMA VERSION 3 (MX-D-REGISTRY-PERSISTENCE-009): THE MODEL CATALOG.
+--
+-- WHAT THIS CLOSES. The seven tables above made Program D's promotion ROLES
+-- durable and left the CATALOG they point at in a Python dict:
+--
+--     "ModelRegistry is still in-memory: promotion roles survive a restart, the
+--      model catalog does not."
+--
+-- That asymmetry is worse than either half of it. `promotion_champions` names a
+-- `model_version_id` and survives a restart; the `ModelVersion` that id refers to
+-- did not, so a restored `PersistentPromotionController` held a champion pointer
+-- it could not validate, resolve or describe until some caller happened to
+-- re-register the same objects from memory it also no longer had. The pointer
+-- outliving its referent is a dangling reference with an audit trail.
+--
+-- WHY THE NAME IS `core_model_versions` AND NOT `model_versions`. The canonical
+-- contract (packages/canonical/sql/schema_v0_1.sql) ALREADY has a table called
+-- `model_versions`, and a Program D store can be opened against a database that
+-- also carries the canonical contract -- that independence is ADR-0041's, and
+-- these tables deliberately carry no foreign key into the canonical schema. Two
+-- tables sharing one name in one schema would not merely collide: the one that
+-- got created first would silently ABSORB the other contract's writes, and each
+-- would read the other's rows as its own. This is the same reasoning that named
+-- the version ledger `core_schema_migrations` rather than `schema_migrations`
+-- (ADR-0055), applied to the case where the collision is with a table that
+-- genuinely exists rather than one that might.
+--
+-- The columns are the canonical `ModelVersion` entity's fields
+-- (packages/canonical/entities.py) plus the two this store adds. Timestamps are
+-- the same fixed-width ISO-8601 UTC TEXT every other timestamp here uses.
+--
+-- `registered_sequence` is the PER-TENANT append counter, per note (c) at the
+-- top of this file -- under RLS the MAX() that assigns it sees only the acting
+-- tenant's rows, so it could not be global even if that were wanted.
+-- `registered_at` exists BESIDE it because a listing may span two tenants (a
+-- customer's own models and the platform's, see the policy in
+-- core_rls_postgres.sql), and two per-tenant counters do not order against each
+-- other. Sequence alone would have produced a stable-looking order that was not
+-- a chronology.
+CREATE TABLE IF NOT EXISTS core_model_versions (
+    tenant_id                    TEXT NOT NULL,
+    model_version_id             TEXT NOT NULL,
+    task                         TEXT NOT NULL,
+    training_data_manifest_hash  TEXT NOT NULL,
+    feature_schema_version       TEXT NOT NULL,
+    evaluation_window_start      TEXT NOT NULL,
+    evaluation_window_end        TEXT NOT NULL,
+    artifact_hash                TEXT NOT NULL,
+    registered_at                TEXT NOT NULL,
+    registered_sequence          INTEGER NOT NULL CHECK (registered_sequence >= 1),
+    PRIMARY KEY (tenant_id, model_version_id)
+);
+
+-- The resolution access path: tenant, then task, then registration order --
+-- exactly what `PersistentModelRegistry.list_for_task` asks for, with the tenant
+-- predicate leading for the reason note (b) gives.
+CREATE INDEX IF NOT EXISTS ix_core_model_versions_task
+    ON core_model_versions (tenant_id, task, registered_at, registered_sequence);
+
+-- The registry's OWN champion pointer (ADR-0010's single pointer), which is NOT
+-- the promotion controller's champion and must not share a row with it.
+--
+-- `promotion_champions` above is the champion/challenger/canary lifecycle's
+-- serving pointer, mutated only alongside a `promotion_decisions` ledger row.
+-- `ModelRegistry.promote()` is the older, simpler thing: a pointer that
+-- overwrites without evaluating a gate, which `PersistentPromotionController`
+-- documents that it never touches so the two mechanisms do not fight over one
+-- piece of state. Persisting the registry's pointer INTO `promotion_champions`
+-- would have made them fight -- a `registry.promote()` would silently install a
+-- champion no decision authorised, and the ledger would be incomplete for the
+-- first time. A second table is the cost of keeping that promise.
+CREATE TABLE IF NOT EXISTS core_model_champions (
+    tenant_id    TEXT NOT NULL,
+    task         TEXT NOT NULL,
+    champion_id  TEXT NOT NULL,
     PRIMARY KEY (tenant_id, task)
 );
