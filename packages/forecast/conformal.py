@@ -206,6 +206,121 @@ def fit_conformal_from_predictions(
     raise ValueError(f"mode must be 'symmetric' or 'two_sided', got {mode!r}")
 
 
+class ConformalQuantile(BaseModel):
+    """A ONE-SIDED split-conformal quantile: an offset `q` such that, under
+    exchangeability, `P(Y <= point + q) >= target_level` marginally.
+
+    A capacity decision is one-sided. The newsvendor solution provisions to the
+    `q*`-quantile of demand (`packages.forecast.capacity`), so what it needs is
+    an upper quantile at a level the COST STRUCTURE chooses -- not a
+    symmetric interval at a level someone chose for reporting. Using the upper
+    bound of a two-sided 90% interval as a "95% quantile" is a real and easy
+    mistake; this object exists so the level is stated, fitted at, and carried.
+
+    FINITE-SAMPLE HONESTY. The order statistic `ceil((n+1) * level)` cannot
+    exceed `n`, so a calibration set of `n` residuals cannot express any level
+    above `n / (n + 1)`. Asking for 0.95 from 12 monthly residuals is asking for
+    something the sample cannot deliver: the fit CAPS at the largest residual
+    and `level_supported_by_sample` is False. This is not a rounding detail --
+    on monthly agency panels it is the common case, and a capacity
+    recommendation built on an unsupported level must say so.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    target_level: float = Field(
+        gt=0.0, lt=1.0, description="One-sided level requested, e.g. 0.714 from a critical ratio."
+    )
+    offset: float = Field(description="Signed offset added to a point estimate: bound = point + offset.")
+    n_calibration: int = Field(ge=1, description="Number of finite calibration residuals the fit used.")
+    max_expressible_level: float = Field(
+        gt=0.0,
+        lt=1.0,
+        description="n / (n + 1) -- the highest level this many residuals can express.",
+    )
+
+    @property
+    def level_supported_by_sample(self) -> bool:
+        """False when `target_level` exceeds what `n_calibration` residuals can
+        express, i.e. the fit fell back to the maximum residual. The offset is
+        still returned (it is the most conservative finite value the data can
+        state), but it does NOT carry the requested level."""
+        return self.target_level <= self.max_expressible_level
+
+    @property
+    def sample_shortfall_reason(self) -> str | None:
+        if self.level_supported_by_sample:
+            return None
+        return (
+            f"CALIBRATION SAMPLE CANNOT EXPRESS THIS LEVEL. {self.n_calibration} finite "
+            f"residual(s) support a one-sided conformal level of at most "
+            f"{self.max_expressible_level:.4f} (n/(n+1)); {self.target_level:.4f} was "
+            f"requested. The offset returned is the largest observed residual -- the most "
+            f"conservative finite value the sample can state -- but it does not carry the "
+            f"requested level. More calibration history, not a wider offset, is the fix."
+        )
+
+    def apply(self, point_estimate: float, *, clip_nonnegative: bool = True) -> float:
+        """The one-sided bound for a point estimate: the quantity to provision
+        to. Clipped at 0 by default -- demand is a non-negative count."""
+        bound = point_estimate + self.offset
+        return max(bound, 0.0) if clip_nonnegative else bound
+
+
+def fit_one_sided_conformal(
+    residuals: Iterable[float],
+    *,
+    target_level: float,
+) -> ConformalQuantile:
+    """Fit a one-sided upper conformal quantile from SIGNED residuals
+    (y_true - y_pred).
+
+    Uses the same finite-sample-corrected order statistic as the two-sided
+    fits, `ceil((n+1) * level)`, on the signed (not absolute) residuals -- the
+    absolute-residual quantile would answer a different question (a symmetric
+    interval) and would over-provision whenever the residual distribution is
+    skewed, which demand residuals are.
+    """
+    import numpy as np
+
+    if not 0.0 < target_level < 1.0:
+        raise ValueError(f"target_level must be in (0, 1); got {target_level}")
+    r = np.asarray(list(residuals), dtype=float)
+    r = np.sort(r[np.isfinite(r)])
+    n = int(r.size)
+    if n == 0:
+        raise ValueError("need at least one finite residual to calibrate")
+    k = _corrected_order_index(n, target_level)
+    return ConformalQuantile(
+        target_level=target_level,
+        offset=float(r[k - 1]),
+        n_calibration=n,
+        max_expressible_level=n / (n + 1.0),
+    )
+
+
+def empirical_one_sided_coverage(
+    quantile: ConformalQuantile,
+    y_true: Iterable[float],
+    y_pred: Iterable[float],
+    *,
+    clip_nonnegative: bool = True,
+) -> float:
+    """Fraction of a holdout whose actual falls at or below the one-sided
+    bound -- the measured level, which is the number to report rather than
+    `target_level`."""
+    import numpy as np
+
+    yt = np.asarray(list(y_true), dtype=float)
+    yp = np.asarray(list(y_pred), dtype=float)
+    if yt.shape != yp.shape:
+        raise ValueError(f"y_true and y_pred must have the same shape; got {yt.shape} and {yp.shape}")
+    bound = yp + quantile.offset
+    if clip_nonnegative:
+        bound = np.clip(bound, 0.0, None)
+    return float(np.mean(yt <= bound))
+
+
 def empirical_coverage(
     calibration: ConformalCalibration,
     y_true: Iterable[float],

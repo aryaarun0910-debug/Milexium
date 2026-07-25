@@ -18,6 +18,15 @@ individual dispatch decisions -- the runtime records the numbers, it does not
 upgrade their status. Everything here is Demonstrated on public data; nothing
 becomes Validated without consented operator data.
 
+v0.4 adds the CAPACITY DECISION the forecast exists to serve
+(packages.forecast.capacity): vehicle-revenue-hours and vehicles-in-service at
+a service level chosen by an EXPLICITLY STATED cost asymmetry (the newsvendor
+critical ratio Cu/(Cu+Co)), rather than a trip count at an implicitly symmetric
+squared-error optimum. A `CapacityRecommendation` INHERITS the interval's
+guarantee status from the `MonitoredForecast` it was derived from, so a
+recommendation built on an `unsupported` interval structurally cannot claim an
+evidenced service level -- enforced by a model validator, not a docstring.
+
 v0.3 scope: batch point-in-time prediction + interval + ForecastVintage
 emission, gated on registry resolution and artifact hash verification, for
 every real model (AAR / Chicago TNP / MTA bus / MTA subway), with serve-time
@@ -35,10 +44,25 @@ online/streaming inference, categorical (zone-column) drift tests, serve-time
 recalibration under drift, model routing beyond champion lookup.
 """
 
+from packages.forecast.capacity import (
+    CENSORED_DEMAND_LIMITATION,
+    MARGINAL_COVERAGE_LIMITATION,
+    PRODUCTIVITY_POINT_ESTIMATE_LIMITATION,
+    CapacityRecommendation,
+    CostAsymmetry,
+    ProductivityBasis,
+    asymmetric_capacity_cost,
+    empirical_service_level,
+    expected_asymmetric_cost,
+    recommend_capacity,
+)
 from packages.forecast.conformal import (
     ConformalCalibration,
+    ConformalQuantile,
     empirical_coverage,
+    empirical_one_sided_coverage,
     fit_conformal_from_predictions,
+    fit_one_sided_conformal,
     fit_symmetric_conformal,
     fit_two_sided_conformal,
 )
@@ -75,10 +99,23 @@ __all__ = [
     "ModelArtifact",
     "NoChampionError",
     "ConformalCalibration",
+    "ConformalQuantile",
     "fit_symmetric_conformal",
     "fit_two_sided_conformal",
     "fit_conformal_from_predictions",
+    "fit_one_sided_conformal",
     "empirical_coverage",
+    "empirical_one_sided_coverage",
+    "CENSORED_DEMAND_LIMITATION",
+    "MARGINAL_COVERAGE_LIMITATION",
+    "PRODUCTIVITY_POINT_ESTIMATE_LIMITATION",
+    "CapacityRecommendation",
+    "CostAsymmetry",
+    "ProductivityBasis",
+    "asymmetric_capacity_cost",
+    "empirical_service_level",
+    "expected_asymmetric_cost",
+    "recommend_capacity",
     "ARTIFACT_CARRIES_NO_REFERENCE_REASON",
     "DEFAULT_KS_FAMILY_ALPHA",
     "DEFAULT_MAX_REFERENCE_SAMPLE",
