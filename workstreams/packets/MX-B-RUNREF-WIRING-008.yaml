@@ -1,0 +1,129 @@
+id: MX-B-RUNREF-WIRING-008
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+result: >
+  20 new tests (test_operator_export_runref_wiring.py), 0 skipped -- the
+  PostgreSQL half of the store fixture RAN against native PostgreSQL 17, it did
+  not skip. The adapter now writes Outcome.vehicle_ref/Outcome.run_ref and no
+  longer reports the reference as `dropped`; the chain export row -> adapter ->
+  Outcome -> MilexiumDB -> read back -> VehicleSegment -> teardown_deadhead is
+  demonstrated on both engines, with nothing carried in memory across the
+  write/read boundary. The teardown attributes 155 of 215 empty minutes to
+  RUN-14A and leaves the other 60 in `unattributable` -- worked by the SAME
+  vehicle, so a back-fill from the vehicle number would have been invisible on
+  any other fixture. Whole suite 1265 -> 1285 passed.
+objective: >
+  Close the follow-up ADR-0043 named in its own consequences. ADR-0038 surfaced
+  that vehicle_ref/run_ref had no canonical home, so packages/connect/
+  operator_export.py recorded it as a `dropped` SemanticLossRecord on EVERY row.
+  ADR-0043 gave it a home (two nullable columns on `outcomes`, plus
+  record_outcome()/outcomes() on both stores) but packages/connect was outside
+  that packet's owned paths, so the adapter kept reporting as lost the one field
+  the entire deadhead teardown depends on -- a field that by then persisted.
+  Wire the adapter through, correct the loss report, and PROVE the handoff
+  end to end, which nothing did.
+owned_paths:
+  - packages/connect/operator_export.py
+  - conformance/property-tests/test_operator_export_runref_wiring.py
+  - conformance/property-tests/test_operator_export.py   # ONE stale assertion; see notes
+  - workstreams/packets/MX-B-RUNREF-WIRING-008.yaml
+read_only_dependencies:
+  - packages/canonical/entities.py (Outcome.vehicle_ref/run_ref -- ADR-0043's fields; a concurrent packet may be active here)
+  - packages/canonical/storage.py + postgres_storage.py (record_outcome/outcomes)
+  - packages/replay/teardown.py (VehicleSegment.run_ref, RunContribution.attributable, teardown_deadhead)
+  - architecture/decisions/0043-runref-home-and-platform-tenant-deny-all.md (where the columns landed and why `outcomes` not `service_requests`)
+  - architecture/decisions/0038 (the adapter + the gap), 0039 (deadhead by chaining), 0051 (graduated repair)
+  - conformance/property-tests/test_run_reference.py (ADR-0043's own round-trip proof; unchanged and still passing)
+normative_contracts:
+  - ADR-0007 (nothing is silently dropped -- and, symmetrically, nothing persisted is reported as dropped)
+  - ADR-0039 (`unattributable` -- missing attribution stays visible, never guessed onto a neighbouring run)
+  - ADR-0043 (one fact, one home: the reference lives on Outcome and is NOT duplicated onto ServiceRequest)
+  - ADR-0051 (graduated repair + PII fail-closed; untouched by this packet)
+required_outputs:
+  - packages/connect/operator_export.py::OperatorExportAdapter.parse -- populates Outcome.vehicle_ref/run_ref
+  - packages/connect/operator_export.py::OperatorExportAdapter._semantic_loss -- the `dropped` record replaced, not deleted
+  - conformance/property-tests/test_operator_export_runref_wiring.py
+what_changed:
+  wiring: >
+    parse() passes vehicle_ref/run_ref into the Outcome it constructs. Both are
+    None when the export did not carry them. OperatorTripRecord keeps its own
+    two fields for callers written against ADR-0038; parse() sets both copies
+    from one source and a test pins them equal, but the outcome's is the copy
+    that persists and the docstring says so.
+  semantic_loss: >
+    The old `dropped` record claimed three things: (a) canonical v0.1 has no
+    home for the reference, (b) "Vehicle exists as an entity, but the
+    request-to-vehicle assignment does not", (c) it "would NOT survive a write
+    to MilexiumDB". ADR-0043 falsified (a) and (c). (b) is STILL TRUE, so the
+    record was narrowed to exactly that aspect rather than deleted -- see
+    `remaining_semantic_loss` below.
+  no_new_dependencies: true
+remaining_semantic_loss:
+  source_field: "<the block, run or vehicle the reference names>"
+  disposition: dropped
+  what_it_says: >
+    The reference itself is retained and survives a write to MilexiumDB. What is
+    NOT retained is the entity behind the label: vehicle_ref/run_ref stay plain
+    source-system strings with no foreign key to `vehicles`, `blocks` or
+    `run_pieces` (test_run_reference.py asserts `outcomes` references only
+    `tenants`), and no Vehicle/Block/RunPiece row is minted here, because the
+    minimum field list carries nothing to build one from -- no capacity, no
+    accessibility equipment, no pull-out/pull-in, no piece boundaries.
+  why_it_is_not_pedantry: >
+    Two consequences a reader would otherwise get wrong. The same unit number
+    sent by two operators is not one vehicle. And a teardown can measure the
+    gaps BETWEEN a run's consecutive trips but not the empty time before its
+    first trip or after its last, so pull-out/pull-in deadhead is invisible
+    rather than zero -- which is a real understatement of the very quantity the
+    field exists to measure.
+security_and_privacy_invariants:
+  - "ADR-0051 UNTOUCHED: the PII gate still runs FIRST, ahead of every repair. A row carrying a direct identifier is quarantined on that ground even when it has a perfectly good run reference, and the offending value is still redacted out of the quarantine record. Asserted in the new file, and the 107 existing operator-export tests plus 24 messy-data tests still pass."
+  - "REPAIRS COMPOSE WITH THE WIRING, they do not bypass it: a zero-width space in the vehicle column and a Parquet round-trip's '412.0' in the run column both reach Outcome.vehicle_ref/run_ref in their REPAIRED form, each still reported by its own rule id via repair_rule_of()."
+  - "NO RIDER DATA CROSSES THE HANDOFF: Outcome has no rider field, so nothing rider-shaped can reach an outcomes row or a VehicleSegment (which forbids extra fields outright). Asserted with a tokenised rider_ref present in the source row."
+  - "NOTHING IS INVENTED: a blank/absent run column becomes NULL, never '', never the string 'None', never the vehicle number. Asserted before the write, after the read-back, and again in the teardown's ranking."
+failure_injections:
+  - "row names both vehicle and run -> both reach the Outcome and both round-trip"
+  - "row names a vehicle but no run -> run_ref is None, is NOT back-filled from the vehicle number, and the teardown reports those minutes under `unattributable` -- on the SAME vehicle as the identified run, the shape a back-fill bug would otherwise survive"
+  - "row names a run but no vehicle -> the mirror case, vehicle_ref stays None"
+  - "run column never sent at all (key absent, not merely blank) -> top_runs is empty, attributed_run_count is 0, and the whole total sits in `unattributable` where a top-N truncation cannot hide it"
+  - "row names NEITHER -> still quarantined (failed_field='vehicle_ref'); the wiring did not soften the intake gate"
+  - "PII column present alongside a valid run reference -> quarantined on the PII ground, record is None"
+  - "whitespace/integral-float defects in the reference columns -> repaired, and the repaired value is the one that persists"
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_operator_export.py conformance/property-tests/test_messy_operator_data.py -q   # 131 passed (107 + 24), unchanged in count"
+  - "py -3 -m pytest conformance/property-tests/test_operator_export_runref_wiring.py -q   # 20 passed, 0 skipped"
+  - "py -3 -m pytest conformance/property-tests/test_run_reference.py -q   # 30 passed -- ADR-0043's own proof, untouched"
+  - "py -3 -m pytest packages/ conformance/ -q   # 1285 passed (1265 baseline + 20)"
+evidence_to_emit:
+  - "20 tests in conformance/property-tests/test_operator_export_runref_wiring.py; the PostgreSQL store parameter RAN (0 skipped), so the chain is proven on both engines, not one"
+  - "the end-to-end assertion: top_runs == [('RUN-14A', 155.0)] with segment_count 2 and attributable True; unattributable == 60.0 minutes over 1 segment; total 215.0 -- every figure re-derived from outcomes READ BACK OUT of the store, not from the in-memory adapter result"
+  - "the semantic-loss diff: `run_ref` no longer appears as a source_field, no record says 'would NOT survive a write to MilexiumDB', and the reference values are no longer echoed into any source_value"
+compatibility_matrix:
+  - "SYNTHETIC ONLY, labelled in-file. No operator data exists in this repository and none has been received (ADR-0038). Status stays Demonstrated; nothing here may be read as operator-Validated."
+  - "SQLite (demo engine) and PostgreSQL 17 -- one parametrized fixture, the shape test_run_reference.py uses, because ADR-0004's mirrored-contract claim is only tested if both run."
+upstream_blockers: []
+downstream_consumers:
+  - "packages/replay/teardown.py -- the consumer this chain feeds; it can now be handed segments built from persisted outcomes rather than only from an in-process adapter result"
+  - "packages/connect/ingest_report.py -- tallies dispositions over a batch; unchanged, and its `no_vehicle_or_run_ref` quarantine classification still fires"
+  - "a future Program A packet that gives vehicle_ref/run_ref a resolution to Vehicle/Block/RunPiece would retire the one loss record that remains"
+limitations:
+  - "THE MINUTES IN THE END-TO-END TEST ARE NOT A MEASUREMENT. The whole inter-trip interval is labelled `deadhead` by the test's own segment builder, which is a fixture-level choice to exercise the chain -- the minimum field list carries no DROPOFF time, so the revenue portion of each interval is unknown. That is the residual loss the adapter records, and it is why the test asserts on WHICH RUN the time is attributed to rather than on the quantity. A real teardown needs a dropoff column the intake document does not yet ask for."
+  - "For the same reason the teardown built from these outcomes has zero revenue minutes, so deadhead_share_of_vehicle_time is 1.0 by construction. That is an artefact of the field list, not a finding, and no assertion is made on it."
+  - "ServiceRequest does not persist. Canonical v0.1 has no record_service_request(); the store's outcome row is the only durable half of the composite, so the chain carries actual_pickup_at + vehicle_ref + run_ref and nothing else across the write. This is a pre-existing Program A gap, not one this packet introduces, and it is exactly why ADR-0043 put the reference on `outcomes` rather than `service_requests`."
+  - "OperatorTripRecord still carries its own vehicle_ref/run_ref, now redundant with the outcome's. They were kept because callers and 3 existing tests read them; parse() sets both from one source and a test pins them equal, but nothing STRUCTURALLY prevents a hand-built composite from disagreeing. Removing them is a contract change for a later packet."
+  - "The remaining loss record fires only when a reference is present -- which, given the intake gate, is every imported row. It is therefore constant, and a batch report will show it on 100% of rows; that is accurate rather than noisy, but it carries no per-row information."
+  - "The teardown's VehicleSegment has ONE run_ref slot while the Outcome has two columns. Which of the two to chain on is the caller's decision (named in the manifest's run_ref_source); this packet does not choose for them, and a caller who chains on run_ref will see every vehicle-only trip as unattributable -- correctly, but it is a choice worth making deliberately."
+notes: >
+  ONE assertion was changed in conformance/property-tests/test_operator_export.py
+  (test_structural_gaps_are_recorded_on_every_mapped_row). It asserted
+  `losses["run_ref"].disposition == "dropped"` and that the reason contained
+  "no home for a vehicle/run assignment" -- i.e. it pinned in place the exact
+  defect this packet closes, so it could not have passed unchanged. The
+  replacement asserts the narrowed record instead and its docstring records why
+  the assertion moved. All 107 tests in that file still pass, and no other test
+  in it was touched.
+  Did NOT touch packages/canonical/** (treated as read-only; a concurrent packet
+  may be active there), packages/core/**, packages/replay/**, benchmarks/**,
+  contracts, pyproject, CI, IMPLEMENTATION_STATUS, JOURNAL, any ADR, or git.
+  packages/connect/__init__.py needed no change: nothing new is exported.

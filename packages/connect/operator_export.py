@@ -104,11 +104,44 @@ reason to omit the column, and the document says so.
 WHAT IT PRODUCES
 `OperatorTripRecord`, a Connect-layer composite holding the two canonical
 entities one exported trip actually is -- a `ServiceRequest` (the booking) and
-an `Outcome` (what happened to it) -- plus the vehicle/run reference, which has
-no canonical home at all. The composite is NOT a new canonical entity: it is a
-transport container for a batch handoff to `MX-H-DEADHEAD-TEARDOWN-003`, and
-the missing canonical home for a vehicle assignment is recorded as semantic
-loss on every row rather than quietly invented here.
+an `Outcome` (what happened to it). The composite is NOT a new canonical
+entity: it is a transport container for a batch handoff to
+`MX-H-DEADHEAD-TEARDOWN-003`.
+
+THE VEHICLE/RUN REFERENCE NOW LANDS ON THE OUTCOME (ADR-0043)
+ADR-0038 shipped this adapter and surfaced, in its own consequences, that
+`vehicle_ref`/`run_ref` -- the one field the deadhead teardown chains on
+(ADR-0039 measures deadhead by chaining ONE vehicle's consecutive trips) -- had
+no canonical home. It was carried on the Connect-layer composite only and
+recorded as a `dropped` semantic loss on EVERY row, so it survived the
+in-memory handoff and would not have survived a write to MilexiumDB. ADR-0043
+gave it a home: two additive nullable columns on `outcomes`, because which
+vehicle performed a trip is a fact about what HAPPENED, sitting beside
+`deadhead_minutes`, the field derived from chaining it.
+
+This adapter therefore populates `Outcome.vehicle_ref`/`Outcome.run_ref`
+directly and NO LONGER reports the reference as dropped. That second half is
+not bookkeeping: a loss list that keeps reporting a field it actually persists
+teaches every reader to discount it, which costs more than the record was ever
+worth. The composite still exposes `vehicle_ref`/`run_ref` for existing
+callers; they are now the same fact as the outcome's, set from one source.
+
+What legitimately REMAINS lost is narrower, and is still recorded on every row
+that carries a reference: the reference is a LABEL, not a resolved entity.
+`Outcome.vehicle_ref` is the operator's own unit number and `Outcome.run_ref`
+their own run/block id -- plain strings by design, with no foreign key to
+`vehicles`, `blocks` or `run_pieces` and no such row minted here, because the
+minimum field list carries nothing to build one from. The concrete cost for the
+teardown: trips can be grouped by the label and the gaps between consecutive
+trips measured, but the run's pull-out and pull-in are unknown, so empty time
+before the first trip and after the last one is invisible rather than zero.
+
+ABSENCE STAYS ABSENT. At least one of the two columns is required (a trip
+naming neither cannot be torn down at all, so it is quarantined), but the OTHER
+one is routinely missing, and a missing reference is written as NULL -- never
+back-filled from its sibling, never defaulted to a string. ADR-0039's
+`unattributable` bucket exists precisely so unattributed empty time stays
+visible; a fabricated run id would attribute it to a run that did not incur it.
 
 MODELLING JUDGMENTS WORTH RECORDING (they are judgment, not derivation)
 - **Terminal status is materialised directly.** A historical export describes
@@ -1030,8 +1063,14 @@ class OperatorTripRecord(BaseModel):
 
     NOT a canonical entity and not a new contract: `packages.canonical` owns the
     canonical model and this module does not extend it. This is a Connect-layer
-    container so one `parse()` can return the request and its outcome together,
-    plus the vehicle/run reference that canonical v0.1 has no home for.
+    container so one `parse()` can return the request and its outcome together.
+
+    `vehicle_ref`/`run_ref` are kept here for the callers written against
+    ADR-0038, when this composite was the reference's ONLY home. Since ADR-0043
+    they are no longer that home -- `Outcome.vehicle_ref`/`Outcome.run_ref` is,
+    and it is the one that persists. `parse()` sets both from a single source so
+    they cannot disagree; anything that has to survive a write to MilexiumDB
+    should read the outcome's.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -1346,6 +1385,11 @@ class OperatorExportAdapter:
             on_time=None,
             excess_ride_time_minutes=None,
             deadhead_minutes=None,
+            # ADR-0043's columns, written here rather than left to the caller.
+            # Both are `None` when the export did not carry them -- absent stays
+            # absent, and the missing one is NEVER back-filled from its sibling.
+            vehicle_ref=vehicle_ref,
+            run_ref=run_ref,
         )
         record = OperatorTripRecord(
             request=request, outcome=outcome, vehicle_ref=vehicle_ref, run_ref=run_ref
@@ -1511,19 +1555,32 @@ class OperatorExportAdapter:
                 )
             )
 
+        # The vehicle/run reference itself is NOT a loss any more. ADR-0038
+        # recorded it as `dropped` on every row because canonical v0.1 had
+        # nowhere to put it; ADR-0043 put it on `outcomes`, and this adapter now
+        # writes `Outcome.vehicle_ref`/`Outcome.run_ref`, so the value survives a
+        # write to MilexiumDB and reporting it as dropped would be false.
+        #
+        # One aspect of that old record is still true and is kept, narrowed to
+        # exactly that aspect: what persists is the operator's LABEL for a
+        # vehicle/run, not the entity it names.
         if vehicle_ref is not None or run_ref is not None:
             losses.append(
                 SemanticLossRecord(
-                    source_field=", ".join(
-                        resolved[column][0] for column in VEHICLE_OR_RUN_COLUMNS if column in resolved
-                    ),
-                    source_value="|".join(part for part in (vehicle_ref, run_ref) if part is not None),
+                    source_field="<the block, run or vehicle the reference names>",
+                    source_value=None,
                     reason=(
-                        "canonical v0.1 has no home for a vehicle/run assignment on a ServiceRequest or "
-                        "an Outcome (Vehicle exists as an entity, but the request-to-vehicle assignment "
-                        "does not). The reference is carried on the Connect-layer OperatorTripRecord "
-                        "only, so it survives the handoff to the teardown but would NOT survive a write "
-                        "to MilexiumDB -- a real canonical gap, recorded rather than invented here"
+                        "the reference itself is retained: vehicle_ref/run_ref are written to "
+                        "Outcome.vehicle_ref/Outcome.run_ref (ADR-0043) and survive a write to "
+                        "MilexiumDB. What is NOT retained is the entity behind the label. These stay "
+                        "plain source-system strings with no foreign key to vehicles, blocks or "
+                        "run_pieces, and no Vehicle/Block/RunPiece row is minted here, because the "
+                        "minimum field list carries nothing to build one from -- no capacity, no "
+                        "accessibility equipment, no pull-out/pull-in, no piece boundaries. Two "
+                        "consequences worth stating plainly: the same unit number sent by two "
+                        "operators is not one vehicle, and a teardown can measure the gaps BETWEEN "
+                        "this run's consecutive trips but not the empty time before its first trip "
+                        "or after its last, which is therefore invisible rather than zero"
                     ),
                     disposition="dropped",
                 )

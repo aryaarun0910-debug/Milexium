@@ -727,8 +727,16 @@ def test_a_minimal_export_reports_no_unmapped_extensions() -> None:
 
 def test_structural_gaps_are_recorded_on_every_mapped_row() -> None:
     """The honest-limitation entries: no lifecycle history, no on-time
-    determination, no derived ride-time/deadhead, and no canonical home for the
-    vehicle/run reference."""
+    determination, no derived ride-time/deadhead, and -- narrowed by ADR-0043 --
+    no canonical ENTITY behind the vehicle/run label.
+
+    This assertion changed with MX-B-RUNREF-WIRING-008 and the change is the
+    point. ADR-0038 recorded the whole reference as `dropped` because canonical
+    v0.1 had no home for it; ADR-0043 built that home and the adapter now writes
+    `Outcome.vehicle_ref`/`Outcome.run_ref`, so the old entry asserted a loss
+    that no longer happens. What survives is strictly narrower: the operator's
+    label persists, the Vehicle/Block/RunPiece it names does not.
+    """
 
     adapter, _ = minimal_adapter()
 
@@ -737,8 +745,15 @@ def test_structural_gaps_are_recorded_on_every_mapped_row() -> None:
     assert losses["<lifecycle transitions between request and outcome>"].disposition == "coerced"
     assert losses["<on-time determination>"].disposition == "dropped"
     assert losses["<excess ride time and deadhead>"].disposition == "dropped"
-    assert losses["run_ref"].disposition == "dropped"
-    assert "no home for a vehicle/run assignment" in losses["run_ref"].reason
+
+    entity_gap = losses["<the block, run or vehicle the reference names>"]
+    assert entity_gap.disposition == "dropped"
+    assert "no foreign key to vehicles, blocks or run_pieces" in entity_gap.reason
+    # The reference is persisted now, so nothing may claim it is not.
+    assert "no home for a vehicle/run assignment" not in entity_gap.reason
+    assert not any(
+        loss.source_value == "RUN-A" for loss in adapter.parse(minimal_row()).semantic_loss
+    )
 
 
 def test_naive_timestamps_are_recorded_as_a_coerced_utc_assumption() -> None:
