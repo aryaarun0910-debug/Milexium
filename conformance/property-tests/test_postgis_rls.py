@@ -65,7 +65,8 @@ from packages.canonical import (  # noqa: E402
     TenantId,
     new_id,
 )
-from packages.canonical.observation_store import (  # noqa: E402
+from packages.canonical.observation_store import (
+    _application_credential,  # noqa: E402
     PostgisObservationStore,
     _read_compose_env,
     is_reachable,
@@ -351,13 +352,21 @@ def test_a_session_that_never_set_the_tenant_guc_sees_nothing(store, table: str)
     demonstrate the empty-string case above."""
     _seed(store, _tenant("container-tenant-a"), vehicle_ref="a-bus")
 
+    # Use the SAME credential the store uses (ADR-0052), not POSTGRES_USER.
+    # POSTGRES_USER is the cluster superuser: connecting with it here would
+    # bypass RLS outright and this test would report a boundary failure that is
+    # really just the test out-privileging the thing it is testing. Before
+    # ADR-0052 this happened to pass only because the store demoted the shared
+    # superuser connection with SET ROLE; now the store's credential is already
+    # unprivileged, so `_acting_role` is None and there is nothing to demote.
     env = _read_compose_env()
+    unscoped_user, unscoped_password = _application_credential(env)
     unscoped = psycopg.connect(
         host="localhost",
         port=5433,
         dbname=env.get("POSTGRES_DB", "milexium_dev"),
-        user=env.get("POSTGRES_USER", "milexium_dev"),
-        password=env["POSTGRES_PASSWORD"],
+        user=unscoped_user,
+        password=unscoped_password,
     )
     try:
         unscoped.execute(
@@ -532,3 +541,40 @@ def test_the_stores_spatial_read_method_agrees_with_the_policy(store) -> None:
     )
     assert {h["vehicle_ref"] for h in hits} == {"a-bus"}
     assert hits[0]["distance_meters"] < 1.0  # geometry populated from lat/lon, not null
+
+
+# ---------------------------------------------------------------------------
+# ADR-0052: the CONNECTING credential must itself be subject to RLS
+# ---------------------------------------------------------------------------
+
+
+def test_the_connecting_credential_is_not_a_superuser(store) -> None:
+    """ADR-0046 bound the STORE by having it SET ROLE to an unprivileged role,
+    but the credential it connected with was still the cluster superuser --
+    so anything else using that credential bypassed every tenant policy.
+
+    ADR-0052 provisions `milexium_app` (NOSUPERUSER, NOBYPASSRLS) so RLS binds at
+    the CONNECTION level, not by the store remembering to demote itself.
+
+    This test is also what stops the superuser FALLBACK in
+    `_application_credential` from being a silent hole: a checkout that quietly
+    fell back to the bootstrap superuser fails here loudly, rather than running
+    the whole isolation suite green for the wrong reason -- which is precisely
+    the failure mode ADR-0046 was written about.
+    """
+    row = store._conn.execute(
+        "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles "
+        "WHERE rolname = current_user"
+    ).fetchone()
+    store._conn.commit()
+
+    rolname, rolsuper, rolbypassrls = row
+    assert rolsuper is False, (
+        f"connected as {rolname!r}, which is a SUPERUSER -- superuser bypass is "
+        "checked before FORCE ROW LEVEL SECURITY, so every isolation assertion in "
+        "this module would be passing for the wrong reason"
+    )
+    assert rolbypassrls is False, (
+        f"connected as {rolname!r}, which holds BYPASSRLS -- the policies are "
+        "present but bind nothing"
+    )

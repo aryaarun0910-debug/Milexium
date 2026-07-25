@@ -115,6 +115,31 @@ def _parse_or_none(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value is not None else None
 
 
+def _application_credential(env: dict[str, str]) -> tuple[str, str | None]:
+    """The credential the code should connect with: the UNPRIVILEGED application
+    role when it is configured, otherwise the bootstrap superuser.
+
+    ADR-0046 found that `POSTGRES_USER` is the cluster SUPERUSER on this image --
+    it holds `rolbypassrls`, and superuser bypass is evaluated BEFORE
+    `FORCE ROW LEVEL SECURITY`, so a connection using it silently ignores every
+    tenant policy in the database. ADR-0052 provisions `milexium_app`
+    (NOSUPERUSER, NOBYPASSRLS) so RLS binds at the CONNECTION level rather than
+    depending on the store remembering to demote itself with SET ROLE.
+
+    The superuser fallback is deliberate but narrow: a checkout whose
+    infra/compose/.env predates ADR-0052 still works rather than failing
+    mysteriously. It is NOT a security position -- `test_postgis_rls.py` asserts
+    the connected role is non-superuser and non-BYPASSRLS, so a run that silently
+    fell back to the superuser fails loudly instead of passing for the wrong
+    reason (the exact failure mode ADR-0046 was written about).
+    """
+    app_user = env.get("MILEXIUM_APP_USER")
+    app_password = env.get("MILEXIUM_APP_PASSWORD")
+    if app_user and app_password:
+        return app_user, app_password
+    return env.get("POSTGRES_USER", "milexium_dev"), env.get("POSTGRES_PASSWORD")
+
+
 def is_reachable(
     *, host: str = "localhost", port: int = 5433, connect_timeout: float = 2.0
 ) -> bool:
@@ -122,7 +147,7 @@ def is_reachable(
     conformance suite skip cleanly (not fail) when infra/compose/.env is absent or
     the container is not up -- exactly the stance test_object_store.py takes."""
     env = _read_compose_env()
-    password = env.get("POSTGRES_PASSWORD")
+    user, password = _application_credential(env)
     if not password:
         return False
     try:
@@ -130,7 +155,7 @@ def is_reachable(
             host=host,
             port=port,
             dbname=env.get("POSTGRES_DB", "milexium_dev"),
-            user=env.get("POSTGRES_USER", "milexium_dev"),
+            user=user,
             password=password,
             connect_timeout=connect_timeout,
         )
@@ -158,17 +183,17 @@ class PostgisObservationStore:
         cls, *, host: str = "localhost", port: int = 5433, schema: str | None = None
     ) -> "PostgisObservationStore":
         env = _read_compose_env()
-        password = env.get("POSTGRES_PASSWORD")
+        user, password = _application_credential(env)
         if not password:
             raise RuntimeError(
-                "POSTGRES_PASSWORD not found in infra/compose/.env -- the containerized "
-                "PostGIS is not configured"
+                "no PostGIS credential found in infra/compose/.env -- set "
+                "MILEXIUM_APP_PASSWORD (preferred, ADR-0052) or POSTGRES_PASSWORD"
             )
         connection = psycopg.connect(
             host=host,
             port=port,
             dbname=env.get("POSTGRES_DB", "milexium_dev"),
-            user=env.get("POSTGRES_USER", "milexium_dev"),
+            user=user,
             password=password,
         )
         return cls(connection, schema=schema)

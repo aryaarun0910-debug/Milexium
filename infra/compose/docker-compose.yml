@@ -22,12 +22,25 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-milexium_dev}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/compose/.env}
       POSTGRES_DB: ${POSTGRES_DB:-milexium_dev}
+      # POSTGRES_USER is the CLUSTER SUPERUSER -- that is how this image
+      # bootstraps, and ADR-0046 verified it holds rolsuper AND rolbypassrls.
+      # Superuser bypass is checked BEFORE FORCE ROW LEVEL SECURITY, so anything
+      # connecting with it ignores every tenant policy. initdb/01-app-role.sh
+      # provisions an unprivileged LOGIN role for the application to use instead
+      # (ADR-0052); the superuser credential stays for administration only.
+      MILEXIUM_APP_USER: ${MILEXIUM_APP_USER:-milexium_app}
+      MILEXIUM_APP_PASSWORD: ${MILEXIUM_APP_PASSWORD:?set MILEXIUM_APP_PASSWORD in infra/compose/.env}
     ports:
       # Host 5433 (not 5432) so the containerized PostGIS coexists with the
       # natively-installed PostgreSQL 17 that already holds 5432 (ADR-0006).
       - "5433:5432"
     volumes:
       - milexium_pgdata:/var/lib/postgresql/data
+      # Runs ONLY on first init of an empty data directory. An existing volume
+      # will not pick it up -- on the container that was already running when
+      # ADR-0052 landed, the same script was applied by hand. This mount is what
+      # makes a FRESH container reproduce that without anyone remembering.
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-milexium_dev}"]
       interval: 10s
