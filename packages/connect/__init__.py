@@ -21,7 +21,20 @@ from packages.connect.gtfs_realtime import (
     feed_message_to_rows,
     read_gtfs_realtime_feed,
 )
-from packages.connect.operator_export import OperatorExportAdapter, OperatorTripRecord
+from packages.connect.operator_export import (
+    REPAIR_RULES,
+    OperatorExportAdapter,
+    OperatorTripRecord,
+    coerce_boolean_like,
+    repair_rule_of,
+    resolve_intake_columns,
+)
+from packages.connect.ingest_report import (
+    IngestQualityReport,
+    MissingnessDiagnosis,
+    build_ingest_report,
+    classify_quarantine_reason,
+)
 
 __all__ = [
     "AdapterResult",
@@ -38,6 +51,14 @@ __all__ = [
     "read_gtfs_realtime_feed",
     "OperatorExportAdapter",
     "OperatorTripRecord",
+    "REPAIR_RULES",
+    "coerce_boolean_like",
+    "repair_rule_of",
+    "resolve_intake_columns",
+    "IngestQualityReport",
+    "MissingnessDiagnosis",
+    "build_ingest_report",
+    "classify_quarantine_reason",
 ]
 
 CONTRACT_VERSION = "0.1.0"
