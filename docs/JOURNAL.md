@@ -2,6 +2,116 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-25 (night): three packets, a null result, and the first real reply
+
+**Suite 1249 → 1411 passed.** Programs B, D and H landed as three parallel
+packets on disjoint paths, committed separately: `0973492` (B, ADR-0054),
+`3d3669e` (D, ADR-0055), `a225093` (H, ADR-0056).
+
+**H was the interesting one, and it produced a null result.** ADR-0026 named a
+*measured bottleneck* as one of three triggers for adding a second language, and
+nobody had ever measured. Seven nested rungs of real NYC TLC rows, 40k → 5M
+segments, on a working ultrabook under genuine memory pressure — deliberately
+the slow end so that a pass means something. Every rung completed. The
+load-bearing number isn't the total but the per-segment cost: **31–92 µs with no
+upward trend**, the largest rungs cheaper per segment than the smallest. A
+mid-size operator's year is ~300k–600k segments → ~46–55 s, under a gigabyte.
+**Python is adequate. The trigger has not fired.** `teardown.py` is
+byte-identical; it was measured, not modified.
+
+But the run found two things the verdict doesn't cover, and they matter more
+than the verdict:
+
+1. **46 s is a fine batch job and an unacceptable interactive one.** The teardown
+   is reachable from the ADR-0042 HTTP/SDK surface, where that is a 46-second
+   synchronous request — broken *today*, at *current* volume, needing no growth
+   at all. The benchmark was aimed at a language question and found a latency
+   defect on a different surface entirely.
+2. **~50% of the runtime is `segment_set_fingerprint`** — sort, canonical JSON,
+   SHA-256. That's ADR-0039 audit cost, not analysis. A rewrite would have
+   carried the largest cost across and made it faster, when the cheaper question
+   is whether it needs to run on every call. The most expensive thing in the hot
+   path turned out to be optional bookkeeping.
+
+**A fourth test-that-proved-nothing.** H's own stage-coverage assertion
+(`> 50.0`) is a ratio between two independently-timed passes, so it measures the
+machine as much as the code — it read 40.7 under concurrent PostgreSQL load and
+passed on the same commit run alone. A test that's green on an idle laptop and
+red on a loaded runner spends the suite's credibility to tell you about the
+runner. Floor removed, 150% ceiling kept: contention can't inflate stage totals
+past wall time, but double-counting timers can. A 100% bound would have been
+wrong — one rung legitimately reads 115%.
+
+**D's decision is a refusal.** ADR-0048 added `tenant_id NOT NULL` and honestly
+recorded that pre-tenant databases aren't upgraded by reopening them, acceptable
+"only because these tables have never held operator data" — which stops being
+true the moment outreach works. So: a version ledger, ordered migrations, and a
+raise when a populated table has no declared tenant. It doesn't choose, because
+**the tidiest-looking default is the leaking one** — the ADR-0040 platform tenant
+would declare an operator's private feature values platform-owned, and
+platform-owned rows are readable by every tenant. Two findings the agent hit and
+fixed rather than worked around: three tests failed at first because a
+post-migration read with no GUC in scope returned zero rows (*the policy
+working* — the tests were wrong, not the boundary), and the refusal originally
+fired after the v1 stamp was already committed.
+
+**B closed the run-reference chain** adapter → `Outcome` → store → teardown, and
+narrowed the semantic-loss record rather than deleting it. Deleting was the easy
+move and would have silently dropped a genuine residual claim.
+
+### Outreach: the first substantive reply
+
+**Christian T. Kent** — ran accessibility at WMATA, now President & CEO of
+Transit Management Consulting, signs himself "Mr. Paratransit" — replied **24
+minutes** after send. Positive, and he asked the one question we only get to
+answer once: *"Has your work revealed any definitive conclusions or items that
+the industry has so far overlooked?"*
+
+This is the reply the warmer v3.1 register was aimed at, and it came from the
+expert segment rather than an agency. Worth noting *what* he responded to: the
+email led with **why he specifically** could judge the work, stated plainly that
+we have no pilot and no customers, and asked for his read rather than his
+business.
+
+So I went looking for panel-level findings honest enough to answer him, in the
+NTD monthly ridership panel already acquired under ADR-0050 — 23 years, 637
+demand-response agencies, 152k agency-month observations. **One candidate died,
+and that's the useful part:** "demand-response demand is uniquely volatile, so
+you need forecasting" is **false** — month-to-month variation in DR trips is
+*lower* than bus (median CV 15.0% vs 18.4%). Had we led with it, the first
+expert to check would have caught us.
+
+Two survived:
+
+- **DR productivity has fallen for two decades** — 2.02 trips per
+  vehicle-revenue-hour in 2005 → 1.79 in 2024. The obvious objection is
+  composition, so it was re-run on a **balanced panel** of the 259 agencies
+  reporting in 2005, 2019 *and* 2024: −11.2%, per-agency median −11.1%, 64% of
+  individual agencies less productive. Not composition, not one big operator,
+  and **not COVID** — 2024 landed exactly where 2019 did, so the pandemic was a
+  dip-and-recover sitting on top of a much older decline.
+- **The national recovery figure is nearly useless.** Median recovery is 87% of
+  2019 volume, but p10 is 61% and p90 is 152% — a 2.5× spread hidden inside a
+  single number everyone repeats.
+
+The deadhead finding was re-derived properly for the reply: **406** operators in
+the 2024 NTD demand-response panel, median **15.1%** of vehicle-hours deadhead,
+p90 **25.5%**, with a long tail — OmniRide 69% on 40,000 vehicle-hours, TANK 61%
+on 62,000. The data is public; the peer comparison isn't computed by anyone, so
+an operator at 60% has no way to learn it isn't normal.
+
+Draft reply is in Gmail for Arya to read and send. It answers his question with
+the two surviving findings, gives back the one that died, asks him the two
+things only he can answer — whether vendor savings claims are a live problem,
+and whether anyone would actually reach for a denial-reason record — and says
+plainly that we're self-funded and will take no offence if a call like this is
+normally billable for him. He's a consultant with a Calendly in his signature;
+booking it cold without naming money would have been naive.
+
+**Correction to my own reporting during the session:** I flagged CI on main as
+red off a notification email for `50a8d50`. It wasn't — four successful runs had
+superseded it. Main was green throughout.
+
 ## 2026-07-25 (evening): tagged, superuser closed, governance unified
 
 Three things, in the order Arya asked for them.

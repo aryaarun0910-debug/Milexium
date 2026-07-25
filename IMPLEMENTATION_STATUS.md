@@ -295,14 +295,64 @@ results where the **negative** results were deliberately kept as evidence.
 Scope was held to what was actually redundant rather than expanded to justify the
 exercise.
 
+#### Pilot-conversion tranche 4 (2026-07-25)
+
+| Item | Program | ADR | Tests |
+|---|---|---|---|
+| Run-reference chain closed, adapter → `Outcome` → store → teardown | B | 0054 | 151 |
+| Migration path for the Program D tables + refusal to invent a tenant | D | 0055 | 259 |
+| Teardown scale benchmark — the ADR-0026 measured-bottleneck trigger | H | 0056 | 17 |
+
+**Suite 1249 → 1411 passed, 0 failed.** CI green.
+
+**H is a null result, and that is the point.** Seven nested rungs of real NYC TLC
+rows, 40k → 5M segments. Every rung completed; per-segment cost stays 31–92 µs
+with *no upward trend*. A mid-size operator's year (~300k–600k segments) tears
+down in ~46–55 s under a gigabyte. **Python is adequate; crate #2 is not
+justified**, and `teardown.py` is byte-identical — it was measured, not modified.
+
+Two things the benchmark found that its verdict does not cover:
+
+1. **46 s is a fine batch job and an unacceptable interactive one.** The teardown
+   is reachable from the ADR-0042 HTTP/SDK surface, where that is a 46-second
+   synchronous request — **broken today, at current volume, with no growth
+   required**. Aimed at a language question; found a latency defect on a
+   different surface. The fix is caching/async, not a language.
+2. **~50% of the runtime is `segment_set_fingerprint`** — sort, canonical JSON,
+   SHA-256. That is ADR-0039 *audit* cost, not analysis. A rewrite would have
+   ported the largest cost across and made it faster, when the cheaper question
+   is whether it must run on every call.
+
+**D's decision is a refusal.** If a pre-tenant table holds rows and no
+`legacy_tenant_id` is declared, the migration raises rather than choosing —
+because the tidiest-looking default is the leaking one: the ADR-0040 platform
+tenant would declare an operator's private feature values platform-owned, and
+platform-owned rows are readable by *every* tenant.
+
+**A fourth "test that proved nothing" was caught**, continuing the standing
+pattern — H's stage-coverage assertion (`> 50.0`) is a ratio between two
+independently-timed passes, so it measures the machine as much as the code. It
+read 40.7 under concurrent PostgreSQL load and passed on the same commit run
+alone. Floor removed, 150% ceiling kept: contention cannot inflate stage totals
+past wall time, but double-counting timers can. A 100% bound would have been
+wrong — one rung legitimately reads 115%.
+
+Program depth after four tranches: **A ~60%**, **B ~50%**, **C ~55%**,
+**D ~60%**, **E ~40%**, G ~35%, **H ~45%**, **I ~45%**, **M ~35%**;
+F ~10% (held); J/K/L 0% (**now measured, not assumed** — see ADR-0056).
+
 #### Still open after this tranche
 
 - **The superuser still exists**, as it must — it is the bootstrap identity and
   the only role that can administer the cluster. The *application* no longer uses
   it; a developer connecting with `POSTGRES_PASSWORD` still bypasses RLS, by
   design. No secrets manager exists (blueprint/10 remains Specified).
-- **Program D tables have no tenant column or RLS** — must close before a second
-  operator's data lands in them.
+- **A future 2→N Program D migration will hit RLS** (ADR-0055). From v2 onward
+  the tables are FORCEd, so a data-moving migration with no GUC in scope sees
+  zero rows and "succeeds" having moved nothing. 1→2 is safe only because v1
+  predates RLS. Named in the module, the packet and the RLS file.
+- **Teardown latency on the interactive surface** (ADR-0056) — 46 s synchronous
+  at operator scale. Known, unfixed, and not a language problem.
 - `packages/sdk-typescript/src/generated/openapi.ts` is **stale** and no drift
   check covers it.
 - `ModelRegistry` is still in-memory: promotion roles survive a restart, the
@@ -310,15 +360,21 @@ exercise.
 - Redaction cannot reach a sensitive value copied into free text; it is now
   *detected and reported with locations*, not removed. Redaction is field masking
   for sharing, **not** de-identification.
-- The Connect adapter still emits a `dropped` semantic-loss record for the run
-  reference; wiring it through to the new column is a small follow-up.
+- ~~The Connect adapter still emits a `dropped` semantic-loss record for the run
+  reference~~ — **closed by ADR-0054.** The loss record was *narrowed* to what is
+  genuinely still lost, not deleted; deleting it was the easy move and would have
+  silently dropped a real residual claim. Closes for the operator-export adapter
+  only — TIDES, GTFS-Flex, TLC and GTFS-RT are unchanged.
 
 #### Known gaps this tranche surfaced (flagged, not papered over)
 
-- **`vehicle_ref`/`run_ref` has no canonical home** (ADR-0038). It lives on the
-  Connect-layer record only, so the exact field deadhead measurement depends on
-  survives to the teardown in memory but **cannot be persisted to MilexiumDB**.
-  Program A follow-up.
+- ~~**`vehicle_ref`/`run_ref` has no canonical home** (ADR-0038)~~ — **closed**,
+  in two steps: ADR-0043 gave the fields a home on `outcomes`, ADR-0054 wired the
+  adapter through to it and proved the chain end-to-end into a teardown. The
+  reference remains a **source-system string, not a canonical typed id**
+  (ADR-0035): two operators can use the same `run_ref` and mean different
+  vehicles, and nothing disambiguates that until a real multi-operator case
+  exists.
 - **The 5433 PostGIS container store is not policy-enforced** (ADR-0037).
   `rls_postgres.sql` is applied only by `PostgresCanonicalStore` on 5432;
   `PostgisObservationStore` filters by tenant in SQL but has no RLS. Stated in
