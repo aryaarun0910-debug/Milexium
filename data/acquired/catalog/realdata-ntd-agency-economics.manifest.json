@@ -1,0 +1,28 @@
+{
+  "acceptance_threshold": "non-empty; ntd_id and report_year present; deadhead columns parse.",
+  "canonical_contract": "none-yet -- an agency-year economics panel. Consumed by forge/business/outreach/build_peer_insight.py for peer-relative benchmarking and by the NTD monthly model.",
+  "dataset_id": "realdata-ntd-agency-economics",
+  "decision_tasks_enabled": [
+    "forecast.demand",
+    "outreach.peer_benchmark"
+  ],
+  "derived_artifacts": [
+    "GOVERNANCE-ONLY MANIFEST (talos/tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through themis.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
+    "already_present_at: forge/business/ntd/agency_economics.csv"
+  ],
+  "expected_download_gb": 0.0,
+  "expected_expanded_gb": 0.0,
+  "expected_retained_gb": 0.0,
+  "geography": "United States, nationwide -- all NTD-reporting agencies.",
+  "license_and_commercial_rights": "Public Domain U.S. Government work. NTD data is published by FTA for unrestricted public use including commercial use. Agency-level operating and service statistics; no personal data of any kind.",
+  "owner_and_source": "Federal Transit Administration, National Transit Database -- the agency economics extract in forge/business/ntd/agency_economics.csv, derived from published NTD annual tables.",
+  "quality_tests": [],
+  "retention_and_deletion": "retained as committed evidence; public-domain federal data.",
+  "schema_and_format": "CSV, one row per agency per report year, with deadhead, opex, trips and derived per-trip and per-hour economics.",
+  "sensitive_fields": [],
+  "source_checksum": null,
+  "source_url": "https://www.transit.dot.gov/ntd",
+  "time_coverage": "report years 2022-2024; 2024 is the only year with full coverage.",
+  "update_frequency": "annual upstream; local copy is a static snapshot.",
+  "zone": "standards"
+}

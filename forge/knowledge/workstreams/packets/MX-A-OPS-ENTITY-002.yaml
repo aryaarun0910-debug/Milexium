@@ -1,0 +1,66 @@
+id: MX-A-OPS-ENTITY-002
+status: completed
+dispatched_date: "2026-07-24"
+completed_date: "2026-07-24"
+adr: forge/knowledge/architecture/decisions/0035-canonical-operational-entity-postgis.md
+result: >
+  46 tests. VehicleObservation + StopTimeObservation land; base schema stays
+  SQLite-portable (verified) with geometry isolated to sql/postgis_postgres.sql.
+  GTFS-RT re-map measured on real samples: MBTA 567/567 mapped, 0 quarantined
+  (was 251 Outcomes + 314 quarantined); asciipb 5/5. No synthetic request_id.
+  PostGIS spatial round-trip RAN (not skipped) against the 5433 container.
+objective: >
+  Close the operational-entity gap ADR-0031 surfaced. Add a first-class,
+  request-independent canonical operational/telemetry entity family
+  (VehicleObservation + StopTimeObservation) WITH a PostGIS geometry column for
+  vehicle position (wired through the containerized PostGIS on host port 5433),
+  and RE-MAP GtfsRealtimeAdapter to emit real observations instead of Outcomes
+  squashed onto a synthetic request_id. Program A + C follow-up.
+owned_paths:
+  - themis/canonical/entities.py            # ADD VehicleObservation + StopTimeObservation (additive; do not modify existing entities)
+  - themis/canonical/ids.py                 # ADD ObservationId typed id
+  - themis/canonical/__init__.py            # export the new entity(ies) + id
+  - themis/canonical/sql/schema_v0_1.sql    # ADD portable BASE tables (lat/lon as REAL — SQLite-safe, NO geometry)
+  - themis/canonical/sql/postgis_postgres.sql  # NEW Postgres-only extension: geometry(Point,4326) + GiST index (mirror rls_postgres.sql pattern)
+  - themis/canonical/observation_store.py   # NEW PostGIS-backed store targeting the container on 5433 (additive; do NOT edit postgres_storage.py)
+  - themis/connect/gtfs_realtime.py         # RE-MAP adapter to the new entities (this packet now owns it)
+  - aletheia/conformance/property-tests/test_vehicle_observation.py
+  - aletheia/conformance/property-tests/test_postgis_observation.py
+read_only_dependencies:
+  - themis/connect/adapter.py
+  - themis/canonical/time.py
+  - themis/canonical/postgres_storage.py (as a pattern reference only — psycopg 3.2.13 is installed)
+  - talos/infra/compose/.env (MinIO/PG creds; gitignored)
+normative_contracts:
+  - blueprint/04-canonical-state.md
+  - ADR-0002 (portable base DDL, SQLite-safe), ADR-0031 (the gap), ADR-0004/0032 (PostGIS on 5433)
+required_outputs:
+  - themis/canonical/entities.py (VehicleObservation, StopTimeObservation)
+  - themis/canonical/sql/schema_v0_1.sql (+ base tables), postgis_postgres.sql (geometry extension)
+  - themis/canonical/observation_store.py
+  - re-mapped themis/connect/gtfs_realtime.py
+  - two conformance test modules above
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_vehicle_observation.py aletheia/conformance/property-tests/test_postgis_observation.py -q"
+  - "py -3 -m pytest themis/ metis/ aletheia/ argus/ -q  # whole suite still green (existing GTFS-RT tests move with the re-map)"
+security_and_privacy_invariants:
+  - "BASE schema stays portable: schema_v0_1.sql must still run unmodified on SQLite AND Postgres — NO PostGIS/geometry there. The geometry(Point,4326) column lives ONLY in postgis_postgres.sql, applied separately by observation_store (exactly the rls_postgres.sql separation)."
+  - "Observation entities are REQUEST-INDEPENDENT: keyed by (tenant, vehicle/trip/stop, observed_at) — NO request_id, NO synthetic placeholder. This is the whole point."
+  - "PostGIS round-trip test skips cleanly when psycopg or the 5433 container is absent (mirror aletheia/conformance/property-tests/test_object_store.py); CI stays green."
+failure_injections:
+  - "GTFS-RT re-map: VehiclePosition -> VehicleObservation (position, occupancy, status now have real homes -> semantic loss drops sharply vs ADR-0031); TripUpdate stop_time_update -> StopTimeObservation (stop_id, delays, predicted times have homes); Alert still quarantined"
+  - "invalid lat/lon (out of [-90,90]/[-180,180]) rejected by the entity validator"
+  - "PostGIS geometry column is populated from lat/lon and a spatial query (e.g. ST_DWithin / bounding box) returns the observation"
+compatibility_matrix:
+  - "the real MBTA .pb sample now maps its 564 vehicles to VehicleObservation records (not 251 arrivals + 314 quarantined Outcomes); report the new mapped/quarantined counts and the semantic-loss reduction"
+evidence_to_emit:
+  - "before/after semantic-loss comparison (ADR-0031 squash vs the new mapping); mapped-record counts on the real sample; PostGIS geometry round-trip proven"
+upstream_blockers: []
+downstream_consumers: [TODS/NeTEx adapters; Program F/H spatial travel-time work; a serve-time telemetry monitor]
+notes: >
+  This is the ONLY packet touching themis/canonical/* and themis/connect/* —
+  disjoint from D (themis/core), G (aletheia/verify, forge/knowledge/architecture/formal), and
+  C-minio (themis/estate). Do NOT touch pyproject, CI, shared docs, or write
+  ADRs/commit. Keep Outcome and every existing entity/adapter behavior intact for
+  the rider-request path; observations are ADDITIVE. Status stays Demonstrated
+  (open public real-time data, not consented operator data).

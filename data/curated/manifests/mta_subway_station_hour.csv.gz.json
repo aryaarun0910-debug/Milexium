@@ -1,0 +1,30 @@
+{
+  "panel": "mta_subway_station_hour.csv.gz",
+  "built_utc": "2026-07-22T08:38:01+00:00",
+  "sha256": "fa16e5347ce930f5a421ed5829ab97dc4f6d37594a0aa1c0f031e49bf53b140c",
+  "bytes": 105408759,
+  "source": {
+    "name": "MTA subway AFC ridership, station x hour",
+    "portal": "data.ny.gov",
+    "dataset_ids": [
+      "wujg-7c2s",
+      "5wq4-mkjj"
+    ],
+    "fetch_script": "data/curated/fetch_mta_apc.py",
+    "license": "NY Open Data"
+  },
+  "schema": {
+    "date": "str",
+    "hour": "int64",
+    "station_id": "str",
+    "riders": "float64",
+    "borough": "str"
+  },
+  "coverage": {
+    "rows": 23542173,
+    "date_min": "2020-01-01",
+    "date_max": "2026-07-08",
+    "distinct_borough": 5,
+    "distinct_station_id": 428
+  }
+}

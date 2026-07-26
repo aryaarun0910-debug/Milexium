@@ -1,0 +1,42 @@
+id: MX-B-CONNECT-ADAPTER-SKELETON-001
+status: completed
+completed_date: "2026-07-23"
+objective: >
+  Ship a minimal Milexium Connect adapter contract (parse -> canonical
+  record or explicit quarantine, with semantic-loss recording) and one
+  concrete adapter mapping a real source already in this repo
+  (forge/business/reference_agency/output/trips.csv) onto ServiceRequest, proving
+  heterogeneous-source mapping against the Program A contract.
+owned_paths:
+  - themis/connect/
+  - forge/knowledge/architecture/decisions/0007-connect-adapter-contract-v0-1.md
+read_only_dependencies:
+  - themis/canonical/ (entities, ids, time, state_machine, vocab -- schema only)
+  - forge/business/reference_agency/generate_trips.py and forge/business/reference_agency/output/ (read/run only, not edited)
+normative_contracts:
+  - blueprint/03-connect-and-standards.md (expansion plan)
+  - blueprint/14-execution-roadmap.md, Program B
+inputs_and_fixtures:
+  - aletheia/conformance/fixtures/builders_connect.py
+  - forge/business/reference_agency/output/trips.csv (real generated fixture, 89,566 rows)
+required_outputs:
+  - themis/connect/{adapter,reference_agency_trips}.py
+  - aletheia/conformance/fixtures/test_connect_reference_agency_trips.py
+  - aletheia/conformance/adversarial/test_connect_malformed_rows.py
+acceptance_commands:
+  - "py -3 -m pytest themis/connect/ aletheia/conformance/fixtures/test_connect_reference_agency_trips.py aletheia/conformance/adversarial/test_connect_malformed_rows.py -v"
+performance_budget: {}
+security_and_privacy_invariants:
+  - "rider_id tokenized via sha256 before touching ServiceRequest.rider_ref -- never the raw source id"
+failure_injections:
+  - "missing required pickup-date field -> quarantined, not dropped"
+  - "invalid mobility-device token -> quarantined with a clear reason"
+  - "out-of-range hour -> quarantined, not silently wrapped"
+  - "adapter raising an uncaught exception mid-batch -> caught, quarantined, batch continues"
+compatibility_matrix: []
+evidence_to_emit:
+  - "11 passing tests; verified against the real generated trips.csv, not a hand-written stand-in"
+forbidden_interface_changes: []
+upstream_blockers: []
+downstream_consumers:
+  - Future adapters (NTD, GTFS-Flex) implementing the same SourceAdapter protocol

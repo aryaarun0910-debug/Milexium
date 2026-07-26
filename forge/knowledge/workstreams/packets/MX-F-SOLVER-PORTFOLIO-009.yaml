@@ -1,0 +1,414 @@
+id: MX-F-SOLVER-PORTFOLIO-009
+status: completed
+completed_date: "2026-07-25"
+dispatched_date: "2026-07-25"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none by instruction
+result: >
+  ORTOOLS INSTALLED. `py -3 -m pip install ortools` resolved
+  ortools-9.15.6755-cp314-cp314-win_amd64.whl -- a native CPython 3.14 ABI wheel
+  -- and `from ortools.sat.python import cp_model` imports and solves. The
+  packet's "if it does not install" contingency was not needed; the capability
+  check was built anyway and is exercised by fault injection.
+
+  CP-SAT is now a real backend on both problem families, behind a portfolio that
+  reports which strategy answered and why.
+
+  Headline benchmark result: on the Cordeau instances it can close, the CP-SAT
+  strategy REPRODUCES THE PUBLISHED PROVEN OPTIMA EXACTLY, and does so against a
+  lower bound this repository proves for itself rather than one transcribed from
+  the paper. Committed artifact (3 instances, complete run): a2-16 294.24795
+  (published 294.25), a2-20 344.83407 (344.83), a3-18 300.48318 (300.48) -- each
+  certified-optimal within the stated lattice tolerance, gap to our own bound
+  0.00%, and every routing accepted by BOTH independent checkers. Observed in
+  earlier passes but NOT in the committed artifact: a2-24 431.1204 (431.12) and
+  a3-24 344.8336 (344.83), also certified.
+
+  The portfolio changed the answer on every instance. Per-strategy, verified:
+  a2-16 regret-construction could not serve all 16, lns 317.710 (+7.97% over
+  CP-SAT), cpsat-darp 294.248; a2-20 370.025 (+7.31%) / 350.491 (+1.64%) /
+  344.834; a3-18 342.671 (+14.04%) / 307.605 (+2.37%) / 300.483. The
+  pure-Python LNS -- the solver Program F had before this packet -- loses to
+  CP-SAT on all three. That is exactly the finding a portfolio exists to surface,
+  and it is the honest headline: our previous best heuristic was between 1.6%
+  and 8.0% off the optimum on the instances we can now prove.
+
+  Tests: 155 in the two new modules (test_decide_portfolio.py 92,
+  test_darp_cpsat.py 63), 0 skipped, 0 failed. The 110 pre-existing Program F
+  tests still pass unmodified. 14 mutations were applied and re-run: 10 caught
+  first time, 4 survived and exposed genuine test gaps (a vacuous capability
+  branch, a K=1-only brute force that made the pairing constraint untestable, a
+  never-binding route-duration limit, and a certification predicate only ever
+  asserted True) -- all four closed and re-verified RED.
+
+  Honest gaps: the committed benchmark artifact covers 3 of the 12 published
+  instances, and NAMES the other nine as not covered. The rest were not run
+  because the pure-Python LNS does not scale (measured: a2-20 did not finish 400
+  LNS iterations in twenty minutes) and because the machine was concurrently
+  saturated by other agents' full test suites for the duration of this packet.
+  See known_limitations.
+
+objective: >
+  Turn `metis.decide`'s single hand-rolled search into a real, benchmarked
+  SOLVER PORTFOLIO with honest reporting of which strategy produced the returned
+  answer and why. `metis/decide/solver.py` line 24 recorded "CP-SAT / MILP /
+  SMT / a portfolio" as Specified; this packet builds the CP-SAT backend and the
+  portfolio, and benchmarks the result against the Cordeau dial-a-ride instances
+  already acquired under governance. Program F.
+
+owned_paths:
+  - metis/decide/capability.py          # optional-solver probing, one place
+  - metis/decide/cpsat.py               # CP-SAT backend for the v0.1 Decision IR
+  - metis/decide/cpsat_darp.py          # CP-SAT lattice model + exact scheduler for DARP
+  - metis/decide/portfolio.py           # the dispatcher and its report
+  - metis/decide/__init__.py            # additive exports; CONTRACT_VERSION 0.2.0 -> 0.3.0
+  - aletheia/conformance/property-tests/test_decide_portfolio.py
+  - aletheia/conformance/property-tests/test_darp_cpsat.py
+  - aletheia/benchmarks/optimization/portfolio_benchmark.py
+  - aletheia/benchmarks/optimization/portfolio_results.json    # generated
+  - aletheia/benchmarks/optimization/portfolio_summary.md      # generated
+  - forge/knowledge/workstreams/packets/MX-F-SOLVER-PORTFOLIO-009.yaml
+
+read_only_dependencies:
+  - metis/decide/ir.py                  # UNMODIFIED -- its bound/gap contract is respected, not relaxed
+  - metis/decide/solver.py              # UNMODIFIED -- imported for its discretization and its two backends
+  - metis/decide/feasibility.py         # UNMODIFIED -- the independent checker, used as the sole arbiter
+  - metis/decide/darp_ir.py             # UNMODIFIED
+  - metis/decide/darp_loader.py         # UNMODIFIED
+  - metis/decide/darp_solver.py         # UNMODIFIED -- LNS becomes a portfolio strategy as-is
+  - metis/decide/darp_bridge.py         # UNMODIFIED -- the v0.1 projection gate in the benchmark
+  - aletheia/conformance/property-tests/test_darp_benchmark.py   # UNMODIFIED, still passing
+  - aletheia/conformance/property-tests/test_decide_solver.py    # UNMODIFIED, still passing
+  - aletheia/benchmarks/quality/best_known.json     # READ ONLY -- published reference values, not duplicated
+  - aletheia/benchmarks/quality/darp_benchmark.py   # UNTOUCHED -- the heuristic-only benchmark still stands
+  - data/acquired/catalog/cordeau-darp.manifest.json  # the governance record for the instances
+
+normative_contracts:
+  - blueprint/06  # the Decide program contract: candidate generator vs independent checker
+  - blueprint/14  # conformance properties
+  - blueprint/15  # named failure mode: "solver timeout returned as valid optimal plan"
+
+# ==========================================================================
+problem: >
+  Program F was the platform's biggest depth gap. `metis/decide` had a
+  Decision IR, an independent feasibility checker, one hand-rolled grid-exact
+  branch-and-bound with a greedy fallback, and a DARP heuristic. The solver
+  module's own header advertised "CP-SAT / MILP / SMT / a portfolio" as the
+  intended shape and none of it existed. Two concrete consequences:
+
+  (1) The branch-and-bound's honesty was costing real answers. It reports TIMEOUT
+  the moment its node budget is exhausted -- correct, and better than lying --
+  but on instances where a proof was cheaply available it was simply failing to
+  find it. There was no second strategy to ask.
+
+  (2) Every optimality gap the repository reported was BORROWED. The DARP
+  benchmark could only compare against numbers transcribed from Cordeau (2006).
+  If the transcription were wrong, or the distance convention subtly different
+  from the paper's, the reported gap would be wrong and nothing in the repository
+  could detect it. The platform had no way to prove a bound for itself.
+
+ortools_finding:
+  question: "Does ortools publish a wheel importable on this environment's CPython 3.14?"
+  answer: "YES. It installed and imports cleanly. The packet's contingency plan was not needed."
+  evidence:
+    command: "py -3 -m pip install ortools"
+    resolver_output: "Downloading ortools-9.15.6755-cp314-cp314-win_amd64.whl.metadata (3.4 kB) ... Successfully installed absl-py-2.5.0 immutabledict-4.3.1 ortools-9.15.6755"
+    wheel: "ortools-9.15.6755-cp314-cp314-win_amd64.whl (24.7 MB) -- a native cp314 ABI wheel, not abi3 and not a source build"
+    interpreter: "CPython 3.14.2 (tags/v3.14.2:df79316, Dec 5 2025) [MSC v.1944 64 bit (AMD64)], win_amd64"
+    import_check: "from ortools.sat.python import cp_model -- succeeded; a trivial model solved to OPTIMAL"
+    pulled_in: "absl-py 2.5.0, immutabledict 4.3.1 (numpy/pandas/protobuf/typing-extensions already satisfied)"
+  note: >
+    The brief anticipated that `import ortools` was failing and asked for the
+    capability check to be built anyway. It WAS built and it IS exercised -- but
+    by fault injection, not by the absence of the wheel. See
+    `metis/decide/capability.py` and the two `monkeypatch` tests that force
+    the unavailable branch. A capability check that only ever runs on the happy
+    path is untested prose; these run the skip path on a machine where OR-Tools
+    is present.
+  api_drift_encountered: >
+    ortools 9.15 renamed CpSolver's accessors to snake_case: `DeterministicTime()`
+    is gone in favour of the `deterministic_time` property (`StatusName` ->
+    `status_name` likewise, though the CamelCase alias survives for some).
+    Recorded because a 9.x pin written from older documentation will break here.
+  dependency_pin_NOT_made: >
+    `ortools` was deliberately NOT added to pyproject.toml. That file is outside
+    this packet's owned paths. The dependency is genuinely optional by design --
+    `import metis.decide` succeeds without it and every CP-SAT test skips
+    cleanly -- but if the orchestrator wants CP-SAT to actually RUN in CI it must
+    add `ortools==9.15.6755` to an optional extra (the `formal`/z3 extra is the
+    precedent) and install that extra in the CI job. Until it does, CI will run
+    this packet's suite with the CP-SAT tests SKIPPED, which is green but weaker.
+
+# ==========================================================================
+what_was_built:
+  capability_probe: >
+    `metis/decide/capability.py` -- one place that answers "can this machine
+    run CP-SAT?", by really importing the symbol the backend needs rather than
+    guessing with find_spec (an installed-but-unloadable wheel, the usual shape
+    of an ABI mismatch, reports unavailable with the loader's own message).
+    Cached per process. A missing optional solver makes a strategy UNAVAILABLE,
+    recorded with a reason -- never silently dropped, never emulated.
+
+  cpsat_decision_backend: >
+    `metis/decide/cpsat.py` -- a real CP-SAT model of `DecisionProblem`:
+    an assignment literal per (request, vehicle), a pickup-time variable whose
+    domain is the EXACT candidate list, an optional interval per assignment, and
+    two `AddCumulative` constraints per vehicle (ambulatory seats, wheelchair
+    positions). Returns the same `DecisionSolution` with the same honest status
+    contract. Times are modelled in integer microseconds (exact for anything a
+    `datetime` can hold); the objective in integer thousandths, with a guard that
+    REFUSES to run rather than let a wrapped-around mandated-request penalty make
+    the solver "prove" that dropping a mandated rider is optimal.
+
+  cpsat_darp_model: >
+    `metis/decide/cpsat_darp.py` -- an exact constraint model of a routed DARP
+    instance: one `AddMultipleCircuit` over {depot} U {1..2n}, route identity
+    carried by a label equal to the route's first node (so equal labels genuinely
+    mean same vehicle, which is what pairs a pickup with its drop-off), depot
+    departure propagated along each route so max-route-duration is measured from
+    the vehicle's ACTUAL departure, load propagated along arcs for capacity, and
+    explicit precedence and ride-time constraints.
+
+  exact_scheduler: >
+    `cpsat_darp.exact_schedule` -- a NEW, exact route scheduler, added because
+    the existing eight-step Cordeau & Laporte evaluation in `darp_solver` is
+    SOUND but INCOMPLETE and was rejecting the very routings CP-SAT was proving
+    optimal. The observation: on a FIXED sequence every scheduling constraint is
+    a difference constraint, so the system is a shortest-path feasibility problem
+    and the least fixpoint of the lower bounds is the componentwise-minimal
+    schedule; it respects the upper bounds iff the sequence is schedulable at
+    all. `darp_solver.schedule_route` was NOT modified or replaced -- it is kept
+    as a fallback second opinion.
+
+  portfolio: >
+    `metis/decide/portfolio.py` -- the dispatcher, over both problem families.
+    Decision strategies: `exact-bnb`, `greedy`, `cpsat`. Routing strategies:
+    `regret-construction`, `lns`, `cpsat-darp`. Returns the best answer with a
+    `PortfolioReport` recording, per strategy: availability, whether it ran,
+    status, objective, dual bound, gap, seed, wall time, whether its budget was
+    deterministic, whether the independent checker verified it, and whether it
+    was disqualified.
+
+  benchmark: >
+    `aletheia/benchmarks/optimization/portfolio_benchmark.py` -- runs the portfolio over
+    the acquired Cordeau instances and reports a SELF-COMPUTED optimality gap
+    alongside the borrowed one. `aletheia/benchmarks/quality/darp_benchmark.py` is
+    untouched and still measures the heuristic alone.
+
+design_calls_recorded:
+  - "THE DUAL BOUND IS THE POINT, NOT THE ROUTE. On the published instances the CP-SAT model is
+     usually the losing PRIMAL strategy at anything past the smallest sizes. Its value is that it
+     produces a rigorous lower bound, which turns 'our answer is 317.7' into 'our answer is 317.7
+     and nothing below B exists'. That is the only way the platform can state an optimality gap
+     without borrowing a number from a paper it cannot re-derive."
+
+  - "THE LATTICE IS A RELAXATION, DELIBERATELY, AND THAT IS WHAT MAKES THE BOUND VALID. CP-SAT is
+     an integer solver; the instances are Euclidean and irrational. Every rounding direction in the
+     model is chosen so the modelled problem is WEAKER than the true one: travel times and objective
+     coefficients FLOORED, window/ride/duration upper bounds CEILED plus a computed slack, window
+     lower bounds FLOORED. Then the true optimal routing is feasible in the model at no greater
+     cost, so modelled_optimum <= scale * true_optimum, so floor(BestObjectiveBound)/scale is a
+     rigorous lower bound on the TRUE optimum -- available even when the search is cut off long
+     before proving anything. Had the rounding gone the other way the model would be a RESTRICTION
+     and every bound in the benchmark would be silently invalid. This is the single most
+     load-bearing decision in the packet and it is tested three independent ways."
+
+  - "A RELAXATION'S ROUTE IS A SUGGESTION, NOT A SOLUTION. The same rounding that makes the bound
+     valid means a routing CP-SAT calls feasible need not be feasible for the true instance. So its
+     route is never reported on CP-SAT's say-so: it is re-scheduled in exact float arithmetic and
+     then judged by the INDEPENDENT checker. If the checker objects, the outcome carries the bound
+     alone and says `sequence_rejected`. This actually fires -- it is not a theoretical branch."
+
+  - "OPTIMALITY IS CERTIFIED ONLY WITHIN A COMPUTED TOLERANCE. `certified_optimal` requires an
+     exactly-verified route whose true distance meets the rigorous bound within (2n+K)/scale --
+     the most the lattice can understate, since a routing has at most 2n+K arcs and each loses at
+     most one lattice unit. Same shape as the existing backend's 'optimal relative to the time
+     grid': a bounded claim with the bound stated, never an absolute one."
+
+  - "THE TWO DECISION BACKENDS SHARE ONE DISCRETIZATION ON PURPOSE. `cpsat.py` imports
+     `_candidate_times` from `solver.py` instead of rebuilding the grid, so both search exactly the
+     same candidate set. That is what makes 'CP-SAT and the branch-and-bound report the same
+     optimum' a meaningful cross-check rather than an ambiguous one -- if each built its own grid, a
+     disagreement could be a modelling difference or a bug and the test would be worthless."
+
+  - "bound/gap WERE NOT ADDED TO DecisionSolution. That type documents that bound and gap are
+     populated ONLY behind a genuine optimality claim, and CP-SAT at a timeout has a real dual bound
+     that would have been tempting to attach. Attaching it would have weakened an existing
+     invariant to make a new feature look better. The bound lives on `CpSatOutcome` and
+     `PortfolioReport` instead; `ir.py` is untouched."
+
+  - "CONTRADICTION IS AN ERROR, NOT A TIE-BREAK. Two strategies that both claim a proof cannot
+     disagree; a checker-verified routing cannot come in below a rigorous bound. The dispatcher
+     RAISES `PortfolioContradiction` rather than picking the prettier number. Running several
+     solvers on one problem is the only free correctness evidence a portfolio generates, and
+     discarding it to keep a run green would waste the entire point."
+
+  - "DETERMINISM IS A PROPERTY OF THE BUDGET, AND THE REPORT SAYS WHICH BUDGET WAS USED. Every
+     strategy gets a WORK budget by default -- CP-SAT `max_deterministic_time` (not seconds), LNS
+     iterations (not a time limit), branch-and-bound nodes -- so the same problem and seed give the
+     same answer on any machine. `wall_cap_s` is an opt-in escape hatch; when it is set the run is
+     marked `deterministic=False`. A portfolio that raced strategies on the wall clock would return
+     answers that depend on machine load, which is the standard way this kind of component becomes
+     irreproducible."
+
+  - "SELECTION IS A TOTAL ORDER OVER RESULTS, NEVER OVER SPEED: (proof strength, objective,
+     strategy name). The strategy-name tie-break is what makes two equally good answers resolve the
+     same way twice."
+
+  - "NOTHING WINS WITHOUT INDEPENDENT VERIFICATION. Every strategy's output goes to
+     `metis.decide.feasibility` BEFORE it is eligible; a strategy returning an infeasible answer
+     is disqualified and recorded, and cannot win by being cheap and wrong. The one-way
+     solver -> checker dependency the package was built around is preserved exactly: nothing in
+     this packet is imported by the checker."
+
+  - "THE BENCHMARK REPORTS BOTH GAPS AND SAYS WHICH IS WHICH. `gap_to_our_bound_pct` borrows
+     nothing; `gap_to_published_pct` is for comparability with the literature; `bound_vs_published_pct`
+     is a defect detector -- a bound ABOVE a published PROVEN optimum would mean our model
+     contradicts Cordeau (2006), and is flagged per instance rather than averaged into a headline."
+
+mutation_checks:
+  method: >
+    Each entry below was applied to the source, the named test was run, and the
+    source was restored. "RED" means the test caught it. A test that stays green
+    under the mutation it claims to guard is proving nothing, and three did --
+    each exposed a real gap, which was closed and re-verified rather than
+    explained away.
+  caught_first_time:
+    - "cpsat_darp: travel times CEILED instead of floored (turns the relaxation into a restriction, so the 'lower bound' can exceed the true optimum) -> RED"
+    - "cpsat_darp: exact scheduler stops enforcing the ride-time ceiling -> RED"
+    - "portfolio: every strategy output declared verified without asking the checker -> RED"
+    - "portfolio: contradiction detection disabled -> RED"
+    - "portfolio: winner chosen by WORST rank instead of best -> RED"
+    - "cpsat: a CP-SAT FEASIBLE (unproven) result relabelled as a proven optimum -> RED"
+    - "cpsat: objective drops the unserved-request penalty -> RED"
+    - "portfolio: capability gate removed, unavailable strategy attempted anyway -> RED"
+    - "portfolio (DARP): capability gate removed for the routing strategy -> RED"
+    - "portfolio (DARP): routing contradiction check neutered -> RED"
+  survived_then_fixed:
+    - mutation: "capability.py: an unavailable OR-Tools reported as AVAILABLE"
+      why_it_survived: >
+        OR-Tools imports fine on this machine, so `capability.py`'s except branch
+        never executed and the mutation was inert. The existing tests injected a
+        False capability object, which proves the PORTFOLIO handles the verdict
+        but never runs the code that produces one.
+      fix: >
+        Added `test_capability_reports_unavailable_when_the_import_genuinely_fails`,
+        which blocks ortools at the meta-path level AND evicts it from
+        sys.modules (without the eviction the cached module satisfies the import
+        without consulting the finder), so the probe takes a real ImportError.
+      re_verified: "RED"
+    - mutation: "cpsat_darp: the pickup/drop-off same-vehicle pairing constraint removed"
+      why_it_survived: >
+        Every brute-force comparison instance had K=1, and with one vehicle the
+        pairing constraint is VACUOUS -- there is nowhere else to put a node. The
+        test could not distinguish its presence from its absence.
+      fix: >
+        Extended the brute force to K=2 (enumerating the request-to-vehicle split
+        as well as the orderings), parametrized the bound property over K in
+        {1,2}, and added
+        `test_property_every_request_is_picked_up_and_dropped_off_by_one_vehicle`.
+      re_verified: "RED"
+    - mutation: "cpsat_darp: exact scheduler drops the max-route-duration constraint"
+      why_it_survived: >
+        Every generated instance had max_route_duration equal to the depot window
+        width, so T was implied by the window and never binding. The scheduler's
+        depot-departure push -- the step that absorbs waiting into the duration --
+        was dead code the property could not see.
+      fix: >
+        Half the generated instances now use T=240 against a 480-wide depot
+        window, and the test asserts a minimum number of accepted schedules came
+        from those tight-duration instances, so the branch cannot silently stop
+        being exercised.
+      re_verified: "RED"
+    - mutation: "cpsat_darp: certified_optimal ignores the bound and returns True"
+      why_it_survived: >
+        Every assertion on `certified_optimal` asserted it was True. Nothing
+        asserted it was False when it should be, so a constant-True predicate
+        passed.
+      fix: >
+        Added `test_certified_optimal_is_false_when_the_incumbent_is_above_the_bound`,
+        a hand-built unit test pinning the predicate in BOTH directions
+        (open gap -> False, hair-above-tolerance -> False, meets bound within
+        tolerance -> True, missing incumbent or bound -> False).
+      re_verified: "RED"
+  not_mutation_testable_here:
+    - "The unavailable-OR-Tools branch of the two portfolio dispatchers is reachable only through injection on this machine; the injected tests cover the behaviour, and the real import failure is now covered by the meta-path test, but no run of this suite exercises a genuinely missing wheel end to end."
+
+required_outputs:
+  - "metis/decide/{capability,cpsat,cpsat_darp,portfolio}.py + additive exports"
+  - "aletheia/conformance/property-tests/test_decide_portfolio.py"
+  - "aletheia/conformance/property-tests/test_darp_cpsat.py"
+  - "aletheia/benchmarks/optimization/portfolio_benchmark.py + generated results and summary"
+
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_decide_portfolio.py aletheia/conformance/property-tests/test_darp_cpsat.py -q"
+  - "py -3 -m pytest themis/ metis/ aletheia/ argus/ -q"
+  - "py -3 aletheia/benchmarks/optimization/portfolio_benchmark.py --instances published --seed 1 --cpsat-time 45"
+
+# ==========================================================================
+known_limitations:
+  dependency:
+    - "ortools is NOT pinned in pyproject.toml (outside owned paths). Until the orchestrator adds it to an optional extra AND installs that extra in CI, every CP-SAT test SKIPS there: the suite stays green but proves far less than it does locally. This is the single most important follow-up."
+    - "data/acquired/catalog/cordeau-darp.manifest.json `derived_artifacts` still lists only the two aletheia/benchmarks/quality/ files; the two new aletheia/benchmarks/optimization/ artifacts are not registered. Outside owned paths."
+    - "aletheia/benchmarks/README.md documents quality/, systems/ and cost/ and does not mention the new optimization/ directory. Outside owned paths."
+
+  coverage_of_the_benchmark:
+    - "The committed artifact covers only a2-16, a2-20 and a3-18 -- 3 of the 12 published instances. The other nine (a2-24, a3-24, a3-30, a3-36, a4-16, a4-24, a4-32, a4-40, a4-48) are NAMED in both the JSON and the summary as not covered, never silently dropped. a2-24 (431.1204) and a3-24 (344.8336) were observed certified-optimal in earlier passes but are NOT in the committed artifact and should not be cited from it."
+    - "The LNS iteration budgets are deliberately SMALL, so the heuristic's objective in this benchmark is its answer AT THAT BUDGET and would improve with more. CP-SAT wins on these instances partly because the heuristic is on a short leash."
+    - "Wall times in the results JSON were measured on a machine concurrently running other agents' full test suites. They are indicative, not a controlled measurement. The DETERMINISTIC budgets, which are what reproducibility rests on, are unaffected."
+    - "Published Cordeau values are quoted to two decimal places, so gap-to-published carries about +/-0.005 absolute noise. Our a2-16 result reports a slightly NEGATIVE gap for exactly that reason -- our exact 294.24795 against a table that prints 294.25."
+
+  solver_scope:
+    - "CP-SAT closes only the smallest instances. Beyond those its bound weakens, and a weak bound makes our gap look WORSE than it is -- the direction we prefer to be wrong in, but still a limitation."
+    - "`certified_optimal` means optimal WITHIN THE LATTICE RESOLUTION ((2n+K)/scale, e.g. 3.4e-5 on a2-16), never absolutely. Quoting the flag without the tolerance would overstate it."
+    - "The CP-SAT model is a RELAXATION, so a routing it considers optimal may be infeasible for the true instance. Handled explicitly (re-scheduled exactly, re-checked independently, `sequence_rejected` recorded) -- and it DID fire during development before the exact scheduler existed."
+    - "`exact_schedule` returns None both for 'provably infeasible' and for 'did not reach a fixpoint within the pass budget'. The caller cannot distinguish them. The budget (4*(m+2) passes) is generous for a Bellman-Ford-style fixpoint, but the conflation is real."
+    - "`_RELAX = 4` is justified analytically (flooring loses at most one unit on each of two subtracted terms) but is a fixed constant, and nothing tests that it is still large enough if the model later subtracts a third floored term."
+    - "CP-SAT model CONSTRUCTION is not covered by `max_deterministic_time`, which caps only the search. For n=48 the Python side builds ~9k boolean variables and ~37k reified constraints before the solver starts; that build time is a real part of why the largest instances are impractical."
+    - "MILP and SMT from solver.py's line-24 aspiration are still Specified. This packet delivered CP-SAT and the portfolio, not the other two."
+    - "Strategy selection is a fixed total order. There is no adaptive, learned, or per-instance algorithm selection."
+
+  design_choices_that_are_also_limitations:
+    - "STRATEGIES RUN SEQUENTIALLY under per-strategy WORK budgets, not concurrently under one shared wall-clock budget. That was chosen so the answer is reproducible, but the consequence is that total time is the SUM of the budgets and a slow strategy delays the answer instead of being pre-empted."
+    - "`darp_solver.schedule_route` (the incomplete eight-step heuristic) was left in place and the LNS still uses it, even though `exact_schedule` is now available and complete. So the LNS is probably rejecting some feasible insertions and under-performing. It was NOT switched over because (a) that would change every number in the existing aletheia/benchmarks/quality/darp_results.json, which this packet does not own, and (b) the exact scheduler is slower per call, so it could make an already-slow LNS slower. This is a deferred, untested opportunity, not a completed improvement."
+    - "The v0.1 Decision IR fixes `nominal_ride_time_minutes`, so its objective depends only on WHICH requests are served, not on routing. CP-SAT's win there is real (it proves optima the node-budgeted branch-and-bound cannot reach) but the underlying problem is interval packing, not routing. Do not read the Decision-IR result as evidence about routing."
+    - "`portfolio._darp_bound_tolerance` reads the module-level `_SCALE` rather than the scale a given run actually used. Correct today because the portfolio never passes a custom scale, but it would silently mismatch if one did."
+
+  reproducibility:
+    - "Cross-machine determinism is asserted from OR-Tools' documented contract for num_workers=1 plus a deterministic-time budget. It was verified same-machine, same-process and across processes here; it has NOT been verified on a second machine."
+
+  test_cost:
+    - "The two new conformance modules are expensive: 155 tests in ~12.5 minutes before the CP-SAT budgets were trimmed. Most of that is a handful of CP-SAT runs on real instances. Budgets were cut where the assertion did not need them, but this is still a heavy pair of modules for CI."
+
+scope_honesty:
+  what_this_is: >
+    A working solver portfolio with a real CP-SAT backend, whose reports say
+    which strategy answered and on what evidence, and which can compute its own
+    optimality bound on published dial-a-ride instances instead of borrowing one.
+  what_this_is_NOT: >
+    Not a state-of-the-art DARP solver, and no claim is made against any
+    published solver. Not MILP and not SMT -- those two thirds of solver.py's
+    line-24 aspiration remain **Specified**. Not a portfolio with any learned or
+    adaptive strategy selection; selection is a fixed total order.
+  status_label: >
+    **Demonstrated** at most. The Cordeau instances are SYNTHETIC academic
+    benchmarks: they support ALGORITHMIC claims only ("this solver reaches within
+    X% of a bound it proved for itself on published instances"), never
+    operational ones. Validated requires consented operator data, which this
+    repository does not have and this packet did not touch. No number produced by
+    this packet may be cited as evidence about any real operator's service,
+    riders, vehicles, or costs.
+
+forbidden_interface_changes:
+  - "metis/decide/ir.py NOT modified -- the bound/gap-only-behind-a-proof contract stands"
+  - "metis/decide/solver.py NOT modified"
+  - "metis/decide/feasibility.py NOT modified -- the checker gained no knowledge of any new solver"
+  - "metis/decide/darp_solver.py NOT modified -- schedule_route kept exactly as it was"
+  - "aletheia/benchmarks/quality/** NOT modified -- best_known.json is read, never written"
+  - "pyproject.toml NOT modified (outside owned paths) -- see ortools_finding.dependency_pin_NOT_made"
+  - "no ADR written; no git add/commit/push"
+
+notes: >
+  Concurrent packets were working in themis/connect, themis/core,
+  argus/api, argus/sdk-typescript and outreach; none of those paths was
+  touched. The ADR recording these decisions, the IMPLEMENTATION_STATUS update,
+  and the pyproject dependency pin are the orchestrator's to make.

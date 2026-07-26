@@ -1,0 +1,27 @@
+id: MX-H-REPLAY-COMPARISON-001
+status: completed
+completed_date: "2026-07-24"
+objective: >
+  Historical replay respecting information cutoffs, plus a baseline-vs-Milexium
+  metric comparison -- the "prove the outcome" surface -- worded strictly as a
+  modelled comparison, never causal proof.
+owned_paths: [aletheia/replay/, forge/knowledge/architecture/decisions/0019-replay-and-baseline-comparison.md]
+read_only_dependencies: [themis/canonical/ (RequestTimes.known_as_of), aletheia/evidence/, aletheia/verify/]
+normative_contracts: [blueprint/07-explain-replay-and-evidence.md, blueprint/01-north-star-and-boundaries.md]
+required_outputs:
+  - aletheia/replay/{replay,comparison}.py
+  - aletheia/conformance/property-tests/test_replay_comparison.py
+  - aletheia/conformance/adversarial/test_replay_no_future_leak.py
+  - aletheia/conformance/fixtures/builders_replay.py
+acceptance_commands: ["py -3 -m pytest aletheia/conformance/property-tests/test_replay_comparison.py aletheia/conformance/adversarial/test_replay_no_future_leak.py -v"]
+security_and_privacy_invariants:
+  - "replay hides post-instant facts via canonical known_as_of (sole cutoff authority)"
+  - "modelled-not-causal enforced 3 ways: single-sourced note, validator forbids causal_proof=True, structural provenance/basis"
+  - "no monetary/savings field exists anywhere"
+failure_injections:
+  - "future actual_pickup_at hidden before instant, visible after"
+  - "mismatched/duplicate request sets rejected"
+  - "self-comparison yields all-zero deltas"
+evidence_to_emit: ["16 tests"]
+upstream_blockers: ["utilization needs fleet accounting canonical Outcome lacks -- reported None when absent"]
+downstream_consumers: [evidence packs referencing outcome comparisons; a future pilot's shadow-mode report]

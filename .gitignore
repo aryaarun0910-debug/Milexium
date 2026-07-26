@@ -19,47 +19,48 @@ dist/
 # Data and models (large artifacts stay out of git)
 *.pkl
 *.zip
-business/reference_agency/raw/
-business/reference_agency/output/
-realdata/raw_tlc/
-realdata/raw_tlc_taxi/
-realdata/output/
+forge/business/reference_agency/raw/
+forge/business/reference_agency/output/
+data/curated/raw_tlc/
+data/curated/raw_tlc_taxi/
+data/curated/output/
 *.part
 
-# Data estate (blueprint 17): raw/derived zones are large and reproducible,
-# so they stay local-only. The catalog (data/catalog/) holds small manifests
+# Data estate (blueprint 17) -- the GOVERNED half of data/: raw/derived zones
+# are large and reproducible,
+# so they stay local-only. The catalog (data/acquired/catalog/) holds small manifests
 # -- rights, checksums, inventories -- and IS committed as the governance
 # record; the .gitkeep files preserve the empty zone structure.
-data/raw/
-data/quarantine/
-data/canonical/
-data/features/
-data/networks/
-data/standards/
-data/simulation/
-data/semantic/
-data/experience/
-data/benchmarks/
-data/evidence/
-data/scratch/
-!data/**/.gitkeep
+data/acquired/raw/
+data/acquired/quarantine/
+data/acquired/canonical/
+data/acquired/features/
+data/acquired/networks/
+data/acquired/standards/
+data/acquired/simulation/
+data/acquired/semantic/
+data/acquired/experience/
+data/acquired/benchmarks/
+data/acquired/evidence/
+data/acquired/scratch/
+!data/acquired/**/.gitkeep
 
 # Large aggregated panels and their per-month checkpoints: regenerate via
-# the fetch scripts in realdata/. AAR (2.9 MB) and weather (small) stay
+# the fetch scripts in data/curated/. AAR (2.9 MB) and weather (small) stay
 # committed as the compact, reproducible evidence; these do not.
-realdata/panels/*_monthly/
-realdata/panels/mta_bus_route_hour.csv.gz
-realdata/panels/mta_subway_station_hour.csv.gz
-realdata/panels/chicago_tnp_zone_hour.csv.gz
-realdata/panels/nyc_fhvhv_zone_hour.parquet
+data/curated/panels/*_monthly/
+data/curated/panels/mta_bus_route_hour.csv.gz
+data/curated/panels/mta_subway_station_hour.csv.gz
+data/curated/panels/chicago_tnp_zone_hour.csv.gz
+data/curated/panels/nyc_fhvhv_zone_hour.parquet
 
 # Generated artifact working state. Curated snapshots may still be committed.
-evidence/artifacts/knowledge-graph/**/cache/
-evidence/artifacts/knowledge-graph/**/.obsidian/
-evidence/artifacts/audit/
+aletheia/artifacts/knowledge-graph/**/cache/
+aletheia/artifacts/knowledge-graph/**/.obsidian/
+aletheia/artifacts/audit/
 # Golden-path demo output: regenerated with fresh UUIDs/timestamps each run
-# (py -3 -m demo.golden_path). The demo code is committed; its output is not.
-evidence/artifacts/golden-path/
+# (py -3 -m argus.demo.golden_path). The demo code is committed; its output is not.
+aletheia/artifacts/golden-path/
 
 # Environment
 .env
@@ -73,20 +74,20 @@ evidence/artifacts/golden-path/
 Thumbs.db
 .vscode/
 .idea/
-business/outreach/drafts/
+forge/business/outreach/drafts/
 
 # R&D derived panels and API caches (MX-RND-HYPOTHESIS-MINING-011).
-# Regenerate with research/build_dr_panel.py; the hypothesis RESULT jsons are
+# Regenerate with forge/research/build_dr_panel.py; the hypothesis RESULT jsons are
 # committed, the 15MB intermediate panel and the ACS cache are not.
 #
-# research/noaa_gsom_cache.json is deliberately gone (MX-CONF-GOVERNANCE-HOLE-012).
-# Ignoring it is what made research/h3_weather.json unreproducible: the analysed
+# forge/research/noaa_gsom_cache.json is deliberately gone (MX-CONF-GOVERNANCE-HOLE-012).
+# Ignoring it is what made forge/research/h3_weather.json unreproducible: the analysed
 # sample lived only on one machine, and a rerun that silently lost one station
 # reported 1,886 observations across 19 agencies against the published 1,994
 # across 20. The 150 KB observation set the published result was actually computed
-# from is COMMITTED instead, as research/h3_weather_observations.json. Evidence a
+# from is COMMITTED instead, as forge/research/h3_weather_observations.json. Evidence a
 # conclusion rests on belongs in git; 150 KB is a smaller price than a result
 # nobody can regenerate.
-research/dr_panel.json
-research/acs_urban_area_disability.json
-research/__pycache__/
+forge/research/dr_panel.json
+forge/research/acs_urban_area_disability.json
+forge/research/__pycache__/

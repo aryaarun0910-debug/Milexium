@@ -1,0 +1,39 @@
+id: MX-B-STANDARDS-ADAPTERS-003
+status: completed
+completed_date: "2026-07-23"
+objective: >
+  Add TIDES and GTFS-Flex adapters (the open demand-responsive-transport
+  standards) against the SourceAdapter contract, built on real rights-clean
+  data acquired through the estate pipeline, proving the vendor-neutral
+  ingestion surface that makes Milexium a runtime others integrate.
+owned_paths:
+  - themis/connect/tides_trips.py
+  - themis/connect/gtfs_flex.py
+  - forge/knowledge/architecture/decisions/0014-standards-adapters-tides-gtfs-flex.md
+read_only_dependencies:
+  - themis/connect/adapter.py (SourceAdapter contract)
+  - themis/canonical/ (ServiceRequest, RequestTimes, ids)
+  - data/acquired/standards/ (real acquired TIDES schema + GTFS-Flex feed)
+normative_contracts:
+  - blueprint/03-connect-and-standards.md
+  - blueprint/01-north-star-and-boundaries.md ("unavoidable" test #1)
+required_outputs:
+  - themis/connect/{tides_trips,gtfs_flex}.py
+  - aletheia/conformance/fixtures/{builders_connect_tides,builders_connect_gtfs_flex,test_connect_tides_trips,test_connect_gtfs_flex}.py
+  - aletheia/conformance/adversarial/{test_connect_tides_malformed_rows,test_connect_gtfs_flex_malformed}.py
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/fixtures/test_connect_tides_trips.py aletheia/conformance/fixtures/test_connect_gtfs_flex.py aletheia/conformance/adversarial/test_connect_tides_malformed_rows.py aletheia/conformance/adversarial/test_connect_gtfs_flex_malformed.py -v"
+performance_budget: {}
+security_and_privacy_invariants:
+  - "no rider identity in either source -> synthetic non-joinable rider_ref, recorded as loss"
+failure_injections:
+  - "TIDES: missing required stop id / unparseable timestamp -> quarantine"
+  - "GTFS-Flex: missing/unparseable window time, dangling booking_rule_id, no anchor date, window-end-before-start -> quarantine"
+compatibility_matrix:
+  - "5 adapters total on one SourceAdapter contract (reference_agency, TLC, TIDES, GTFS-Flex)"
+evidence_to_emit:
+  - "35 new tests (16 TIDES + 19 GTFS-Flex); GTFS-Flex negotiated-window mapping verified against the real Aspen feed"
+forbidden_interface_changes: []
+upstream_blockers: []
+downstream_consumers:
+  - MilexiumClient.ingest (SDK), any partner ingesting standards data

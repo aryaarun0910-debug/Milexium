@@ -1,0 +1,32 @@
+{
+  "panel": "weather_hourly.csv.gz",
+  "built_utc": "2026-07-22T08:38:10+00:00",
+  "sha256": "af68f04bdc189d331783212c05d002f6030bbce7192d86f4ce7102f774a4c95d",
+  "bytes": 1136440,
+  "source": {
+    "name": "Hourly weather (NYC LaGuardia + Chicago O'Hare)",
+    "portal": "ncei.noaa.gov",
+    "dataset_ids": [
+      "LCD 72503014732",
+      "LCD 72530094846"
+    ],
+    "fetch_script": "data/curated/fetch_weather_hourly.py",
+    "license": "NOAA NCEI (public domain)"
+  },
+  "schema": {
+    "city": "str",
+    "date": "str",
+    "hour": "int64",
+    "temp_c": "float64",
+    "dewpoint_c": "float64",
+    "precip_mm": "float64",
+    "wind_kph": "float64",
+    "humidity_pct": "float64"
+  },
+  "coverage": {
+    "rows": 134057,
+    "date_min": "2018-01-01",
+    "date_max": "2025-08-25",
+    "distinct_city": 2
+  }
+}

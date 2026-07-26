@@ -1,0 +1,25 @@
+id: MX-F-DARP-BENCHMARK-002
+status: completed
+completed_date: "2026-07-24"
+objective: >
+  Build a scalable DARP solver and benchmark it against published Cordeau
+  dial-a-ride instances, reporting REAL optimality gaps -- checkable technical
+  credibility without a pilot.
+owned_paths: [metis/decide/ (darp_ir, darp_solver, darp_loader, darp_bridge; feasibility.py appended), aletheia/benchmarks/quality/, data/acquired/catalog/cordeau-darp.*, forge/knowledge/architecture/decisions/0024-darp-solver-benchmark.md]
+read_only_dependencies: [metis/decide/ir.py, solver.py (existing v0.1 kept intact), themis/estate (acquisition), themis/canonical/vocab]
+normative_contracts: [blueprint/09-benchmark-data-and-research.md, blueprint/06]
+required_outputs:
+  - metis/decide/darp_{ir,solver,loader,bridge}.py
+  - aletheia/benchmarks/quality/{darp_benchmark.py,darp_results.json,darp_summary.md,best_known.json}
+  - aletheia/conformance/property-tests/test_darp_benchmark.py
+acceptance_commands: ["py -3 -m pytest aletheia/conformance/property-tests/test_darp_benchmark.py -v"]
+security_and_privacy_invariants:
+  - "original check_feasibility unchanged (appended only); DARP checker imports no solver; benchmark recomputes objective independently"
+  - "every counted solution passes BOTH independent checkers; infeasible solutions never counted"
+  - "no fabricated/spun numbers; no claim to beat published solvers"
+failure_injections: ["property test: independent checker never accepts an infeasible benchmark solution"]
+evidence_to_emit: ["proven optimum reached on Cordeau a3-18 (0.00% gap); 7.97% on a2-16; both feasible; existing 124 F tests preserved"]
+compatibility_matrix: ["pure Python; ortools NOT added"]
+upstream_blockers: []
+known_limitations: ["only 2 instances counted (time budget) -- broader sweep is a straightforward follow-up the harness supports"]
+downstream_consumers: [YC/technical-reviewer credibility; future CP-SAT/MILP backends]

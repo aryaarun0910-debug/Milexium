@@ -1,0 +1,149 @@
+id: MX-C-CONTAINER-RLS-005
+status: completed
+completed_date: "2026-07-25"
+adr: forge/knowledge/architecture/decisions/0037-canonical-debt-alternatives-observations-rls.md  # closes the scope limit recorded in its Consequences; a new ADR is the orchestrator's call
+result: >
+  21 new adversarial tests + 2 existing spatial tests, 0 skipped -- they RAN against the
+  containerized PostGIS on 5433. Container store is now policy-enforced, ST_DWithin included.
+  Mutation-checked: defeating the role switch fails 16 of the 21.
+dispatched_date: "2026-07-25"
+objective: >
+  Close the tenant-isolation gap ADR-0037 recorded as deliberately open: make
+  PostgisObservationStore policy-enforced rather than WHERE-clause filtered, so
+  the store that actually holds vehicle position and occupancy has a boundary and
+  not a convention. Program C.
+owned_paths:
+  - themis/canonical/observation_store.py                # apply RLS + set the GUC per operation
+  - themis/canonical/sql/postgis_postgres.sql            # owned; NOT changed, see notes
+  - themis/canonical/sql/rls_postgres.sql                # SCOPE NOTE header only -- no policy touched
+  - aletheia/conformance/property-tests/test_postgis_rls.py         # the deliverable
+  - aletheia/conformance/property-tests/test_postgis_observation.py # owned; NOT changed, see notes
+  - forge/knowledge/workstreams/packets/MX-C-CONTAINER-RLS-005.yaml
+read_only_dependencies:
+  - themis/canonical/postgres_storage.py (the _use_tenant pattern this mirrors; do not modify)
+  - themis/canonical/sql/schema_v0_1.sql (portable DDL -- do NOT change)
+  - aletheia/conformance/property-tests/test_stop_time_observation_store.py (the established RLS test structure; not owned, must keep passing)
+  - talos/infra/compose/docker-compose.yml (PostgreSQL 16 + PostGIS 3.4, host port 5433; creds in the gitignored talos/infra/compose/.env)
+normative_contracts: [blueprint/04-canonical-state.md, blueprint/10-security-privacy.md, ADR-0002, ADR-0006, ADR-0018, ADR-0035, ADR-0037]
+problem: >
+  sql/rls_postgres.sql was applied ONLY by PostgresCanonicalStore, against the
+  native PostgreSQL 17 on 5432. PostgisObservationStore targets the CONTAINERIZED
+  PostGIS on host port 5433 and applied the portable schema plus
+  postgis_postgres.sql -- not the RLS file. Its reads named tenant_id in the SQL
+  text, so they were filtered but not policy-enforced. The container store holds
+  vehicle position and occupancy, the most sensitive operational data in the
+  schema (SensitivityClass.PRECISE_LOCATION), with no row-level security at all.
+  A WHERE clause is application code; a policy is a boundary. ADR-0037's
+  Consequences and rls_postgres.sql's SCOPE NOTE both recorded this honestly as
+  deferred; this packet closes it.
+required:
+  - >
+    PostgisObservationStore applies row-level security to the observation tables
+    in its disposable mx_<uuid> schema, and sets the milexium.tenant_id GUC per
+    operation exactly as PostgresCanonicalStore does, so the policies have an
+    acting tenant to evaluate against.
+  - >
+    The existing spatial round-trip and all existing behaviour keep working:
+    test_postgis_observation.py and test_stop_time_observation_store.py must pass
+    unchanged in substance. Weakening a policy to keep a test green is not an
+    option; setting the GUC properly is.
+  - >
+    rls_postgres.sql's SCOPE NOTE header updated to reflect reality once this
+    lands. No existing policy in that file changed.
+how_it_was_built:
+  applied_the_file_not_a_copy: >
+    The store applies sql/rls_postgres.sql ITSELF, after schema_v0_1.sql and
+    postgis_postgres.sql, rather than carrying its own copy of the two observation
+    policies. A second hand-maintained copy would be free to drift from the
+    policies the native store enforces, and a tenant boundary that is only mostly
+    the same boundary is not one. Consequence accepted deliberately: every
+    tenant-scoped table in the disposable schema is now guarded there, not just
+    the two observation tables -- strictly more isolation, and create_tenant sets
+    the GUC to the registering tenant's own id so the `tenants` WITH CHECK admits
+    it (the self-registration PostgresCanonicalStore already performs).
+  the_superuser_problem_this_surfaced: >
+    THE FINDING THAT MADE THIS MORE THAN AN ALTER TABLE. RLS binds neither
+    superusers nor BYPASSRLS roles, and FORCE does not help, because that check is
+    made FIRST. The native milexium_dev is deliberately an ordinary role
+    (ADR-0006) -- but the postgis/postgis image bootstraps POSTGRES_USER as the
+    container cluster's SUPERUSER, so the credential in talos/infra/compose/.env holds
+    rolsuper AND rolbypassrls (verified: SELECT rolsuper, rolbypassrls FROM
+    pg_roles). Applying the policies under that credential would have installed a
+    boundary binding nobody, and every isolation test would have passed for the
+    wrong reason -- the same false green rls_postgres.sql's header warns about,
+    one level up, and invisible unless looked for.
+  the_fix: >
+    Construction provisions (idempotently, race-safely via a duplicate_object
+    handler rather than check-then-create) a deliberately unprivileged
+    `milexium_rls` role -- NOSUPERUSER, NOBYPASSRLS, NOLOGIN, so it is never a
+    connection identity and needs no password -- creates the disposable schema
+    AUTHORIZATION that role, and SET ROLEs to it for the rest of the session.
+    OWNER, not merely grantee, is the deliberate part: it keeps FORCE the thing
+    standing between tenants instead of an ordinary privilege error masking an
+    absent policy. If the connecting credential is ever already unprivileged, no
+    role switch happens at all.
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_postgis_rls.py aletheia/conformance/property-tests/test_postgis_observation.py -q"
+  - "py -3 -m pytest themis/ metis/ aletheia/ argus/ -q   # whole suite still green"
+security_and_privacy_invariants:
+  - "ENABLE *and* FORCE, asserted directly from pg_class -- not inferred from behaviour."
+  - "The acting role must hold neither rolsuper nor rolbypassrls, asserted before any isolation claim is made. Without this the whole module is a tautology."
+  - "The acting role must OWN the observation tables, asserted -- otherwise lifting FORCE would prove nothing."
+  - "An unset or RESET GUC denies all, never allows all -- INCLUDING through the spatial path."
+  - "The empty-string trap: current_setting(name, true) returns NULL only if the GUC was NEVER set; after RESET it returns the EMPTY STRING. Both cases are tested, and the empty-string reality is pinned by assertion so a future `IS NOT NULL` guard cannot silently open the door."
+  - "Container tests skip cleanly when the stack is absent, so CI stays green -- but a skip proves nothing, so the evidence requirement is that they RAN."
+  - "schema_v0_1.sql untouched and portable; no existing policy in rls_postgres.sql changed."
+failure_injections:
+  - "raw unfiltered SELECT as tenant B returns none of tenant A's rows, on both observation tables"
+  - "positive control: acting as A, A's own rows ARE visible -- the denial is not passing on an empty table"
+  - "RESET GUC -> deny-all, with the empty-string return value asserted explicitly"
+  - "a connection that NEVER set the GUC (separate session) -> deny-all, NULL case"
+  - "INSERT stamped with a foreign tenant_id rejected as InsufficientPrivilege"
+  - "FORCE lifted -> boundary collapses -> restored, proving FORCE is load-bearing"
+  - "ST_DWithin with the tenant_id filter DELETED is scoped by the policy alone; unscoped session sees neither vehicle; lifting FORCE leaks the other operator's vehicle into the radius"
+evidence_to_emit:
+  - "test counts; confirmation the container tests RAN (not skipped) against 5433"
+  - "explicit confirmation the ST_DWithin spatial path is tenant-scoped"
+  - "mutation result: defeating the role switch must fail the suite"
+evidence_observed:
+  - "aletheia/conformance/property-tests/test_postgis_rls.py: 21 passed, 0 skipped -- RAN against the live container (PostgreSQL 16.4 + PostGIS 3.4 on host 5433)."
+  - "test_postgis_observation.py: 2 passed, unchanged. test_stop_time_observation_store.py: 21 passed, unchanged (not an owned path -- it needed no edit because the store sets the GUC itself)."
+  - "ST_DWithin CONFIRMED tenant-scoped: with the tenant_id filter removed, acting as A returns only a-bus and acting as B only b-bus, from two vehicles on the SAME point; unscoped returns neither; lifting FORCE returns both."
+  - "Mutation check (scratchpad, not committed): monkeypatching _ensure_unprivileged_role to a no-op -- i.e. applying the policies as the container superuser -- fails 16 of the 21, including all three spatial tests. The 5 that survive are the pg_class/ownership preconditions and the store-method test, which legitimately do not depend on it."
+honest_limitations:
+  - >
+    `milexium_rls` is a CLUSTER-WIDE object, so unlike the mx_<uuid> schema it is
+    not disposed of by teardown: it persists in the dev container after a run.
+    It is NOLOGIN and owns nothing once the schema is dropped, so it is inert, but
+    it is a side effect outside the disposable namespace and is stated rather than
+    hidden.
+  - >
+    The container credential remains a superuser. This packet does not re-provision
+    the container to hand out a non-superuser login role (that would change
+    docker-compose.yml / .env, outside owned paths); it works around the superuser
+    per-session via SET ROLE. Anything else connecting to that container with the
+    .env credential still bypasses RLS entirely. What is proven is that THIS STORE
+    is bound, not that the container is impossible to bypass.
+  - >
+    The GUC is the identity, as everywhere else in rls_postgres.sql: a session that
+    sets milexium.tenant_id to a tenant IS that tenant. This is a database-layer
+    boundary against a missing filter, a bug, or a compromised code path -- not an
+    authentication system.
+  - >
+    RLS is applied in the disposable per-run schema, which is where this store's
+    tables exist. There is no long-lived container schema for it to guard.
+compatibility_matrix:
+  - "Same rls_postgres.sql file, same policies, both PostgreSQL instances (native 17 on 5432, containerized 16.4 on 5433)"
+  - "SQLite is unaffected: RLS stays out of the portable schema_v0_1.sql (ADR-0002)"
+downstream_consumers: [Program C geospatial reads, Program B ingest writing observations, any serve-time API over vehicle position]
+notes: >
+  postgis_postgres.sql and test_postgis_observation.py are owned by this packet but
+  needed NO change, and were left with a 0-line diff rather than edited to look
+  busy. The RLS DDL deliberately did not go into postgis_postgres.sql: that file is
+  the geometry extension, and duplicating policy text there is exactly the drift
+  risk applying rls_postgres.sql avoids. test_postgis_observation.py's existing
+  cross-tenant test kept passing untouched because the store sets the GUC per
+  operation, so nothing had to be weakened. Did NOT touch schema_v0_1.sql,
+  storage.py, postgres_storage.py, any existing policy, aletheia/evidence, core,
+  api, sdk, replay, connect, contracts, pyproject, CI, IMPLEMENTATION_STATUS,
+  JOURNAL, any ADR, or git.

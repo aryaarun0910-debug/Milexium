@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+// Transport-contract SEED for Milexium's canonical event envelope.
+//
+// This is a hand-maintained placeholder so the Protobuf transport layer has a
+// home (ADR-0027). It is NOT yet wired into codegen: `buf`/`protoc` are not
+// installed, so no Rust/TS/Python clients are generated from it and it is not
+// the authoritative contract -- the Pydantic models in themis/canonical are.
+// When the Buf toolchain lands, this becomes the internal-RPC contract and the
+// full canonical entity set is added here, with breaking-change detection.
+//
+// Kept intentionally minimal (just the append-only DecisionEvent envelope, the
+// first thing a Rust service would exchange) rather than a speculative full
+// mirror of the 12 entities.
+
+package milexium.canonical.v0_1;
+
+// Mirrors themis.canonical.entities.DecisionEvent -- the hash-chained,
+// append-only decision-ledger entry (ADR-0003). Field numbers are stable once
+// codegen is enabled; until then this is documentation of intent.
+message DecisionEvent {
+  string event_id = 1;         // UUIDv7
+  string tenant_id = 2;        // UUIDv7
+  string aggregate_id = 3;
+  string aggregate_type = 4;
+  uint64 sequence = 5;         // monotonic per aggregate, starts at 1
+  string occurred_at = 6;      // RFC3339 UTC
+  string actor_type = 7;       // "system" | "human"
+  string actor_id = 8;
+  string event_type = 9;       // recommendation | rejection | override | outcome_recorded
+  string payload_json = 10;    // canonical JSON (sorted keys, compact, ascii)
+  repeated string reason_codes = 11;
+  optional string idempotency_key = 12;
+  optional string prev_hash = 13;  // absent for sequence 1
+  string hash = 14;            // sha256, see themis.canonical.events.compute_hash
+}

@@ -1,0 +1,29 @@
+{
+  "acceptance_threshold": "non-empty; parses; no duplicate (unit, hour) rows.",
+  "canonical_contract": "none-yet -- aggregate demand panels feeding two of the four real models.",
+  "dataset_id": "realdata-mta-afc-ridership",
+  "decision_tasks_enabled": [
+    "forecast.demand"
+  ],
+  "derived_artifacts": [
+    "GOVERNANCE-ONLY MANIFEST (talos/tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through themis.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
+    "already_present_at: data/curated/panels/mta_subway_station_hour.csv.gz",
+    "already_present_at: data/curated/panels/mta_bus_monthly/",
+    "already_present_at: data/curated/panels/mta_subway_monthly/"
+  ],
+  "expected_download_gb": 0.0,
+  "expected_expanded_gb": 0.0,
+  "expected_retained_gb": 0.0,
+  "geography": "New York City -- MTA bus routes and subway stations.",
+  "license_and_commercial_rights": "MTA open data, published for public use including commercial use, no key required. Aggregate ridership counts by route-hour and station-hour; no individual fare transaction or rider identifier is present.",
+  "owner_and_source": "Metropolitan Transportation Authority (MTA) automated fare collection ridership, bus and subway. Hand-acquired into data/curated/panels/ before the estate existed.",
+  "quality_tests": [],
+  "retention_and_deletion": "retained as committed evidence; pinned by the evidence registry and the forecast leaderboard. Public aggregate data, no deletion obligation.",
+  "schema_and_format": "gzipped CSV. mta_subway_station_hour.csv.gz (~23.5M rows) and the bus route-hour equivalent, plus monthly rollups.",
+  "sensitive_fields": [],
+  "source_checksum": null,
+  "source_url": "https://data.ny.gov/",
+  "time_coverage": "hourly panels, 2020-01 onward; monthly aggregates alongside.",
+  "update_frequency": "static snapshot, frozen for reproducibility.",
+  "zone": "standards"
+}

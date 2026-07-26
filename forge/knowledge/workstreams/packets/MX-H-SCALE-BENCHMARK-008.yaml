@@ -1,0 +1,120 @@
+id: MX-H-SCALE-BENCHMARK-008
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+adr: null   # no ADR: a NULL result changes no decision. ADR-0026 stands unamended.
+result: >
+  NULL RESULT, WHICH IS THE SUCCESS: the ADR-0026 measured-bottleneck trigger has
+  NOT fired. 17 new tests (0 skipped locally, 6 skip cleanly without the corpus);
+  whole suite 1411 passed. A 7-rung ladder on REAL NYC TLC FHVHV rows -- 40,000 /
+  66,940 (the ADR-0039 anchor) / 200,000 / 500,000 / 1,000,000 / 2,000,000 /
+  5,000,000 segments -- ran to the top with no rung failing and no wall found.
+  Wall clock 2.80s -> 156.54s: 125x the input for 56x the time, overall log-log
+  slope 0.83, per-segment cost flat between 31 and 92 us/segment with NO upward
+  trend. THE TEARDOWN IS LINEAR. Memory is likewise linear and is the constraint
+  that eventually binds: 519 B/segment of transient heap (tracemalloc, 517-521
+  across the whole 125x range -- a ~1% band) plus 654 B/segment to hold the
+  segments, about 1.1 KB/segment total. WHERE THE TIME GOES: ~50%
+  segment_set_fingerprint (two ISO strings per segment + sort + canonical JSON +
+  SHA-256 -- deliberate ADR-0039 audit cost, not analysis), ~26% the
+  hour-boundary split, ~7% each run grouping / bucket rollup / headline totals;
+  shares stable across every rung. VERDICT against the real target (a mid-size
+  operator's YEAR = ~300k-600k segments, not millions): 500,000 real segments
+  tear down in 46.1s, and 600,000 at the WORST rate seen anywhere on the ladder
+  is ~55s, on a 4-core 2019 ultrabook that was also running a browser and Docker.
+  Python is adequate; crate #2 is not justified. Two honest findings recorded
+  rather than glossed: (1) that ~55s sits close to the pre-registered ~60s
+  threshold, and it passes only BECAUSE this is a once-per-export batch job --
+  on the ADR-0042 interactive HTTP/SDK surface 46s is already unacceptable
+  TODAY, whose fix is caching/async, not a language; (2) the single largest cost
+  is optional bookkeeping, so a rewrite would optimise the wrong thing.
+objective: >
+  ADR-0026 gates the polyglot Rust rewrite behind THREE triggers and no others: a
+  real user, a MEASURED bottleneck, or a second engineer to own Rust. "The
+  programs are complete" is deliberately NOT a trigger. The ADR-0039 deadhead
+  teardown was demonstrated on a 40,000-row sample of one TLC week (~4.9M rows);
+  a design partner sending a YEAR of trip data is one to two orders of magnitude
+  more, and nobody has measured whether pure-Python pandas/pydantic holds there.
+  This packet MEASURES it: a reproducible scale ladder over the real TLC corpus,
+  wall-clock and peak memory, a coarse profile saying where the time goes, and an
+  explicit verdict against a realistic operator workload. A NULL RESULT IS A
+  SUCCESS -- if Python is adequate, the measured-bottleneck trigger has NOT fired
+  and the polyglot question is closed for now instead of speculated about.
+owned_paths:
+  - aletheia/benchmarks/performance/teardown_scale.py
+  - aletheia/benchmarks/performance/teardown_scale_results.json
+  - aletheia/benchmarks/performance/teardown_scale.md
+  - aletheia/conformance/property-tests/test_teardown_scale.py
+  - forge/knowledge/workstreams/packets/MX-H-SCALE-BENCHMARK-008.yaml
+read_only_dependencies:
+  - aletheia/replay/teardown.py (ADR-0039 -- MEASURED, never modified; the benchmark calls teardown_deadhead exactly as shipped)
+  - data/curated/raw_tlc/ (real NYC TLC FHVHV Parquet, ~88 monthly files, ~37 GB, gitignored)
+  - forge/business/outreach/design_partner_pitch.md (the 50k-300k annual demand-response trip target that defines the workload being judged)
+  - aletheia/benchmarks/quality/darp_benchmark.py (the results.json + summary.md artifact convention this follows)
+normative_contracts:
+  - ADR-0026 (the three triggers; the migration ladder -- freeze -> contract -> implement -> differential-test -> BENCHMARK -> challenger -> promote on parity. This packet is the benchmark rung, run BEFORE any implementation, so the rung cannot be skipped by having already written the Rust)
+  - ADR-0039 (deadhead teardown; the sampling caveat and the correlated-missingness finding)
+  - aletheia/benchmarks/README.md (a number belongs here only once it was measured on this repo's code, with the command and hardware recorded alongside)
+required_outputs:
+  - aletheia/benchmarks/performance/teardown_scale.py
+  - aletheia/benchmarks/performance/teardown_scale_results.json
+  - aletheia/benchmarks/performance/teardown_scale.md
+  - aletheia/conformance/property-tests/test_teardown_scale.py
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_teardown_scale.py -q   # 17 passed in ~7s"
+  - "py -3 -m pytest themis/ metis/ aletheia/ argus/ -q   # 1411 passed, 0 failed (12m29s)"
+  - "py -3 aletheia/benchmarks/performance/teardown_scale.py   # reproduces the ladder (~45 min; needs the gitignored corpus)"
+machine_of_record:
+  - "Intel Core i7-10510U @ 1.80GHz, 4 physical / 8 logical cores"
+  - "16,138 MB RAM (2,607 MB available at start), 14,848 MB swap"
+  - "Python 3.14.2 CPython, Windows 11 (10.0.26200)"
+  - "A benchmark without its hardware is not reproducible, so this is recorded in the artifact itself, not only here."
+what_it_must_answer:
+  - "HOW FAST, ACROSS A LADDER: teardown_deadhead wall-clock and peak memory at 40k (the ADR-0039 baseline), 200k, 1M, and upward on real TLC segments -- not two endpoints."
+  - "WHAT SHAPE: is the curve linear, superlinear, memory-bound, or does it fall over? 10x input for 100x time is a finding; 10x for 10x is also a finding. Reported as a measured log-log slope, not an adjective."
+  - "WHERE THE TIME GOES: coarse per-stage attribution (segment construction, hour-boundary splitting, run grouping, the fingerprint hash). 'It is slow' is not actionable; '52% is in the fingerprint' is."
+  - "VERDICT AGAINST A CONCRETE WORKLOAD: a mid-size paratransit operator running 150k-300k demand-response trips/year produces hundreds of thousands of segments per year, NOT millions. Judge against THAT and say plainly whether Python is adequate."
+  - "ON WHAT MACHINE: CPU, RAM, Python version. A benchmark without its hardware is not reproducible."
+security_and_privacy_invariants:
+  - "MEASURE, DO NOT MODIFY. aletheia/replay/** is read-only. The benchmark calls the shipped teardown_deadhead with the shipped cost path -- no benchmark-only fast path, no tuned parameters, no code shaped to manufacture a bottleneck. Asserted by test."
+  - "NO RIDER PII. The benchmark reads only the six structural TLC columns the ADR-0039 demonstration reads (dispatching base + four timestamps); VehicleSegment's extra='forbid' makes attaching a rider field impossible, and every other column of the corpus is never selected."
+  - "A NULL RESULT IS A SUCCESS. The harness is not permitted to hand-wave a pass: with no successful rung it refuses a verdict outright rather than guessing one in either direction (asserted by test)."
+  - "NO NEW DEPENDENCIES. stdlib time/tracemalloc/cProfile/statistics plus duckdb+pydantic, already present. psutil is used when importable and its absence degrades the record rather than failing it -- it is NOT a declared dependency of this project."
+  - "SAMPLING IS NOT CENSUS. Rungs are a nested contiguous slice of one real month, stated in-artifact. That supports claims about runtime versus segment count; it does NOT support any claim about NYC deadhead rates, and the ADR-0039 headline (8.89%) is neither restated nor revised."
+  - "PROJECTIONS ARE LABELLED. Every figure beyond the largest successful rung is arithmetic on measured per-segment constants and carries the word PROJECTION."
+failure_injections:
+  - "gitignored corpus absent -> harness prints how to acquire it and exits 0, writing no artifact (nothing to benchmark is not a failure); every test needing data skips cleanly so CI stays green"
+  - "a rung that exhausts memory -> recorded as the ladder's stopping point with a status naming why, never silently dropped, and the ladder stops climbing rather than reporting a clean sweep"
+  - "a rung that dies without writing its record (OS refusing an allocation) -> caught by the parent as child_died with its exit code; each rung runs in its own subprocess so one rung's failure cannot abort the ladder or contaminate the next rung's memory"
+  - "a failed rung is never interpolated over -- the log-log slope skips it rather than drawing the curve through a point that was never measured (asserted by test)"
+  - "no successful rung at all -> no verdict is offered; an unmeasured bottleneck is not a measured one"
+  - "real TLC rows exceeding MAX_SEGMENT_HOURS (a parsing artefact the module refuses) -> counted as rejected and reported, rather than aborting a multi-million-row build"
+compatibility_matrix:
+  - "REAL public data: NYC TLC FHVHV trip records from data/curated/raw_tlc/ (gitignored, ~37 GB). Segments derived exactly as ADR-0039 derives them -- request->on_scene is the empty approach, pickup->dropoff the revenue leg, curb wait excluded, rows publishing no on-scene timestamp counted as unmeasured rather than imputed as zero."
+  - "NOT operator data and NOT paratransit. FHVHV is rideshare; run_ref is a TLC dispatching base, not a vehicle/block/run. Stated in-artifact, as ADR-0039 states it."
+  - "Timing and memory measured in SEPARATE passes: tracemalloc roughly doubles allocation-heavy runtime, so it never shares a pass with the clock. cProfile is used only to RANK functions, never to measure them; the stage timers measure."
+evidence_to_emit:
+  - "aletheia/benchmarks/performance/teardown_scale_results.json -- one record per rung: wall-clock (every repeat, median, min, spread), peak process RSS, tracemalloc peak, per-stage seconds, cProfile top-N, and the teardown_id + segment_sha256 identifying exactly which input the timing describes"
+  - "aletheia/benchmarks/performance/teardown_scale.md -- the ladder, the measured log-log slope per step, the stage attribution table, the machine, the explicit ADR-0026 verdict, and the limitations"
+  - "17 tests in aletheia/conformance/property-tests/test_teardown_scale.py (~7s; 6 skip cleanly without the corpus, 0 fail)"
+  - "the measured ladder: 40,000 / 66,940 / 200,000 / 500,000 / 1,000,000 / 2,000,000 / 5,000,000 segments at 2.80 / 4.14 / 13.66 / 46.09 / 76.46 / 107.61 / 156.54 s and 141 / 191 / 450 / 1,017 / 1,923 / 3,756 / 5,954 MB peak RSS"
+  - "the stage attribution: fingerprint ~50%, hour-boundary split ~26%, run grouping ~7-11%, bucket rollup ~7%, headline totals ~7%, observation window ~2% -- stable at every rung"
+upstream_blockers: []
+downstream_consumers:
+  - "ADR-0026's deferred list -- this is the evidence that decides whether the deadhead teardown ever becomes crate #2, and the pre-registered thresholds say what would change the answer"
+  - "argus/api + argus/sdk teardown surfaces (ADR-0042) -- an interactive path where a person waits is a different workload from a batch export, and the ladder says where that boundary sits"
+  - "the design-partner funnel step 3 (free analysis) in forge/business/outreach/design_partner_pitch.md -- how long an operator waits for their own teardown"
+limitations:
+  - "WALL-CLOCK VARIES WITH MACHINE STATE BY MORE THAN THE EFFECT MEASURED. The same 40,000-segment rung read 25 us/segment cold and 70 us/segment once this ultrabook had thermally throttled -- a ~2.8x swing unrelated to input. The committed ladder was taken under sustained load (the slow end), which makes the verdict conservative. Consequence: the ladder proves the ABSENCE of a superlinear blow-up over 125x; it cannot resolve n from n log n."
+  - "Rungs above 200,000 segments were timed once, not repeated (a repeat costs minutes at those sizes), so they carry no spread estimate. The repeated small rungs spread 10-22%."
+  - "The 5,000,000-segment rung pushed this 16 GB laptop into sustained paging (~21 minutes wall for the whole rung). It completed, so no wall was found -- but that rung is the practical ceiling for THIS machine, not a property of the code."
+  - "One machine, one run, on a working laptop under real memory pressure. No CPU pinning, no isolated benchmark host. Run-to-run spread is reported per rung rather than smoothed away."
+  - "Stage attribution is white-box: it calls teardown.py's private helpers in the order teardown_deadhead calls them. A test pins their existence so a rename surfaces as a failure rather than as a stale artifact that still looks plausible."
+  - "Segment construction (DuckDB scan + pydantic validation) is measured and reported separately because it is the adapter's cost, not teardown_deadhead's -- and a Rust rewrite of the teardown would not remove it."
+  - "FHVHV's run-reference cardinality (28 TLC bases) is far below a real operator's vehicle/block count, and the run-grouping stage's cost depends on that cardinality. Stated in-artifact."
+notes: >
+  Did NOT modify aletheia/replay/** (measured, not changed), themis/core,
+  themis/connect, themis/canonical, contracts, pyproject, CI,
+  IMPLEMENTATION_STATUS, JOURNAL, any ADR, or git. aletheia/benchmarks/README.md was left
+  untouched; aletheia/benchmarks/performance/ is a new sibling of quality/ following the
+  same results.json + summary.md convention as aletheia/benchmarks/quality/darp_benchmark.py.

@@ -1,0 +1,12 @@
+{
+  "acquired_at": "2026-07-24T13:35:32.647222+00:00",
+  "dataset_id": "cordeau-darp",
+  "free_gb_after": 331.59,
+  "free_gb_before": 331.59,
+  "license_and_commercial_rights": "Academic benchmark instances, published for open forge/research/benchmarking use; no formal software license is attached to the instance files themselves, and none is claimed here. The instances contain only synthetic coordinates/time-windows (no proprietary or personal data). Used here strictly for algorithm benchmarking/comparison against published best-known values, the standard and unrestricted research use for this dataset. Not resold or redistributed as a product; commercial benchmarking/comparison of a solver against them is the established norm in the field.",
+  "raw_path": "data\\acquired\\benchmarks\\cordeau-darp.2def4d810f14fdca.zip",
+  "retained_bytes": 30244,
+  "sha256": "2def4d810f14fdcab73c52a90403839d2d37a3d0287bb65e24e20290c90d5f91",
+  "source_url": "https://raw.githubusercontent.com/davidrey123/DARP/main/Instances/Cordeau.zip",
+  "zone": "benchmarks"
+}

@@ -1,0 +1,14 @@
+{
+  "acquired_at": "2026-07-25T08:38:37.253989+00:00",
+  "dataset_id": "mobility-database-catalog",
+  "free_gb_after": 315.13,
+  "free_gb_before": 315.13,
+  "license_and_commercial_rights": "Apache-2.0. Verified at acquisition time two ways: the repository LICENSE file at raw.githubusercontent.com/MobilityData/mobility-database-catalogs/main/LICENSE is the Apache License 2.0 text, and the GitHub repository metadata API reports spdx_id 'Apache-2.0'. COMMERCIAL USE IS PERMITTED, including redistribution and derivative works, subject to Apache-2.0's conditions: retain the licence and copyright notice, state changes, and carry any NOTICE file. NOTE THE SCOPE LIMIT: Apache-2.0 covers the CATALOGUE -- the list of feeds and their metadata -- and NOT the agency feeds it points at, each of which carries its own separate terms (see data/acquired/US_OPEN_DATA_SURVEY.md; the CTA developer licence is a worked example of an agency feed whose terms are NOT rights-clean for this product).",
+  "object_store_bucket": "milexium-artifacts",
+  "object_store_key": "7e49958ca1d3ca609b9299e6deeed750f82c374ebd1a4752013269de370f5e78",
+  "raw_path": "data\\acquired\\raw\\public\\mobility-database-catalog.7e49958ca1d3ca60.csv",
+  "retained_bytes": 1125770,
+  "sha256": "7e49958ca1d3ca609b9299e6deeed750f82c374ebd1a4752013269de370f5e78",
+  "source_url": "https://storage.googleapis.com/mdb-csv/sources.csv",
+  "zone": "raw/public"
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@milexium/sdk",
+  "version": "0.1.0",
+  "description": "Typed TypeScript client SDK for the Milexium HTTP API. Types are generated from the OpenAPI contract, not hand-duplicated.",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript ../../talos/contracts/openapi/milexium-api-v0.1.json --output src/generated/openapi.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test \"test/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,917 @@
+{
+  "contract_version": "0.1.0",
+  "entities": {
+    "DecisionAlternative": {
+      "$defs": {
+        "ReasonCode": {
+          "description": "Scheduling explanation reason codes. Never SHAP output or generated prose.",
+          "enum": [
+            "NO_ACCESSIBLE_CAPACITY",
+            "PICKUP_WINDOW",
+            "DROPOFF_WINDOW",
+            "MAX_RIDE_TIME",
+            "SHIFT_END",
+            "PRECEDENCE",
+            "SOLVER_TIMEOUT"
+          ],
+          "title": "ReasonCode",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "A candidate assignment considered (and, usually, rejected) during a\nschedule run -- required so \"why not the alternatives\" is answerable.",
+      "properties": {
+        "candidate_vehicle_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Candidate Vehicle Id"
+        },
+        "failed_constraints": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Failed Constraints",
+          "type": "array"
+        },
+        "feasible": {
+          "title": "Feasible",
+          "type": "boolean"
+        },
+        "objective_delta": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Objective Delta"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "schedule_run_id": {
+          "title": "Schedule Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schedule_run_id",
+        "request_id",
+        "feasible"
+      ],
+      "title": "DecisionAlternative",
+      "type": "object"
+    },
+    "DecisionEvent": {
+      "$defs": {
+        "DecisionEventType": {
+          "enum": [
+            "recommendation",
+            "rejection",
+            "override",
+            "outcome_recorded"
+          ],
+          "title": "DecisionEventType",
+          "type": "string"
+        },
+        "ReasonCode": {
+          "description": "Scheduling explanation reason codes. Never SHAP output or generated prose.",
+          "enum": [
+            "NO_ACCESSIBLE_CAPACITY",
+            "PICKUP_WINDOW",
+            "DROPOFF_WINDOW",
+            "MAX_RIDE_TIME",
+            "SHIFT_END",
+            "PRECEDENCE",
+            "SOLVER_TIMEOUT"
+          ],
+          "title": "ReasonCode",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry in the append-only, hash-chained decision ledger.\n\nSee forge/knowledge/architecture/decisions/0003-append-only-hash-chained-event-log.md:\ntamper-evident, not immutable, not a compliance certificate.",
+      "properties": {
+        "actor_id": {
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "pattern": "^(system|human)$",
+          "title": "Actor Type",
+          "type": "string"
+        },
+        "aggregate_id": {
+          "title": "Aggregate Id",
+          "type": "string"
+        },
+        "aggregate_type": {
+          "title": "Aggregate Type",
+          "type": "string"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/$defs/DecisionEventType"
+        },
+        "hash": {
+          "title": "Hash",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Idempotency Key"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "prev_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Prev Hash"
+        },
+        "reason_codes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "sequence": {
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "tenant_id",
+        "aggregate_id",
+        "aggregate_type",
+        "sequence",
+        "occurred_at",
+        "actor_type",
+        "actor_id",
+        "event_type",
+        "payload",
+        "prev_hash",
+        "hash"
+      ],
+      "title": "DecisionEvent",
+      "type": "object"
+    },
+    "Driver": {
+      "additionalProperties": false,
+      "properties": {
+        "driver_id": {
+          "title": "Driver Id",
+          "type": "string"
+        },
+        "shift_end": {
+          "format": "date-time",
+          "title": "Shift End",
+          "type": "string"
+        },
+        "shift_start": {
+          "format": "date-time",
+          "title": "Shift Start",
+          "type": "string"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "tenant_id",
+        "shift_start",
+        "shift_end"
+      ],
+      "title": "Driver",
+      "type": "object"
+    },
+    "ForecastVintage": {
+      "additionalProperties": false,
+      "description": "What was predicted, when, for which horizon -- distinct from the\neventual actual so forecast quality can be scored without contaminating\nthe prediction with hindsight (replay/bitemporal invariant).",
+      "properties": {
+        "eventual_actual": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eventual Actual"
+        },
+        "horizon_end": {
+          "format": "date-time",
+          "title": "Horizon End",
+          "type": "string"
+        },
+        "horizon_start": {
+          "format": "date-time",
+          "title": "Horizon Start",
+          "type": "string"
+        },
+        "interval_high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval High"
+        },
+        "interval_low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval Low"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "model_version_id": {
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "point_estimate": {
+          "title": "Point Estimate",
+          "type": "number"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "model_version_id",
+        "horizon_start",
+        "horizon_end",
+        "issued_at",
+        "point_estimate"
+      ],
+      "title": "ForecastVintage",
+      "type": "object"
+    },
+    "ModelVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_hash": {
+          "title": "Artifact Hash",
+          "type": "string"
+        },
+        "evaluation_window_end": {
+          "format": "date-time",
+          "title": "Evaluation Window End",
+          "type": "string"
+        },
+        "evaluation_window_start": {
+          "format": "date-time",
+          "title": "Evaluation Window Start",
+          "type": "string"
+        },
+        "feature_schema_version": {
+          "title": "Feature Schema Version",
+          "type": "string"
+        },
+        "model_version_id": {
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "task": {
+          "title": "Task",
+          "type": "string"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "training_data_manifest_hash": {
+          "title": "Training Data Manifest Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_version_id",
+        "tenant_id",
+        "task",
+        "training_data_manifest_hash",
+        "feature_schema_version",
+        "evaluation_window_start",
+        "evaluation_window_end",
+        "artifact_hash"
+      ],
+      "title": "ModelVersion",
+      "type": "object"
+    },
+    "OutboxEntry": {
+      "additionalProperties": false,
+      "description": "Transactional handoff so exported state and recorded evidence cannot\ndiverge (forge/knowledge/docs/MASTER_ROADMAP.md `outbox` table).",
+      "properties": {
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        },
+        "dispatched_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dispatched At"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "status": {
+          "pattern": "^(pending|sent|failed)$",
+          "title": "Status",
+          "type": "string"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "event_id",
+        "destination",
+        "status"
+      ],
+      "title": "OutboxEntry",
+      "type": "object"
+    },
+    "Outcome": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_pickup_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actual Pickup At"
+        },
+        "deadhead_minutes": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deadhead Minutes"
+        },
+        "excess_ride_time_minutes": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Excess Ride Time Minutes"
+        },
+        "on_time": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Time"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "served": {
+          "title": "Served",
+          "type": "boolean"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "request_id",
+        "served"
+      ],
+      "title": "Outcome",
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "description": "Versioned time-window/ride-time/capacity/objective configuration.",
+      "properties": {
+        "config": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Config",
+          "type": "object"
+        },
+        "effective_from": {
+          "format": "date-time",
+          "title": "Effective From",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "policy_id",
+        "tenant_id",
+        "name",
+        "version",
+        "config",
+        "effective_from"
+      ],
+      "title": "Policy",
+      "type": "object"
+    },
+    "ScheduleRun": {
+      "$defs": {
+        "ScheduleRunStatus": {
+          "enum": [
+            "optimal",
+            "feasible",
+            "infeasible",
+            "timeout"
+          ],
+          "title": "ScheduleRunStatus",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "bound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optimality gap; null unless status is feasible/optimal.",
+          "title": "Gap"
+        },
+        "objective_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Objective Value"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "schedule_run_id": {
+          "title": "Schedule Run Id",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "solver_name": {
+          "title": "Solver Name",
+          "type": "string"
+        },
+        "solver_version": {
+          "title": "Solver Version",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ScheduleRunStatus"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schedule_run_id",
+        "tenant_id",
+        "policy_id",
+        "solver_name",
+        "solver_version",
+        "seed",
+        "status",
+        "started_at"
+      ],
+      "title": "ScheduleRun",
+      "type": "object"
+    },
+    "ServiceRequest": {
+      "$defs": {
+        "BitemporalMeta": {
+          "additionalProperties": false,
+          "description": "Transaction-time envelope attached to every versioned canonical record.",
+          "properties": {
+            "corrects_version": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The version number this record corrects, if any. None for the first version. A correction is a new version, never a mutation of the one it corrects.",
+              "title": "Corrects Version"
+            },
+            "recorded_at": {
+              "description": "When Milexium recorded this version (transaction time).",
+              "format": "date-time",
+              "title": "Recorded At",
+              "type": "string"
+            },
+            "version": {
+              "description": "Monotonic version number for this aggregate.",
+              "minimum": 1,
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "recorded_at"
+          ],
+          "title": "BitemporalMeta",
+          "type": "object"
+        },
+        "RequestTimes": {
+          "additionalProperties": false,
+          "description": "The explicit time fields Program A requires for a service request.\n\nEvery field after `requested_at` is optional because, at any point in the\nrequest's lifecycle, most of them are not yet known -- that is the point\nof keeping them distinct instead of collapsing them into one \"when\" field.",
+          "properties": {
+            "actual_pickup_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The observed, ground-truth pickup time.",
+              "title": "Actual Pickup At"
+            },
+            "negotiated_window_end": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End of the pickup window agreed with the rider/agency.",
+              "title": "Negotiated Window End"
+            },
+            "negotiated_window_start": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start of the pickup window agreed with the rider/agency.",
+              "title": "Negotiated Window Start"
+            },
+            "predicted_pickup_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A forecast's predicted pickup time, kept distinct from the scheduled time so a forecast can be scored against what was actually scheduled, and both against the actual outcome.",
+              "title": "Predicted Pickup At"
+            },
+            "requested_at": {
+              "description": "When the request was made (the fact that starts the aggregate).",
+              "format": "date-time",
+              "title": "Requested At",
+              "type": "string"
+            },
+            "scheduled_pickup_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The pickup time a schedule run actually assigned.",
+              "title": "Scheduled Pickup At"
+            }
+          },
+          "required": [
+            "requested_at"
+          ],
+          "title": "RequestTimes",
+          "type": "object"
+        },
+        "ServiceRequestState": {
+          "enum": [
+            "requested",
+            "negotiated",
+            "scheduled",
+            "in_progress",
+            "completed",
+            "denied",
+            "cancelled",
+            "no_show"
+          ],
+          "title": "ServiceRequestState",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "The immutable-per-version request aggregate. A correction produces a\nnew `ServiceRequest` with `meta.corrects_version` set and the same\n`request_id`, per forge/knowledge/architecture/decisions/0003-append-only-hash-chained-event-log.md.",
+      "properties": {
+        "dropoff_zone": {
+          "title": "Dropoff Zone",
+          "type": "string"
+        },
+        "meta": {
+          "$ref": "#/$defs/BitemporalMeta"
+        },
+        "mobility_device": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mobility Device"
+        },
+        "pickup_zone": {
+          "title": "Pickup Zone",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "rider_ref": {
+          "description": "Tokenized rider reference. Never a raw name (blueprint 10 data minimization).",
+          "title": "Rider Ref",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ServiceRequestState"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "times": {
+          "$ref": "#/$defs/RequestTimes"
+        }
+      },
+      "required": [
+        "request_id",
+        "tenant_id",
+        "rider_ref",
+        "pickup_zone",
+        "dropoff_zone",
+        "times",
+        "status",
+        "meta"
+      ],
+      "title": "ServiceRequest",
+      "type": "object"
+    },
+    "Tenant": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "name",
+        "created_at"
+      ],
+      "title": "Tenant",
+      "type": "object"
+    },
+    "Vehicle": {
+      "additionalProperties": false,
+      "properties": {
+        "accessibility_equipment": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Accessibility Equipment",
+          "type": "array"
+        },
+        "capacity_ambulatory": {
+          "minimum": 0,
+          "title": "Capacity Ambulatory",
+          "type": "integer"
+        },
+        "capacity_wheelchair": {
+          "minimum": 0,
+          "title": "Capacity Wheelchair",
+          "type": "integer"
+        },
+        "tenant_id": {
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "vehicle_id": {
+          "title": "Vehicle Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "vehicle_id",
+        "tenant_id",
+        "capacity_ambulatory",
+        "capacity_wheelchair"
+      ],
+      "title": "Vehicle",
+      "type": "object"
+    }
+  },
+  "generated_by": "aletheia.verify.schema_verifier.export_schema (via themis.canonical entities)",
+  "note": "Generated file. Do not hand-edit -- change themis/canonical/entities.py and regenerate."
+}

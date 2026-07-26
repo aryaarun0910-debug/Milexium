@@ -1,0 +1,80 @@
+id: MX-I-REDACTION-FIX-005
+status: completed
+completed_date: "2026-07-25"
+objective: >
+  Fix the confirmed privacy defect ADR-0044 recorded as the top Program I
+  follow-up: `redact_pack` did not redact. It masked the named sensitive payload
+  keys in `pack.raw_events[].payload_json` and left the SAME values in
+  `pack.evidence` -- the EvidencePacket dump, which embeds every event payload --
+  so the artifact built specifically to be SHAREABLE (the redacted
+  procurement/partner bundle of ADR-0017/0020) still carried what it claimed to
+  have removed, silently. Masking now walks the whole pack rather than a
+  remembered list of places, the redacted pack is re-anchored over what it
+  actually carries, `verify_evidence_pack` RE-DERIVES whether the redaction
+  claim holds instead of believing the manifest, and any value masking could not
+  reach is stated in the artifact itself.
+owned_paths:
+  - aletheia/evidence/export.py
+  - aletheia/conformance/property-tests/test_redaction.py
+read_only_dependencies:
+  - aletheia/evidence/models.py (EvidencePacket -- where payloads live inside the dump; NOT modified)
+  - aletheia/evidence/teardown_evidence.py (redact_teardown_evidence, REDACTED_RUN_REF -- the quality bar matched, not modified)
+  - themis/canonical/events.py (canonical_json)
+  - aletheia/verify/hash_chain_verifier.py (verify_chain)
+normative_contracts:
+  - forge/knowledge/architecture/decisions/0017-evidence-pack-export.md (the pack contract; redaction is a weaker artifact, honestly labelled)
+  - forge/knowledge/architecture/decisions/0020-period-incident-procurement-packs.md (the redacted bundle is what a procurement reviewer receives)
+  - forge/knowledge/architecture/decisions/0044-teardown-evidence.md ("A pre-existing privacy defect this packet found, and did not fix")
+  - blueprint/10-security-privacy-and-ai-governance.md (field masking is NOT de-identification, and must say so)
+  - blueprint/07-explain-replay-and-evidence.md (machine-verifiable exports)
+inputs_and_fixtures: []
+required_outputs:
+  - aletheia/evidence/export.py
+  - aletheia/conformance/property-tests/test_redaction.py
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_redaction.py aletheia/conformance/property-tests/test_teardown_evidence.py -q"
+  - "py -3 -m pytest themis/ metis/ aletheia/ argus/ -q"
+performance_budget: {}
+security_and_privacy_invariants:
+  - "THE LEAK TEST: a distinctive sensitive payload value appears NOWHERE in the redacted pack's full serialized JSON -- asserted against the raw serialized text (model_dump_json() and to_json()), not against a parsed subset, because a subset assertion is what let the defect live"
+  - "masking is a shape-agnostic walk that follows the data: every named key is masked at every depth, in raw_events payloads, in the embedded EvidencePacket (`evidence`), and in the outcome -- a new payload-bearing field cannot silently reopen the leak"
+  - "the redacted pack's bundle checksum is re-anchored over the MASKED evidence/events/outcome, so a redacted pack stays tamper-evident as a whole (editing the masked EvidencePacket afterwards is caught)"
+  - "verify_evidence_pack RE-DERIVES the redaction claim: masking_complete is recomputed by walking the pack for the keys the manifest lists as redacted, and is None (not checked) / True (checked, clean) / False (checked, a value survives) -- never inferred from the manifest saying so"
+  - "a pack that CLAIMS a redaction it did not perform is not reverified, and unmasked_paths names where the claim broke (paths only, never values)"
+  - "redaction is not over-broad: a value under a key that was never named survives byte-identical in both raw_events and evidence"
+  - "a post-redaction scan of the pack's own serialized bytes reports, in manifest.note, any masked value that survived as free text -- an incomplete redaction is stated in the artifact, naming WHERE and never quoting the value"
+  - "a masked value stays a stated mask ([REDACTED]), never None -- None would claim the source never carried the field (the REDACTED_RUN_REF discipline, applied to payload keys)"
+failure_injections:
+  - "sensitive value in an event payload -> absent from the redacted pack's whole serialized JSON, not merely from raw_events (this is the test that would have failed before the fix)"
+  - "sensitive key nested two levels deep inside a payload (dict -> list -> dict) -> masked; the walk does not depend on the author's imagination of payload shape"
+  - "pack whose manifest declares redacted_fields while the values are still present -> masking_complete False, unmasked_paths names evidence.* and raw_events[1].payload.rider_note, reverified False even though the chain and bundle checks both pass"
+  - "masked EvidencePacket edited after redaction -> bundle checksum catches it (the redacted pack is anchored over the masked content, not the original)"
+  - "a sensitive value that is ALSO the aggregate id -> key-based masking cannot reach it; the manifest note says 'NOT fully masked', names the locations, and withholds the clean-scan claim"
+compatibility_matrix:
+  - "no PackManifest field added: PackManifest is exported into talos/contracts/openapi/milexium-api-v0.1.json and talos/contracts/ is not this packet's to touch. The consequence-reporting therefore rides on the existing free-text `note`. `py -3 talos/contracts/generate.py` leaves talos/contracts/ byte-identical (CI drift check clean)."
+  - "redacted_fields keeps its exact existing value for a pack with no teardown -- the two committed assertions `redacted.manifest.redacted_fields == ('rider_note',)` in test_evidence_pack_export.py and test_teardown_evidence.py pass unchanged"
+  - "_bundle_hash keeps its 3-positional-argument call shape (test_evidence_pack_export.py and test_teardown_evidence.py call it directly)"
+  - "PackVerification gained masking_complete/unmasked_paths, both defaulted, and it appears in no contract artifact; existing constructions and assertions are unaffected"
+  - "the 5 ADR-0017 pack tests and the 26 ADR-0044 teardown-evidence tests pass unchanged, including the teardown's own 'no run identifier anywhere in the pack' leak test"
+evidence_to_emit:
+  - "11 passing tests in aletheia/conformance/property-tests/test_redaction.py"
+  - "37 passed on the two acceptance files (11 new + 26 teardown-evidence, unchanged)"
+  - "full suite green on the final code: 976 passed, 0 failed (baseline 965 + 11)"
+  - "talos/contracts/ regenerates byte-identical; aletheia/evidence/models.py untouched"
+forbidden_interface_changes:
+  - "no new PackManifest field (would make talos/contracts/openapi/milexium-api-v0.1.json stale, and talos/contracts/ is forbidden here)"
+  - "no change to aletheia/evidence/teardown_evidence.py or teardown_capture.py"
+  - "no change to aletheia/evidence/models.py -- masking is shape-agnostic precisely so the IR did not have to move"
+  - "no weakening of verification to make a test pass: nothing that was checked before is skipped now, and the one new check only ever withholds reverification"
+upstream_blockers: []
+known_limitations:
+  - "KEY-BASED MASKING CANNOT REACH A VALUE COPIED INTO FREE TEXT. If a payload value was also recorded outside a payload key -- an identifier that happens to equal it, or a jsonschema error message in EvidencePacket.schema_violations that quotes the offending instance -- masking leaves it. This is now DETECTED and stated in manifest.note with the locations, but not removed: scrubbing arbitrary substrings out of recorded strings would corrupt the record rather than redact it."
+  - "the post-redaction scan compares STRING values only. A masked number or boolean is indistinguishable from unrelated content (a sequence number, a `true`), so scanning for it would flag every pack; a masked scalar is therefore masked but not scanned for."
+  - "masking by key name is deliberately literal: naming a key that also exists as a structural field masks it there too. That is the honest reading of 'this key's values do not leave', but it means a caller who names e.g. 'hash' will mask more than a payload."
+  - "verify_evidence_pack can re-derive that the NAMED KEYS are masked everywhere; it cannot re-derive that no unnamed field re-identifies the subject, and it cannot check the free-text residue (it does not know the original values). The residue result is carried in the note as a producer statement, and verification does not restate it as if it had checked it."
+  - "unchanged from ADR-0017 and not addressed here: a redacted pack still cannot chain-reverify per event, because the per-event hash covers the original payload. Selective disclosure via per-field commitments remains Specified-not-built."
+  - "redaction remains field masking for sharing, NOT HIPAA de-identification (blueprint 10): combinations of remaining fields can still re-identify, and the manifest note continues to say exactly that."
+downstream_consumers:
+  - "ADR-0020 period/incident/procurement bundles -- the redacted single-aggregate pack is what they embed"
+  - "Design-partner and procurement hand-off: the copy that actually leaves the building"
+  - "Future MilexiumClient.export_pack(redact=...) SDK surface"

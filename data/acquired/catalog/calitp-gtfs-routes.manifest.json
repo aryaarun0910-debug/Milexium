@@ -1,0 +1,37 @@
+{
+  "dataset_id": "calitp-gtfs-routes",
+  "owner_and_source": "California Department of Transportation (Caltrans), California Integrated Travel Program (Cal-ITP) -- 'Cal-ITP GTFS-Ingest Pipeline Dataset' on data.ca.gov (CKAN package cal-itp-gtfs-ingest-pipeline-dataset, id de6f1544-b162-4d16-997b-c183912c8e62), resource c6bbb637-988f-431c-8444-aef7277297f8. No API key, no registration, plain HTTPS.",
+  "license_and_commercial_rights": "Creative Commons Attribution (CC-BY); COMMERCIAL USE IS PERMITTED. Verified 2026-07-25 by reading the publisher's own machine-readable CKAN record rather than trusting data/acquired/ACQUISITION_PLAN.md: https://data.ca.gov/api/3/action/package_show?id=cal-itp-gtfs-ingest-pipeline-dataset returns license_id='cc-by', license_title='Creative Commons Attribution', license_url='http://www.opendefinition.org/licenses/cc-by', rights='No restrictions on public use', accessLevel='public', isopen=true, organization='Caltrans'. The commercial-use verdict does not depend on the version: every published CC-BY version (2.5, 3.0, 4.0) grants commercial use. THE VERSION IS NOT PINNED BY THE SOURCE -- the acquisition plan expected the CKAN license field to confirm it and it does not; license_url is the Open Definition's version-agnostic cc-by entry, which itself lists 4.0, 3.0 and 2.5. Licence text Milexium attributes under: https://creativecommons.org/licenses/by/4.0/ -- recorded as OUR choice of the current version, not as the publisher's declaration. Required attribution: 'California Integrated Travel Program (Cal-ITP), California Department of Transportation'; contact calitp@dot.ca.gov. PUBLISHER USE NOTE, quoted verbatim from the CKAN notes field: 'Cal-ITP collects the GTFS feeds from a statewide list every night and aggregates it into a statewide table for analysis purposes only. Do not use for trip planner ingestion, rather is meant to be used for statewide analytics and other use cases. Note: These data may or may or may not have passed GTFS-Validation' -- Milexium's use (statewide scheduled-deadhead analytics) is inside that stated intent, and these bytes must NOT be served to a passenger trip planner. SCOPE LIMIT: this grant is Caltrans' over ITS aggregation. The ~200 underlying per-operator feeds keep their own upstream terms; this record does not launder them and is NOT authority to fetch any agency feed directly.",
+  "decision_tasks_enabled": [
+    "replay.deadhead_teardown",
+    "networks.transit_route_inventory"
+  ],
+  "geography": "California, statewide -- every operator on Cal-ITP's nightly ingest list",
+  "time_coverage": "current statewide snapshot; refreshed and republished monthly (CKAN accrualPeriodicity R/P1M)",
+  "source_url": "https://data.ca.gov/dataset/de6f1544-b162-4d16-997b-c183912c8e62/resource/c6bbb637-988f-431c-8444-aef7277297f8/download/routes.csv",
+  "expected_download_gb": 0.000474,
+  "expected_expanded_gb": 0.000474,
+  "expected_retained_gb": 0.000474,
+  "schema_and_format": "CSV keyed on (base64_url, route_id), carrying agency_id, route_short_name, route_long_name, route_type. ACQUIRED SOLELY AS A JOIN HOP: a trip names a route, a route names an agency. Counting block_id coverage per FEED would be wrong, because a regional feed (511 SF Bay is the obvious case) carries many agencies under one base64_url, so feed counts would understate the agency denominator. trips -> routes -> agency is the only path in this dataset from a block to the operator that owns it.",
+  "sensitive_fields": [],
+  "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use.",
+  "source_checksum": null,
+  "canonical_contract": "none-yet -- this repo has no canonical Route entity and this packet does not invent one. It is join infrastructure for attributing a Block to an agency, nothing more.",
+  "quality_tests": [
+    {
+      "name": "header_carries_route_key_and_agency_id",
+      "description": "the first line contains base64_url, route_id and agency_id -- agency_id is the only reason this file is held"
+    },
+    {
+      "name": "route_key_is_unique_per_feed",
+      "description": "(base64_url, route_id) is unique, so the trips join cannot fan out and double-count an agency's blocks"
+    }
+  ],
+  "acceptance_threshold": "downloads over plain HTTPS with no credential, is CSV, > 100 KB, header contains base64_url, route_id and agency_id.",
+  "retention_and_deletion": "retain: trivially small (~0.5 MB) and it is what makes the agency-coverage finding an agency count rather than a feed count. Reproducible monthly.",
+  "derived_artifacts": [
+    "data/acquired/catalog/calitp-scheduled-deadhead.summary.json",
+    "data/acquired/catalog/calitp-scheduled-deadhead.md"
+  ],
+  "zone": "raw/public"
+}

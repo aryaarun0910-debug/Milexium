@@ -1,0 +1,40 @@
+id: MX-D-MODEL-TASK-REGISTRY-001
+status: completed
+completed_date: "2026-07-23"
+objective: >
+  Catalog this repository's 5 real, trained, evaluated models
+  (forge/knowledge/docs/MODEL_CARDS.md) as ModelVersion registry entries with a closed task
+  vocabulary and per-task champion pointer, without training anything new or
+  inventing hypothetical models.
+owned_paths:
+  - themis/core/
+  - forge/knowledge/architecture/decisions/0010-model-registry-platform-tenant.md
+read_only_dependencies:
+  - themis/canonical/entities.py, ids.py (ModelVersion, ModelVersionId -- schema only)
+  - forge/knowledge/docs/MODEL_CARDS.md, forge/knowledge/docs/DATA_SOURCES.md
+  - data/curated/manifests/*.json, data/curated/output/*_model.json, data/curated/metrics_real.json (read only, for real values)
+normative_contracts:
+  - blueprint/05-core-model-runtime-and-forecast.md (expansion plan), Program D
+  - blueprint/14-execution-roadmap.md, Program D
+inputs_and_fixtures:
+  - aletheia/conformance/fixtures/model_registry_builders.py
+required_outputs:
+  - themis/core/{task_registry,model_registry}.py
+  - aletheia/conformance/fixtures/test_model_registry_examples.py
+  - aletheia/conformance/property-tests/test_model_registry.py
+acceptance_commands:
+  - "py -3 -m pytest themis/core/ aletheia/conformance/fixtures/test_model_registry_examples.py aletheia/conformance/property-tests/test_model_registry.py -v"
+performance_budget: {}
+security_and_privacy_invariants: []
+failure_injections:
+  - "register() with an unknown task -> UnknownTaskError"
+  - "register() with a duplicate model_version_id -> DuplicateModelVersionError"
+  - "get()/champion() for an unregistered id/task -> UnknownModelVersionError / None"
+compatibility_matrix: []
+evidence_to_emit:
+  - "13 passing tests; one training_data_manifest_hash value independently re-verified by the orchestrator against the real committed manifest file (exact match)"
+forbidden_interface_changes: []
+upstream_blockers:
+  - "ModelVersion.tenant_id has no defined meaning for platform-trained (non-tenant-specific) models -- see ADR-0010"
+downstream_consumers:
+  - Future Program E (Forecast runtime) model routing/resolution

@@ -1,0 +1,29 @@
+{
+  "panel": "aar_hourly_borough.csv.gz",
+  "built_utc": "2026-07-22T08:36:21+00:00",
+  "sha256": "83141d404e1cbbfd8aa243e5375d36d77288d38e4cfbd423fe6aa7d8f673680e",
+  "bytes": 3031055,
+  "source": {
+    "name": "NYC Access-A-Ride paratransit, hourly x borough",
+    "portal": "data.ny.gov",
+    "dataset_ids": [
+      "hasd-hdb7"
+    ],
+    "fetch_script": "data/curated/fetch_nyc_aar.py",
+    "license": "NY Open Data (public domain)"
+  },
+  "schema": {
+    "day": "str",
+    "hour": "int64",
+    "provider_type": "str",
+    "borough": "str",
+    "trips": "int64",
+    "riders": "int64"
+  },
+  "coverage": {
+    "rows": 571114,
+    "date_min": "2024-01-01",
+    "date_max": "2026-05-31",
+    "distinct_borough": 8
+  }
+}

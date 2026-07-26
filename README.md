@@ -1,100 +1,112 @@
 # Milexium
 
-Explainable demand forecasting and scheduling support for US paratransit and
-NEMT operators. Every mile, justified (tagline, tentative). Milexium is being
-built around a simple operational promise: every forecast, scheduling
-recommendation, rejection, and human override should be reviewable after the
-fact.
+Explainable demand forecasting and scheduling evidence for US paratransit and
+NEMT operators.
 
-The model recommendation is deliberately conventional: XGBoost beat the
-experimental transformer on the same real Access-A-Ride holdout, so the tree
-model remains the **local reference implementation** — nothing here is deployed
-to or running for an operator. See [realdata/README.md](realdata/README.md) for
-the full comparison and limitations.
+Milexium is built around one operational promise: **every forecast, scheduling
+recommendation, denial and human override should be reviewable after the fact.**
+When a board, an auditor, a disability advocate or the FTA asks *why*, the answer
+should already exist rather than be reconstructed.
 
-**Status:** every capability in this repository is at most **Demonstrated**.
-Under [ADR-0001](knowledge/architecture/decisions/0001-adopt-expansion-blueprint-and-control-plane.md)
+## The architecture, in one sentence
+
+> **Themis** governs what is true and permissible.
+> **Metis** proposes what should happen next.
+> **Aletheia** proves why the decision was made.
+> **Argus** lets the operator see, question and control it.
+> **Talos** keeps it running.
+
+Each layer is an **authority boundary**, not a folder of convenience. The names
+exist so the boundaries can be pointed at — and so they can be tested.
+
+| Layer | Must never |
+|---|---|
+| **Themis** | infer uncertain facts and silently store them as reality |
+| **Metis** | alter canonical state, or authorise an operation |
+| **Aletheia** | depend on hidden Milexium runtime to verify a claim |
+| **Argus** | invent a fact, constraint, reason or recommendation |
+| **Talos** | ship an incompatible change without preserving reproducibility |
+
+Metis holds today by construction — it imports types and vocabularies from
+Themis, never a store or a writer. Aletheia's is enforced against the verifier's
+own syntax tree. The rest are being made enforceable rather than documented.
+
+## Status — read this before quoting anything
+
+**Every capability in this repository is at most *Demonstrated*.**
+
+Under [ADR-0001](forge/knowledge/architecture/decisions/0001-adopt-expansion-blueprint-and-control-plane.md)
 the status **Validated** requires consented operator data against a declared
-baseline, and Milexium has none — no customers, no pilots, no operator data.
-Public aggregate data can demonstrate a forecasting task; it cannot validate
+baseline, and Milexium has none: **no customers, no pilots, no operator data.**
+Public aggregate data can *demonstrate* a forecasting task. It cannot *validate*
 operator capacity planning, scheduling, denial explanation, or economic impact.
+
 The binding rule for anything outward-facing is in
-[knowledge/docs/COMPETITIVE_POSITIONING.md](knowledge/docs/COMPETITIVE_POSITIONING.md).
+[COMPETITIVE_POSITIONING.md](forge/knowledge/docs/COMPETITIVE_POSITIONING.md):
+never write *validated*, *proven* or *guaranteed*; never publish a savings, ROI
+or opportunity figure; every number names its artifact or is deleted.
+
+The model recommendation is deliberately conventional — XGBoost beat the
+experimental transformer on the same real Access-A-Ride holdout, so the tree
+model is the **local reference implementation**. Nothing here is deployed to or
+running for an operator.
 
 ## Repository map
 
-The repository has two layers. The **product & evidence workspace** is the
-original real-data forecasting, market-sizing, and demonstration work. The
-**expansion platform** is the contract-driven runtime being built per the
-`Milexium Expansion plan` blueprint — see
-[`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) for what is actually
-Exists vs. Specified in each program.
-
-Top level, grouped by concern:
-
 | Directory | What lives there |
 |---|---|
-| `app/` | The product — one Python package per program, plus the TypeScript SDK |
-| `platform/` | How it is built and run — `platform/infra`, `platform/ops`, `platform/contracts`, `platform/tools` |
-| `evidence/` | The proof it works — `evidence/conformance`, `evidence/benchmarks`, `evidence/artifacts` |
-| `knowledge/` | Why it is the way it is — `knowledge/architecture` (ADRs), `knowledge/docs`, `knowledge/workstreams` |
-| `data/` | The governed data estate — committed manifests, gitignored zones |
-| `realdata/` | Public-data panels, model training, and the committed evidence outputs |
-| `research/` | R&D hypotheses and their recorded results, including the killed ones |
-| `demo/` | The end-to-end walkthrough (`py -3 -m demo`) |
-| `business/` | `business/outreach`, `business/ntd`, `business/reference_agency` |
-| `_legacy/` | Relocated, not removed — `_legacy/kaggle`, `_legacy/third_party`, `_legacy/crates` |
+| `themis/` | Governed reality — `canonical`, `ontology`, `connect`, `estate`, `core`. Schema, identity, legal state transitions, provenance, custody |
+| `metis/` | Bounded intelligence — `forecast`, `decide`. Demand models, the CP-SAT solver portfolio, pooling and capacity value |
+| `aletheia/` | Reproducible evidence — `evidence`, `verify`, `replay`, plus `conformance` (the tests), `benchmarks`, `artifacts` |
+| `argus/` | The operational surface — `api`, `sdk`, `sdk-typescript`, `demo`. The command centre lands here |
+| `talos/` | Dependable delivery — `infra`, `ops`, `contracts`, `tools` |
+| `forge/` | Where we build it — `knowledge` (ADRs, docs, packets), `research`, `business`, `legacy` |
+| `data/` | The governed corpus — `acquired/` and `curated/` |
 
-`realdata/` deliberately stays at the top level: its paths are pinned by sha256
-in the evidence registry and read directly by the forecast, leakage and teardown
-suites, so moving it would break recorded provenance to buy tidiness.
+`forge/` may import anything; **nothing may import `forge/`.** Research, business
+material and architectural records reference the product freely; the product
+never references them.
 
-### Product & evidence workspace
+`forge/legacy/` means **relocated, not removed** — `forge/legacy/kaggle/` holds
+the transformer experiment whose *negative* result is cited evidence in
+[MODEL_CARDS.md](forge/knowledge/docs/MODEL_CARDS.md).
 
-| Path | Purpose |
-|---|---|
-| `realdata/` | Public-data ingestion, derived demand panels, model training, evaluation, and compact evidence outputs |
-| `business/ntd/` | FTA National Transit Database economics, market sizing, and outreach inputs |
-| `business/reference_agency/` | Fictional, synthetic trip-level agency used only for scheduler and audit-trail demonstrations |
-| `_legacy/kaggle/` | GPU notebook + recorded transformer experiment — kept **negative-result evidence** (XGBoost beat it; cited in `knowledge/docs/MODEL_CARDS.md`), not dead code |
-| `business/outreach/` | Design-partner pitch, cold-email templates, target tables (drafts locally gitignored) — the shadow-mode-pilot toolkit |
-| `knowledge/docs/` | Roadmap, source catalog, model cards, research questions, journal, YC draft |
-| `evidence/artifacts/` | Curated generated screenshots and dated knowledge-graph snapshots |
-| `platform/tools/` | Repository and data integrity checks |
+### The two data trees, and why they are named that way
 
-### Expansion platform (the transport decision runtime)
+`data/acquired/` came through `themis/estate` — checksum-verified, free-space
+guarded, quarantined before promotion. `data/curated/` was hand-acquired before
+that pipeline existed. Both declare rights in committed manifests (ADR-0053); the
+only real distinction is **how the bytes got here**, so that is what they are
+named for.
 
-| Path | Purpose |
-|---|---|
-| `app/` | One package per program: `canonical` (A), `connect` (B), `estate` (C data layer), `core` (D), `forecast` (E), `verify` (G), `evidence` (I), `sdk` (M) |
-| `knowledge/architecture/` | ADRs (`decisions/`), normative contracts, threat models, formal specs |
-| `evidence/conformance/` | Executable proof: fixtures, property tests, adversarial tests (the evidence behind every "Exists"/"Demonstrated" claim) |
-| `data/` | Governed data estate — `catalog/` (committed manifests + rights) with gitignored raw/derived zones; acquire via `app/estate`. 250 GB is the *design target* for this estate, not its current governed volume |
-| `knowledge/workstreams/` | Work packets + the `DOSSIER_COVERAGE.md` 80-tech/72-project ledger |
-| `evidence/benchmarks/`, `research/`, `_legacy/third_party/`, `platform/ops/` | Perf/quality benchmarks, experiment records, the vendoring gate, and ops readiness |
-| `IMPLEMENTATION_STATUS.md` | Living Exists/Specified/Demonstrated/Validated/Production status across programs A–M |
+Large raw zones, checkpoints, trained models, predictions, outreach drafts and
+credentials are local-only and gitignored — see
+[DATA_STORAGE.md](forge/knowledge/docs/DATA_STORAGE.md).
 
-The public website and `milexium.com` infrastructure are owned by Chris and live
-outside this repository. This repository is the product, data, modeling, and
-technical-evidence workspace; it intentionally contains no deployable website.
+## Running it
 
-Large raw files, resumable checkpoints, trained models, predictions, outreach
-drafts, and credentials are local-only and gitignored. The storage contract is
-documented in [knowledge/docs/DATA_STORAGE.md](knowledge/docs/DATA_STORAGE.md).
+```bash
+py -3 -m pytest                        # the full suite
+py -3 -m argus.demo                    # end-to-end walkthrough, ~2.5s
+py -3 talos/tools/audit_repository.py  # structure, data boundaries, integrity
+```
+
+The demo's best moments are its **refusals**: PII quarantined ahead of all other
+validation, an ambiguous date declined while its unambiguous twin is repaired, a
+denial left without a reason rather than back-filled, no savings figure without
+the operator's own cost split, and a conformal interval withdrawing its own
+coverage guarantee under measured drift. It ends by verifying itself.
 
 ## Start here
 
-- [Implementation status](IMPLEMENTATION_STATUS.md) — what's built across programs A–M
-- [Documentation index](knowledge/docs/README.md)
-- [Master roadmap](knowledge/docs/MASTER_ROADMAP.md)
-- [Competitive positioning](knowledge/docs/COMPETITIVE_POSITIONING.md)
-- [Data source catalog](knowledge/docs/DATA_SOURCES.md)
-- [Project journal](knowledge/docs/JOURNAL.md)
-- [YC application draft](knowledge/docs/yc/application-draft.md)
+- [Implementation status](IMPLEMENTATION_STATUS.md) — Exists / Specified /
+  Demonstrated across programs A–M
+- [Documentation index](forge/knowledge/docs/README.md)
+- [Architecture decisions](forge/knowledge/architecture/decisions/) — each
+  recording what was decided *and what it costs*
+- [Journal](forge/knowledge/docs/JOURNAL.md) — append-only session record
+- [Competitive positioning](forge/knowledge/docs/COMPETITIVE_POSITIONING.md)
 
-Run the platform test suite with `py -3 -m pytest app/ evidence/conformance/`, and
-the SDK quickstart with `py -3 -m app.sdk.example`.
-
-Run `py -3 platform/tools/audit_repository.py` after fetches, file moves, or model runs to
-check repository structure, ignored-data boundaries, panel schemas, duplicate
-keys, checkpoint continuity, and raw Parquet file integrity.
+The public website and `milexium.com` infrastructure are owned by Chris and live
+outside this repository. This repository is the product, data, modelling and
+technical-evidence workspace.

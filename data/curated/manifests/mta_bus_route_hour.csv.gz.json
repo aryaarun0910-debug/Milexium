@@ -1,0 +1,28 @@
+{
+  "panel": "mta_bus_route_hour.csv.gz",
+  "built_utc": "2026-07-22T08:37:11+00:00",
+  "sha256": "445d361e8dd992b0e97f5eb9fb56ce02a230e44299842d62d94a894ce6d6b11c",
+  "bytes": 86872401,
+  "source": {
+    "name": "MTA bus AFC ridership, route x hour",
+    "portal": "data.ny.gov",
+    "dataset_ids": [
+      "kv7t-n8in",
+      "gxb3-akrn"
+    ],
+    "fetch_script": "data/curated/fetch_mta_apc.py",
+    "license": "NY Open Data"
+  },
+  "schema": {
+    "date": "str",
+    "hour": "int64",
+    "route": "str",
+    "riders": "int64"
+  },
+  "coverage": {
+    "rows": 24400680,
+    "date_min": "2020-01-01",
+    "date_max": "2026-07-14",
+    "distinct_route": 438
+  }
+}

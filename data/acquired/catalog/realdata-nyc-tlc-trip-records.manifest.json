@@ -1,0 +1,29 @@
+{
+  "acceptance_threshold": "parquet opens; expected timestamp columns present.",
+  "canonical_contract": "themis.connect.tlc_trips maps these onto ServiceRequest (ADR-0011); aletheia.replay.teardown consumes them as VehicleSegments (ADR-0039).",
+  "dataset_id": "realdata-nyc-tlc-trip-records",
+  "decision_tasks_enabled": [
+    "forecast.demand",
+    "replay.deadhead_teardown"
+  ],
+  "derived_artifacts": [
+    "GOVERNANCE-ONLY MANIFEST (talos/tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through themis.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
+    "already_present_at: data/curated/raw_tlc/",
+    "already_present_at: data/curated/raw_tlc_taxi/"
+  ],
+  "expected_download_gb": 0.0,
+  "expected_expanded_gb": 0.0,
+  "expected_retained_gb": 0.0,
+  "geography": "New York City, TLC taxi zones.",
+  "license_and_commercial_rights": "NYC TLC publishes trip records as open data for public use, including commercial use, with no registration or key. Records are trip-level but contain NO rider identifier, name, or precise origin/destination address -- TLC publishes zone-level pickup/dropoff only.",
+  "owner_and_source": "New York City Taxi & Limousine Commission (TLC) trip record data. Acquired by hand into data/curated/raw_tlc/ and data/curated/raw_tlc_taxi/ before the governed estate existed.",
+  "quality_tests": [],
+  "retention_and_deletion": "cheaply reproducible from the public source -- these raw files are gitignored and may be deleted to reclaim space (~57 GB) without losing evidence, since the committed artifacts derived from them carry their own hashes.",
+  "schema_and_format": "Apache Parquet, one file per month per service. FHVHV carries request/on-scene/pickup/dropoff timestamps, which is what makes the ADR-0039 deadhead teardown possible on real public data.",
+  "sensitive_fields": [],
+  "source_checksum": null,
+  "source_url": "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
+  "time_coverage": "monthly Parquet files; FHVHV from 2019 onward, yellow/green longer.",
+  "update_frequency": "monthly upstream; the local copy is a static snapshot.",
+  "zone": "standards"
+}
