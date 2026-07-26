@@ -583,18 +583,38 @@ def test_the_opted_out_agency_is_still_opted_out():
     assert row["do_not_contact"].strip().startswith("YES")
 
 
-def test_the_agency_operating_for_the_opted_out_county_is_parked():
-    """RTA runs service for Anne Arundel. Approaching it could read as routing
-    around their removal request, so it is held for a human -- not resolved
-    either way by an agent."""
+def test_the_agency_operating_for_the_opted_out_county_is_never_contactable():
+    """RTA runs service for Anne Arundel, who asked in writing to be removed.
+    Approaching RTA could read as routing around that request.
+
+    This test originally pinned the row as HOLD with `do_not_contact` EMPTY,
+    because the question was awaiting a human and an agent must not resolve it
+    either way. **The founder resolved it on 2026-07-26: do not contact.** So the
+    assertion moved from "is parked" to the thing that actually has to stay true
+    forever -- RTA is not contactable, and the reason names Anne Arundel.
+
+    It is deliberately asserted on `do_not_contact` rather than on `status`.
+    `outreach/README.md`: that column is "permanent and structural -- it is a
+    column, not a status string, so no later merge can quietly return an
+    opted-out organisation to a follow-up queue." A status string is exactly what
+    a future tidy-up would rewrite.
+    """
     import csv
     rows = list(csv.DictReader(
         (_OUTREACH / "contact_research_worksheet.csv").open(encoding="utf-8-sig")))
     row = next(r for r in rows
                if r["short_name"] == "Regional Transportation Agency of Central Maryland")
-    assert row["status"].startswith("HOLD")
-    assert "Anne Arundel" in row["status"]
-    assert not row["do_not_contact"].strip()
+
+    dnc = row["do_not_contact"].strip()
+    assert dnc, "RTA must remain permanently un-contactable via do_not_contact"
+    assert "Anne Arundel" in dnc, (
+        "the reason must name the relationship, or a later reader cannot tell "
+        "why an agency that never contacted us is blocked"
+    )
+    # It must NOT be recorded as RTA's own opt-out. RTA has asked us for nothing;
+    # claiming otherwise would be a false record about a third party.
+    assert "NOT their own opt-out" in dnc or "FOUNDER DECISION" in dnc
+    assert not row["contact_email"].strip(), "no address should be held for RTA"
 
 
 # ===========================================================================
