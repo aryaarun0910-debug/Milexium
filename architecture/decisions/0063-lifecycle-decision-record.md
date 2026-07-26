@@ -1,8 +1,41 @@
 # ADR-0063: The lifecycle record — making a sentence we wrote down true
 
-- **Status:** Accepted
+- **Status:** Accepted — **but two central claims below were found FALSE by
+  external audit on 2026-07-26. See the correction immediately below before
+  relying on anything in this ADR.**
 - **Date:** 2026-07-26
 - **Packet:** MX-A-LIFECYCLE-RECORD-010
+- **Superseded in part by:** MX-A-LIFECYCLE-IMMUTABILITY-012
+
+## ⚠️ CORRECTION (2026-07-26, same day) — this ADR overclaimed twice
+
+An external audit (`MILEXIUM_INTERNAL_AUDIT_2026-07-26.md`) found two P0 defects,
+both confirmed independently. **Both are claims this document makes.**
+
+**1. `recorded_at` is caller-supplied, so it is not transaction time.**
+`record_lifecycle_transition` takes *both* clocks as required arguments, and the
+only database constraint is `CHECK (recorded_at >= decided_at)`. The auditor
+inserted a transition with `decided_at = 2020-01-01` and `recorded_at` one second
+later; it was accepted. **The system proves only that two caller assertions are
+ordered** — it never establishes when the row entered Milexium. The limitation
+recorded below ("we can prove a record was not back-written *relative to its own
+recording*") is therefore hollow, because that clock is caller-controlled too.
+"Refuses backdating" is false as a general statement.
+
+**2. "Append-only" was a coding convention, not a database invariant.** The
+auditor wrote a valid denial, issued a direct SQL `UPDATE` changing `actor_id`,
+committed it, and read the forged actor back through the normal lifecycle API
+with no violation reported. There was no immutability trigger, no privilege
+boundary, and no hash chain on this table — while the *decision-event ledger* has
+all three, which let the ledger's credibility bleed onto this record misleadingly.
+
+**The failure was one of consistency, not ignorance.** This packet's own commit
+message argued that *"a guard living only in the application is a guard a future
+direct-SQL path walks around"* — and then left append-only as exactly that. The
+argument was made correctly about backdating and not applied to immutability.
+
+Being the record that answers *"what happened, who decided, and when?"* is
+precisely why this is P0 rather than a nice-to-have.
 
 ## Context
 
