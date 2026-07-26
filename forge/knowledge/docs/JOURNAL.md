@@ -3,6 +3,68 @@
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
 
+
+## 2026-07-26 (later): the layers become testable, and the regulator makes our case
+
+**Suite 2688 → 2970.** ADRs 0077–0080, plus the knowledge graph and the public
+evidence corpus.
+
+**Three packets corrected claims I had committed hours earlier**, and that is the
+session's shape. Writing the layer-prohibition tests disproved three statements in
+the README I had written that morning: Metis *does* import a module carrying a
+writer (it just never calls one), `aletheia` imports `metis` in 78 places, and
+**`aletheia/verify/formal.py` executes Python out of `forge/`** by file path at
+import — a channel an AST walk is structurally blind to, the same shape as
+ADR-0074's defect. The data merge proved ADR-0075's reason for declining it was
+wrong, and it had been given twice.
+
+**The move produced 93 skips against a baseline of 1.** Every Cordeau DARP test
+skipped with "benchmark archive not acquired" because the acquired records still
+pointed at old paths. Ninety-two tests stopped running and the suite still
+reported success. *A skip is not a pass, and a move that turns real tests into
+skips looks exactly like a move that worked.*
+
+**Argus exists**, and it is the first surface touching all five layers — which is
+why it found four defects, the sharpest being that `DarpInstance` cannot express
+per-vehicle shifts, so the capacity lens certifies insertions the scheduler
+denied. Both verdicts are shown unreconciled on the page rather than quietly
+reconciled.
+
+### The finding that changes the pitch
+
+A scout went looking for public evidence and closed the question that had been
+open all session: **does any public source carry agency-level denial data?**
+
+It does. FTA's 2020 compliance review of Memphis MATA has the operator reporting a
+**2.3%** denial rate while FTA's own reviewers, sitting in the call centre,
+measured **27%** and **37%**. SEPTA's 2018 review shows the mechanism without
+anyone lying: a stated "zero-denial policy" achieved by negotiating outside the
+±60-minute window and not recording it as a denial. **84 reviews, ~78 agencies**,
+each ending in a fixed-schema deficiency table.
+
+We had been building an argument for an auditable denial record. The regulator had
+already made it, about named operators, and published it.
+
+A reusable principle fell out: **where a regulator has restated an operator's
+numbers, take the regulator's copy** — rights-cleaner *and* independently
+authoritative. The MTA data we cannot touch under MTA's terms is quoted freely in
+DOJ's findings letter.
+
+The scout also killed a source I had suggested: **TCRP is FTA-funded but
+NAS-copyrighted**, licensed for classroom and not-for-profit use only. Citation
+source, never data. And it caught an overclaim we were heading for — Barber et al.
+*bound* the conformal coverage gap where we *withdraw* the guarantee. Ours is
+strictly weaker, and saying so is more credible than implying parity.
+
+### Course correction
+
+Arya called out that I had been building for one prospect. Fair. The code was
+general — the operator contract asks for what any paratransit system records — but
+the *framing* had a named consultant in every ADR rationale. The FTA corpus is the
+opposite of prospect-specific: it is 78 agencies with regulator-documented
+deficiencies, which is a market map rather than a lead.
+
+
 ## 2026-07-26: renamed by authority, and the two data trees became one
 
 **ADR-0075 then ADR-0076.** 23 flat directories became 10 by *concern*, then six
