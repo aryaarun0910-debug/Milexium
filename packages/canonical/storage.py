@@ -39,18 +39,57 @@ from packages.canonical.ids import (
     new_id,
 )
 from packages.canonical.lifecycle import (
+    LateRecordingReason,
+    LifecycleChainError,
     OutcomeExplanation,
     RequestTransition,
     TimeWindow,
     explain,
     iso_fixed_utc,
+    lifecycle_transition_hash,
     next_transition,
     parse_fixed_utc,
+    transition_payload,
+)
+from packages.canonical.lifecycle_verify import (
+    LifecycleChainVerification,
+    verify_lifecycle_chain,
 )
 from packages.canonical.state_machine import ServiceRequestState
+from packages.canonical.transaction_clock import transaction_time
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
+# SQLite-only triggers: append-only enforcement and the transaction-time bound.
+# A separate file for the same reason sql/rls_postgres.sql is one -- schema_v0_1.sql
+# must execute unmodified on BOTH engines, and neither engine's trigger dialect is
+# valid on the other.
+_SQLITE_IMMUTABILITY_PATH = Path(__file__).parent / "sql" / "lifecycle_immutability_sqlite.sql"
+
+#: The column order of a raw lifecycle row, used by both stores for the verifier's
+#: unmapped read. Declared once so the two engines cannot disagree about which
+#: bytes the chain is verified over.
+LIFECYCLE_COLUMNS = (
+    "transition_id",
+    "tenant_id",
+    "request_id",
+    "sequence",
+    "from_state",
+    "to_state",
+    "decided_at",
+    "recorded_at",
+    "actor_type",
+    "actor_id",
+    "reason_codes",
+    "requested_window_start",
+    "requested_window_end",
+    "negotiated_window_start",
+    "negotiated_window_end",
+    "ingest_lag_seconds",
+    "late_recording_reason",
+    "prev_hash",
+    "hash",
+)
 
 
 # --- lifecycle-record row mapping, shared by BOTH stores -------------------
@@ -100,7 +139,46 @@ def _transition_row_values(transition: RequestTransition) -> tuple:
         requested_end,
         negotiated_start,
         negotiated_end,
+        transition.ingest_lag_seconds,
+        None if transition.late_recording_reason is None else transition.late_recording_reason.value,
+        transition.prev_hash,
+        transition.hash,
     )
+
+
+def _check_stored_hash(tenant_id: TenantId, request_id: RequestId, row: tuple) -> None:
+    """Recompute a stored row's hash from its stored contents and refuse a
+    mismatch, as `LifecycleChainError`.
+
+    Reads the raw column values rather than a reconstructed model, so it is
+    checking what the database actually holds.
+    """
+    expected = lifecycle_transition_hash(
+        prev_hash=row[15],
+        payload=transition_payload(
+            transition_id=row[0],
+            tenant_id=tenant_id,
+            request_id=request_id,
+            from_state=ServiceRequestState(row[2]),
+            to_state=ServiceRequestState(row[3]),
+            decided_at=parse_fixed_utc(row[4]),
+            recorded_at=parse_fixed_utc(row[5]),
+            actor_type=row[6],
+            actor_id=row[7],
+            reason_codes=tuple(ReasonCode(x) for x in json.loads(row[8])),
+            requested_window=_window_from_columns(row[9], row[10]),
+            negotiated_window=_window_from_columns(row[11], row[12]),
+            late_recording_reason=None if row[14] is None else LateRecordingReason(row[14]),
+        ),
+        sequence=row[1],
+        request_id=request_id,
+    )
+    if row[16] != expected:
+        raise LifecycleChainError(
+            f"transition {row[0]!s} carries hash {row[16]!r} but its stored contents "
+            f"hash to {expected!r}: this row has been altered since it was written, "
+            "or was never written by this system"
+        )
 
 
 def _transition_from_row(
@@ -113,7 +191,21 @@ def _transition_from_row(
     its `decided_at`, or whose denial carries no reason code, fails on READ as
     well as on write. Raw SQL that got past the database's own CHECK constraints
     still cannot be read back as a valid record and passed off as evidence.
+
+    Since MX-A-LIFECYCLE-IMMUTABILITY-012 that net also covers TAMPERING: a
+    stored row whose `actor_id` was rewritten -- the audit's exact forgery --
+    raises `LifecycleChainError` here instead of being handed back as history.
+
+    THE HASH IS CHECKED BEFORE THE MODEL IS BUILT, not left to the model's own
+    validator, and that is not redundancy. Pydantic WRAPS a validator's exception
+    in a `ValidationError`, so the model's copy of this check can only ever reach
+    a caller as "the row failed validation" -- indistinguishable from a bad enum
+    or a missing field. "This record has been altered since it was written" is not
+    the same event as "this payload is malformed" and must not arrive as one. The
+    model keeps its copy for records built outside a store; this is what a reader
+    of the stored table actually catches.
     """
+    _check_stored_hash(tenant_id, request_id, row)
     return RequestTransition(
         transition_id=row[0],
         tenant_id=tenant_id,
@@ -128,7 +220,24 @@ def _transition_from_row(
         reason_codes=tuple(ReasonCode(x) for x in json.loads(row[8])),
         requested_window=_window_from_columns(row[9], row[10]),
         negotiated_window=_window_from_columns(row[11], row[12]),
+        ingest_lag_seconds=row[13],
+        late_recording_reason=(
+            None if row[14] is None else LateRecordingReason(row[14])
+        ),
+        prev_hash=row[15],
+        hash=row[16],
     )
+
+
+#: The SELECT list every lifecycle read uses, in the order `_transition_from_row`
+#: unpacks. One string, two engines: a column added to one store's read and not the
+#: other is the ADR-0004 divergence this shared mapping exists to prevent.
+_TRANSITION_SELECT = (
+    "transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
+    "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
+    "negotiated_window_start, negotiated_window_end, ingest_lag_seconds, "
+    "late_recording_reason, prev_hash, hash"
+)
 
 
 class CrossTenantWriteError(Exception):
@@ -147,10 +256,21 @@ class CrossTenantWriteError(Exception):
 class SqliteCanonicalStore:
     """Reference storage implementation for the canonical contract, v0.1."""
 
+    #: What actually enforces append-only on this engine. SQLite has no roles, so
+    #: the strongest thing available is a trigger the same process can drop --
+    #: never `owner_separated`, and never described as a credential boundary.
+    #: `PostgresCanonicalStore` exposes the same attribute with a stronger value.
+    lifecycle_immutability = "trigger_only"
+
     def __init__(self, connection: sqlite3.Connection | None = None) -> None:
         self._conn = connection or sqlite3.connect(":memory:")
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        # Applied in the SAME constructor as the schema, never as an optional
+        # follow-up step: a lifecycle table that exists without its triggers is
+        # precisely the mutable-history state this repository has already shipped
+        # once.
+        self._conn.executescript(_SQLITE_IMMUTABILITY_PATH.read_text(encoding="utf-8"))
         self._seed_platform_tenant()
 
     @classmethod
@@ -662,10 +782,19 @@ class SqliteCanonicalStore:
     # contract), and both delegate the rules and the view to the pure functions in
     # `lifecycle.py` so the two engines cannot diverge on either.
     #
-    # NO CLOCK IS READ ON THIS PATH, in either store. `decided_at` and
-    # `recorded_at` are required arguments with no default, and there is no
-    # `datetime.now()` anywhere in this module -- asserted by AST in the
-    # conformance suite, not left as a convention.
+    # NO CLOCK IS READ IN THIS MODULE, in either store: no `datetime.now()`
+    # appears anywhere in it, asserted by AST in the conformance suite rather than
+    # left as a convention. `decided_at` is a required argument with no default,
+    # so a decision time can only ever be the caller's.
+    #
+    # `recorded_at` is NOT an argument at all any more. It was one until
+    # MX-A-LIFECYCLE-IMMUTABILITY-012, and an external audit showed what that
+    # bought: a transition asserting a 2020-01-01 decision "recorded" one second
+    # later was accepted, because both sides of the only rule came from the same
+    # caller. It is now stamped by `transaction_clock.transaction_time()` -- one
+    # function, in its own module, so these three write-path modules stay literally
+    # clock-free and the AST assertion protecting `decided_at` keeps its full
+    # strength -- and BOUNDED by a database trigger against the engine's own clock.
 
     def _lifecycle_head(
         self, tenant_id: TenantId, request_id: RequestId
@@ -673,9 +802,7 @@ class SqliteCanonicalStore:
         """The request's last recorded transition, or None. Tenant-scoped: the
         WHERE clause is the isolation boundary, as everywhere else here."""
         cur = self._conn.execute(
-            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
-            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
-            "negotiated_window_start, negotiated_window_end "
+            f"SELECT {_TRANSITION_SELECT} "  # noqa: S608 -- a fixed column list, no input
             "FROM request_state_transitions WHERE tenant_id = ? AND request_id = ? "
             "ORDER BY sequence DESC LIMIT 1",
             (str(tenant_id), str(request_id)),
@@ -691,28 +818,37 @@ class SqliteCanonicalStore:
         from_state: ServiceRequestState,
         to_state: ServiceRequestState,
         decided_at: datetime,
-        recorded_at: datetime,
         actor_type: str,
         actor_id: str,
         reason_codes: tuple[ReasonCode, ...] = (),
         requested_window: TimeWindow | None = None,
         negotiated_window: TimeWindow | None = None,
+        late_reason: LateRecordingReason | None = None,
     ) -> RequestTransition:
         """Append one transition to a request's lifecycle record.
 
-        `decided_at` and `recorded_at` are REQUIRED keyword arguments with no
-        defaults: the caller states when the decision was made, and this method
-        has no way to invent it. That is the whole claim, expressed as a
-        signature rather than as documentation.
+        `decided_at` is a REQUIRED keyword argument with no default: the caller
+        states when the decision was made, and this method has no way to invent
+        it. THERE IS NO `recorded_at` ARGUMENT -- transaction time is stamped
+        here, from `transaction_clock.transaction_time()`, and bounded by the
+        database. A caller can no longer assert when Milexium wrote something
+        down, which is the whole repair.
+
+        `late_reason` is the other half: when the gap between the two clocks
+        exceeds the contemporaneity bound, the row must NAME why, from the closed
+        `LateRecordingReason` vocabulary. A three-day-old decision is legitimate;
+        one presented as contemporaneous is not.
 
         Refuses, before anything is written:
-          * `BackdatedRecordError` -- `recorded_at` precedes `decided_at`;
+          * `BackdatedRecordError` -- `decided_at` is in the future (the writer
+            stamps `recorded_at`, so that is the only way the two can invert);
           * `LifecycleOrderError`  -- the chain does not continue from what is
             stored (including a first transition not starting at REQUESTED);
           * `TransitionError`      -- the contract forbids the move, INCLUDING any
             move out of a terminal state. This is `check_transition` refusing at
             the RECORD layer: an illegal path cannot be persisted, not merely
-            cannot be checked.
+            cannot be checked;
+          * `UndeclaredLateRecordError` -- a late record with no declared reason.
         """
         head = self._lifecycle_head(tenant_id, request_id)
         transition = next_transition(
@@ -722,18 +858,21 @@ class SqliteCanonicalStore:
             from_state=from_state,
             to_state=to_state,
             decided_at=decided_at,
-            recorded_at=recorded_at,
+            recorded_at=transaction_time(),
             actor_type=actor_type,
             actor_id=actor_id,
             reason_codes=reason_codes,
             requested_window=requested_window,
             negotiated_window=negotiated_window,
+            late_reason=late_reason,
         )
         self._conn.execute(
             "INSERT INTO request_state_transitions (transition_id, tenant_id, request_id, "
             "sequence, from_state, to_state, decided_at, recorded_at, actor_type, actor_id, "
             "reason_codes, requested_window_start, requested_window_end, "
-            "negotiated_window_start, negotiated_window_end) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "negotiated_window_start, negotiated_window_end, ingest_lag_seconds, "
+            "late_recording_reason, prev_hash, hash) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             _transition_row_values(transition),
         )
         self._conn.commit()
@@ -750,9 +889,7 @@ class SqliteCanonicalStore:
         in the same millisecond still come back in the order they were recorded.
         """
         cur = self._conn.execute(
-            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
-            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
-            "negotiated_window_start, negotiated_window_end "
+            f"SELECT {_TRANSITION_SELECT} "  # noqa: S608 -- a fixed column list, no input
             "FROM request_state_transitions WHERE tenant_id = ? AND request_id = ? "
             "ORDER BY sequence ASC",
             (str(tenant_id), str(request_id)),
@@ -760,6 +897,34 @@ class SqliteCanonicalStore:
         return tuple(
             _transition_from_row(tenant_id, request_id, row) for row in cur.fetchall()
         )
+
+    def raw_lifecycle_rows(self, tenant_id: TenantId, request_id: RequestId) -> list[dict]:
+        """UNMAPPED lifecycle rows for the chain verifier.
+
+        Deliberately bypasses `_transition_from_row`, for the same reason
+        `raw_rows_for_tenant` bypasses the `DecisionEvent` reconstruction: the
+        model refuses a row whose hash disagrees with its contents, so verifying
+        reconstructed models would be asking the thing that cannot hold a tampered
+        row whether it is holding one. The verifier checks stored bytes.
+        """
+        cur = self._conn.execute(
+            f"SELECT {', '.join(LIFECYCLE_COLUMNS)} "  # noqa: S608 -- fixed column list
+            "FROM request_state_transitions WHERE tenant_id = ? AND request_id = ? "
+            "ORDER BY sequence ASC",
+            (str(tenant_id), str(request_id)),
+        )
+        return [dict(zip(LIFECYCLE_COLUMNS, row)) for row in cur.fetchall()]
+
+    def verify_request_lifecycle(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> LifecycleChainVerification:
+        """Re-derive this request's hash chain from stored rows.
+
+        Reports rather than raises: a verifier that threw would make "is this
+        record intact?" a question you can only ask by catching an exception, and
+        the answer wanted is usually the list of findings.
+        """
+        return verify_lifecycle_chain(self.raw_lifecycle_rows(tenant_id, request_id))
 
     def explain_outcome(
         self, tenant_id: TenantId, request_id: RequestId

@@ -67,23 +67,44 @@ from packages.canonical.ids import (
     new_id,
 )
 from packages.canonical.lifecycle import (
+    LateRecordingReason,
     OutcomeExplanation,
     RequestTransition,
     TimeWindow,
     explain,
     next_transition,
 )
+from packages.canonical.lifecycle_verify import (
+    LifecycleChainVerification,
+    verify_lifecycle_chain,
+)
 from packages.canonical.state_machine import ServiceRequestState
 from packages.canonical.storage import (
+    LIFECYCLE_COLUMNS,
     CrossTenantWriteError,
+    _TRANSITION_SELECT,
     _transition_from_row,
     _transition_row_values,
 )
+from packages.canonical.transaction_clock import transaction_time
 from packages.canonical.vocab import DecisionEventType, ReasonCode
 
 _SCHEMA_PATH = Path(__file__).parent / "sql" / "schema_v0_1.sql"
 _RLS_PATH = Path(__file__).parent / "sql" / "rls_postgres.sql"
+# The unprivileged fallback, applied only when the cluster has never had
+# infra/compose/initdb/02-lifecycle-ledger-bootstrap.sql run against it. See that file for why
+# the fallback is strictly weaker and must not be described as a boundary.
+_LIFECYCLE_FALLBACK_PATH = Path(__file__).parent / "sql" / "lifecycle_immutability_postgres.sql"
 _DEFAULT_PASSWORD_FILE = Path.home() / ".milexium_pg_app_password.txt"
+
+#: What `_seal_lifecycle_ledger` achieved, exposed as `store.lifecycle_immutability`.
+#: `owner_separated` is the deployment claim: the table is owned by
+#: `milexium_ledger_owner`, this connection holds INSERT + SELECT only, and the
+#: triggers call functions this connection cannot rewrite. `trigger_only` means the
+#: cluster bootstrap has not been run, the acting role still OWNS the table, and the
+#: guard is therefore removable by the credential it is meant to constrain.
+LIFECYCLE_OWNER_SEPARATED = "owner_separated"
+LIFECYCLE_TRIGGER_ONLY = "trigger_only"
 
 
 def _read_dev_password() -> str:
@@ -122,10 +143,30 @@ def is_reachable(
 class PostgresCanonicalStore:
     """PostgreSQL-backed storage implementation for the canonical contract, v0.1."""
 
-    def __init__(self, connection: psycopg.Connection, *, schema: str | None = None) -> None:
+    def __init__(
+        self,
+        connection: psycopg.Connection,
+        *,
+        schema: str | None = None,
+        _leave_lifecycle_unsealed: bool = False,
+    ) -> None:
+        """`_leave_lifecycle_unsealed` EXISTS FOR ONE CONFORMANCE TEST and is
+        underscored so nobody reaches for it by accident.
+
+        Sealing the ledger takes the table's ownership away from this connection,
+        which is the point -- and which also removes this connection's ability to
+        `ALTER TABLE ... NO FORCE ROW LEVEL SECURITY`. The RLS suite proves FORCE is
+        load-bearing by lifting it and watching the tenant boundary collapse, and
+        that demonstration needs ownership. So one test constructs an explicitly
+        UNSEALED store to run it, and a companion test asserts that the DEFAULT
+        store cannot lift FORCE at all. Both facts are stronger stated together
+        than either would be alone.
+        """
         self._conn = connection
         self._schema = schema or f"mx_{uuid.uuid4().hex}"
-        self._create_schema_and_apply_ddl()
+        #: See LIFECYCLE_OWNER_SEPARATED / LIFECYCLE_TRIGGER_ONLY.
+        self.lifecycle_immutability = LIFECYCLE_TRIGGER_ONLY
+        self._create_schema_and_apply_ddl(seal_lifecycle=not _leave_lifecycle_unsealed)
 
     @classmethod
     def connect(
@@ -137,13 +178,16 @@ class PostgresCanonicalStore:
         user: str = "milexium_dev",
         password: str | None = None,
         schema: str | None = None,
+        _leave_lifecycle_unsealed: bool = False,
     ) -> "PostgresCanonicalStore":
         if password is None:
             password = _read_dev_password()
         connection = psycopg.connect(host=host, port=port, dbname=dbname, user=user, password=password)
-        return cls(connection, schema=schema)
+        return cls(
+            connection, schema=schema, _leave_lifecycle_unsealed=_leave_lifecycle_unsealed
+        )
 
-    def _create_schema_and_apply_ddl(self) -> None:
+    def _create_schema_and_apply_ddl(self, *, seal_lifecycle: bool = True) -> None:
         ident = sql.Identifier(self._schema)
         with self._conn.cursor() as cur:
             cur.execute(sql.SQL("CREATE SCHEMA {}").format(ident))
@@ -155,7 +199,63 @@ class PostgresCanonicalStore:
             # so unqualified table names in rls_postgres.sql resolve to it.
             cur.execute(_RLS_PATH.read_text(encoding="utf-8"))
         self._conn.commit()
+        if seal_lifecycle:
+            self.lifecycle_immutability = self._seal_lifecycle_ledger()
+        else:
+            # NOT "no guards at all". `_leave_lifecycle_unsealed` chooses between
+            # the two REAL configurations -- sealed, and the unprivileged fallback
+            # a cluster without the bootstrap gets -- so the conformance test that
+            # uses it is measuring a configuration this code can actually be in.
+            # An earlier revision skipped immutability entirely here, which made
+            # the trigger tests pass vacuously by asserting a trigger that was
+            # never installed.
+            self._apply_lifecycle_fallback()
+            self.lifecycle_immutability = LIFECYCLE_TRIGGER_ONLY
         self._seed_platform_tenant()
+
+    def _apply_lifecycle_fallback(self) -> None:
+        """Install the triggers an ordinary table-owning role can install itself."""
+        with self._conn.cursor() as cur:
+            cur.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(self._schema)))
+            cur.execute(_LIFECYCLE_FALLBACK_PATH.read_text(encoding="utf-8"))
+        self._conn.commit()
+
+    def _seal_lifecycle_ledger(self) -> str:
+        """Make the lifecycle table immutable, and say honestly how immutable.
+
+        Prefers `public.milexium_seal_lifecycle_ledger`, installed once per cluster
+        by a superuser from infra/compose/initdb/02-lifecycle-ledger-bootstrap.sql.
+        That function transfers the table to `milexium_ledger_owner` -- a role this
+        connection cannot assume -- installs triggers calling ledger-owned
+        functions, and reduces this connection to INSERT + SELECT. After it runs,
+        the credential this store connects with can append to the record and read
+        it, and can do NOTHING ELSE to it.
+
+        Where that bootstrap has never been run (a fresh clone, someone else's
+        laptop), it falls back to sql/lifecycle_immutability_postgres.sql, which
+        installs the same triggers owned by this role -- real protection against an
+        accidental UPDATE, and no protection at all against a determined holder of
+        this credential, who can simply drop them. The two are NOT presented as
+        equivalent: the store records which it got, and the conformance suite
+        asserts the sealed properties rather than accepting what it finds.
+
+        `UndefinedFunction` is caught NARROWLY -- only the bootstrap being absent
+        falls back. A seal that exists and FAILS propagates, because a half-sealed
+        ledger reported as sealed is the failure mode this whole packet is about.
+        """
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute(
+                    "SELECT public.milexium_seal_lifecycle_ledger(%s)", (self._schema,)
+                )
+                cur.fetchone()
+            self._conn.commit()
+            return LIFECYCLE_OWNER_SEPARATED
+        except psycopg.errors.UndefinedFunction:
+            self._conn.rollback()
+
+        self._apply_lifecycle_fallback()
+        return LIFECYCLE_TRIGGER_ONLY
 
     def _seed_platform_tenant(self) -> None:
         """Register the reserved platform tenant (ADR-0040), idempotently.
@@ -697,9 +797,13 @@ class PostgresCanonicalStore:
     # `request_state_transitions` tenant_isolation policy (ENABLE + FORCE, keyed
     # on the GUC set here) and the tenant filter in the SQL itself.
     #
-    # NO CLOCK IS READ ON THIS PATH. `decided_at` is a required argument, the
-    # column carries no SQL DEFAULT, and there is no `datetime.now()` in this
-    # module -- all three asserted in the conformance suite.
+    # NO CLOCK IS READ IN THIS MODULE. `decided_at` is a required argument, the
+    # column carries no SQL DEFAULT, and there is no `datetime.now()` here -- all
+    # three asserted in the conformance suite. `recorded_at` is no longer an
+    # argument: the writer stamps it via `transaction_clock.transaction_time()` and
+    # a BEFORE INSERT trigger refuses any value more than
+    # RECORDED_AT_TOLERANCE_SECONDS from this server's own clock, so a raw-SQL path
+    # that never touches Python cannot assert a transaction time either.
 
     def _lifecycle_head(
         self, tenant_id: TenantId, request_id: RequestId
@@ -708,9 +812,7 @@ class PostgresCanonicalStore:
         GUC, so another tenant's chain is invisible here rather than merely
         filtered out."""
         cur = self._conn.execute(
-            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
-            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
-            "negotiated_window_start, negotiated_window_end "
+            f"SELECT {_TRANSITION_SELECT} "  # noqa: S608 -- a fixed column list, no input
             "FROM request_state_transitions WHERE tenant_id = %s AND request_id = %s "
             "ORDER BY sequence DESC LIMIT 1",
             (str(tenant_id), str(request_id)),
@@ -726,26 +828,28 @@ class PostgresCanonicalStore:
         from_state: ServiceRequestState,
         to_state: ServiceRequestState,
         decided_at: datetime,
-        recorded_at: datetime,
         actor_type: str,
         actor_id: str,
         reason_codes: tuple[ReasonCode, ...] = (),
         requested_window: TimeWindow | None = None,
         negotiated_window: TimeWindow | None = None,
+        late_reason: LateRecordingReason | None = None,
     ) -> RequestTransition:
         """Append one transition to a request's lifecycle record.
 
         Identical contract, identical error types and identical refusal order to
         `SqliteCanonicalStore.record_transition` -- `BackdatedRecordError`,
-        `LifecycleOrderError`, `TransitionError` -- because both call the same
-        `next_transition`.
+        `LifecycleOrderError`, `TransitionError`, `UndeclaredLateRecordError` --
+        because both call the same `next_transition`.
 
-        `decided_at` and `recorded_at` are REQUIRED keyword arguments with no
-        defaults. On this engine the guarantee is doubled: the `decided_at`
-        column has no SQL DEFAULT either, so the database cannot stamp a row even
-        for a caller that reached it with raw SQL, and the table's
-        `recorded_at >= decided_at` CHECK refuses a backdated row at the database
-        layer rather than only in Python.
+        `decided_at` is a REQUIRED keyword argument with no default and no SQL
+        DEFAULT on its column, so neither this method nor the database can stamp a
+        decision time. There is no `recorded_at` argument: transaction time is
+        stamped by the writer and then BOUNDED BY THIS DATABASE -- the column
+        carries a server-clock DEFAULT and a BEFORE INSERT trigger refuses any
+        value far from `clock_timestamp()`. That trigger is what closes the audit
+        finding against raw SQL, because a DEFAULT alone fires only when the column
+        is omitted and the audit's insert supplied it.
         """
         self._use_tenant(tenant_id)
         head = self._lifecycle_head(tenant_id, request_id)
@@ -756,19 +860,21 @@ class PostgresCanonicalStore:
             from_state=from_state,
             to_state=to_state,
             decided_at=decided_at,
-            recorded_at=recorded_at,
+            recorded_at=transaction_time(),
             actor_type=actor_type,
             actor_id=actor_id,
             reason_codes=reason_codes,
             requested_window=requested_window,
             negotiated_window=negotiated_window,
+            late_reason=late_reason,
         )
         self._conn.execute(
             "INSERT INTO request_state_transitions (transition_id, tenant_id, request_id, "
             "sequence, from_state, to_state, decided_at, recorded_at, actor_type, actor_id, "
             "reason_codes, requested_window_start, requested_window_end, "
-            "negotiated_window_start, negotiated_window_end) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            "negotiated_window_start, negotiated_window_end, ingest_lag_seconds, "
+            "late_recording_reason, prev_hash, hash) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             _transition_row_values(transition),
         )
         self._conn.commit()
@@ -785,9 +891,7 @@ class PostgresCanonicalStore:
         chronological order (see the note in schema_v0_1.sql)."""
         self._use_tenant(tenant_id)
         cur = self._conn.execute(
-            "SELECT transition_id, sequence, from_state, to_state, decided_at, recorded_at, "
-            "actor_type, actor_id, reason_codes, requested_window_start, requested_window_end, "
-            "negotiated_window_start, negotiated_window_end "
+            f"SELECT {_TRANSITION_SELECT} "  # noqa: S608 -- a fixed column list, no input
             "FROM request_state_transitions WHERE tenant_id = %s AND request_id = %s "
             "ORDER BY sequence ASC",
             (str(tenant_id), str(request_id)),
@@ -795,6 +899,26 @@ class PostgresCanonicalStore:
         return tuple(
             _transition_from_row(tenant_id, request_id, row) for row in cur.fetchall()
         )
+
+    def raw_lifecycle_rows(self, tenant_id: TenantId, request_id: RequestId) -> list[dict]:
+        """UNMAPPED lifecycle rows for the chain verifier -- the same contract, the
+        same column order and the same reasoning as the SQLite store's: the
+        verifier checks stored bytes, not this class's own round-trip."""
+        self._use_tenant(tenant_id)
+        cur = self._conn.execute(
+            f"SELECT {', '.join(LIFECYCLE_COLUMNS)} "  # noqa: S608 -- fixed column list
+            "FROM request_state_transitions WHERE tenant_id = %s AND request_id = %s "
+            "ORDER BY sequence ASC",
+            (str(tenant_id), str(request_id)),
+        )
+        return [dict(zip(LIFECYCLE_COLUMNS, row)) for row in cur.fetchall()]
+
+    def verify_request_lifecycle(
+        self, tenant_id: TenantId, request_id: RequestId
+    ) -> LifecycleChainVerification:
+        """Re-derive this request's hash chain from stored rows. Reports, never
+        raises -- identical to the SQLite store."""
+        return verify_lifecycle_chain(self.raw_lifecycle_rows(tenant_id, request_id))
 
     def explain_outcome(
         self, tenant_id: TenantId, request_id: RequestId

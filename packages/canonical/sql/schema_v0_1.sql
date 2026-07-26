@@ -318,17 +318,49 @@ CREATE TABLE deadhead_segments (
 -- and it is the thing the phrase "recorded at the moment of the decision rather
 -- than reconstructed afterwards" actually refers to.
 --
--- APPEND-ONLY. There is no UPDATE and no DELETE statement against this table
--- anywhere in packages/canonical, deliberately, and no test-only tamper helper
--- either (`decision_events` has one; this table does not, so "append-only" needs
--- no exception clause). A correction is a further transition, never an edit.
+-- APPEND-ONLY, AND -- SINCE MX-A-LIFECYCLE-IMMUTABILITY-012 -- NOT MERELY BY
+-- CONVENTION. An earlier revision of this comment said the table was append-only
+-- because no application code issued UPDATE or DELETE against it. An external
+-- audit then wrote a valid denial, issued a direct SQL UPDATE changing actor_id,
+-- committed it, and read the forged actor back through the normal lifecycle API
+-- with no violation reported. A coding convention is not a database invariant.
+-- What enforces it now, in three independent layers:
+--   1. sql/lifecycle_immutability_sqlite.sql and the triggers installed by
+--      infra/compose/initdb/02-lifecycle-ledger-bootstrap.sql REJECT every
+--      UPDATE, DELETE and TRUNCATE, on both engines, with SQLSTATE MX001.
+--   2. On PostgreSQL the table is OWNED by `milexium_ledger_owner`, a role no
+--      application credential can assume, and the application credential holds
+--      INSERT and SELECT only. A trigger the acting role could DROP or DISABLE
+--      would be the same convention wearing a database's clothes.
+--   3. Every row carries prev_hash/hash, so a mutation that somehow evaded both
+--      of the above is DETECTABLE on read rather than silent.
+-- A correction is a further transition, never an edit.
 --
--- TWO CLOCKS. `decided_at` is valid time (when the decision was made);
--- `recorded_at` is transaction time (when this row was written). Note what is
--- NOT here: neither column has a DEFAULT. That absence is the schema-level half
--- of the decision-time guarantee -- the database itself cannot stamp a row -- and
--- conformance/property-tests/test_lifecycle_record.py reads it back out of
--- information_schema rather than trusting this comment.
+-- TWO CLOCKS, AND THE CALLER OWNS ONLY ONE OF THEM. `decided_at` is valid time
+-- (when the decision was made); `recorded_at` is transaction time (when this row
+-- was written). `decided_at` still carries NO DEFAULT -- a database that can
+-- stamp a decision time is the "reconstructed afterwards" artefact this table
+-- exists not to be -- and conformance/property-tests/test_lifecycle_record.py
+-- reads that absence back out of information_schema rather than trusting this
+-- comment.
+--
+-- `recorded_at` is the OPPOSITE case, and this is what the audit found. It used
+-- to be a required argument the CALLER supplied, with `recorded_at >= decided_at`
+-- as its only constraint -- so a caller could assert a 2020 decision recorded one
+-- second later and the system would accept it, having proved only that two
+-- caller assertions were ordered. It is now stamped by the WRITER (there is no
+-- such argument any more) and BOUNDED BY THE DATABASE: the Postgres bootstrap
+-- gives this column a server-clock DEFAULT and a BEFORE INSERT trigger that
+-- refuses any value more than 60 seconds from the server's own clock, and
+-- sql/lifecycle_immutability_sqlite.sql installs the same bound as a SQLite
+-- trigger. A DEFAULT alone would NOT have closed the finding: a default only
+-- fires when the column is omitted, and the audit's insert supplied it.
+--
+-- LATE ARRIVAL IS DECLARED, NOT HIDDEN. `ingest_lag_seconds` is the measured
+-- recorded_at - decided_at, and beyond 300 seconds a row must name a
+-- `late_recording_reason` from the closed vocabulary in lifecycle.py. A decision
+-- recorded three days late is legitimate; recording it as though it were
+-- contemporaneous is not, and this is the difference expressed as a CHECK.
 --
 -- THE CHECK AND WHY THE FORMAT MATTERS. `recorded_at >= decided_at` is a TEXT
 -- comparison, and on PostgreSQL a TEXT comparison runs under the database
@@ -346,6 +378,17 @@ CREATE TABLE deadhead_segments (
 -- UNIQUE (tenant_id, request_id, sequence) makes a duplicate or a re-used chain
 -- position a constraint violation rather than an application bug, exactly as the
 -- same clause does on decision_events.
+--
+-- THE HASH CHAIN. `prev_hash`/`hash` are the same construction `decision_events`
+-- has carried since ADR-0003, computed by the same normative `compute_hash`, and
+-- they are here because the audit found the ledger's tamper-evidence bleeding
+-- onto a lifecycle record that had none. sequence 1 has a NULL prev_hash and no
+-- other row may -- stated as a CHECK so a chain cannot be silently re-rooted.
+-- What this does and does not buy is stated plainly in lifecycle_verify.py: it
+-- is tamper EVIDENCE, not authentication. There is no secret in the hash, so a
+-- party who can write can also recompute; what it catches is a row changed
+-- WITHOUT recomputation -- a backup edited offline, a replica diverging, a
+-- restore from a tampered dump, an UPDATE that got past layers 1 and 2 above.
 --
 -- PORTABLE SUBSET (ADR-0002): TEXT ids, ISO-8601 UTC strings, CHECK ... IN (...)
 -- instead of ENUM. The state vocabulary is spelled out twice in this file (here
@@ -371,6 +414,26 @@ CREATE TABLE request_state_transitions (
     requested_window_end    TEXT,
     negotiated_window_start TEXT,
     negotiated_window_end   TEXT,
+    -- DOUBLE PRECISION, not REAL, and this is a defect that was caught rather
+    -- than avoided: PostgreSQL's REAL is float4 (~7 significant digits), so a lag
+    -- of 2158626.005228 seconds -- an entirely ordinary backfill of a three-week
+    -- old decision -- came back as 2158626.0 and the row could no longer be read,
+    -- because the model re-derives this value from the two timestamps and refuses
+    -- a disagreement. SQLite's REAL is already 8-byte, so the defect existed on
+    -- ONE engine only, which is exactly the class ADR-0004's mirrored contract
+    -- exists to catch. `DOUBLE PRECISION` is float8 on PostgreSQL and takes REAL
+    -- affinity on SQLite, so the portable file stays portable.
+    ingest_lag_seconds      DOUBLE PRECISION NOT NULL CHECK (ingest_lag_seconds >= 0),
+    late_recording_reason   TEXT CHECK (late_recording_reason IN
+        ('BATCH_IMPORT','INTEGRATION_OUTAGE','MANUAL_BACKFILL','OFFLINE_DISPATCH','SYSTEM_MIGRATION')),
+    prev_hash               TEXT,
+    hash                    TEXT NOT NULL,
     CHECK (recorded_at >= decided_at),
+    -- 300 seconds is LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS in lifecycle.py; a
+    -- conformance test pins the two against each other, because a threshold that
+    -- drifted between the application and the database would mean rows the
+    -- application declared late that the database let through unexplained.
+    CHECK (ingest_lag_seconds <= 300 OR late_recording_reason IS NOT NULL),
+    CHECK ((sequence = 1 AND prev_hash IS NULL) OR (sequence > 1 AND prev_hash IS NOT NULL)),
     UNIQUE (tenant_id, request_id, sequence)
 );

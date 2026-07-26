@@ -14,18 +14,48 @@ So this module stores, per request, an append-only chain of
 the instant Milexium WROTE IT DOWN, who or what decided, and the reason codes
 where the move was a denial or a negotiation.
 
-TWO CLOCKS, AND ONLY ONE OF THEM MAY BE THE WRITER'S
+TWO CLOCKS, AND THE CALLER OWNS EXACTLY ONE OF THEM
 `decided_at` is VALID time: the operational instant a dispatcher or the scheduler
-actually reached the conclusion. `recorded_at` is TRANSACTION time: when this
-system wrote the row. Both are REQUIRED fields with NO DEFAULT, and nothing in
-this module or in either store reads a clock -- there is no `datetime.now()`
-anywhere on the write path and the `decided_at` column carries no SQL DEFAULT, on
-either engine. A record that stamped itself on write would be exactly the
-"reconstructed afterwards" artefact the sentence above promises this is not, so
-the absence of a clock is asserted structurally (by AST over this module's own
-source and by `information_schema`) rather than left as a convention. A write
-whose `recorded_at` precedes its `decided_at` is refused in Python AND by a CHECK
-constraint in the portable DDL.
+actually reached the conclusion. It is the caller's to supply, it has no default
+anywhere -- not in the signature, not in the DDL -- and nothing in this module or
+either store reads a clock ON ITS BEHALF. A record that stamped its own decision
+time would be exactly the "reconstructed afterwards" artefact the sentence above
+promises this is not, so that absence is asserted structurally (by AST over this
+module's own source and by `information_schema`) rather than left as a convention.
+
+`recorded_at` is TRANSACTION time: when Milexium wrote the row. It used to be a
+required argument too, and MX-A-LIFECYCLE-IMMUTABILITY-012 exists because that
+was wrong. An external audit inserted a transition asserting a 2020-01-01
+decision recorded one second later; it was accepted, because the only rule was
+`recorded_at >= decided_at` and BOTH sides of that comparison came from the
+caller. The system proved that two caller assertions were ordered and nothing at
+all about when the row entered Milexium. There is now no `recorded_at` argument:
+`packages/canonical/transaction_clock.py` stamps it inside the writer, and the
+database BOUNDS it -- a server-clock DEFAULT plus a BEFORE INSERT trigger on both
+engines that refuses any value more than
+`RECORDED_AT_TOLERANCE_SECONDS` from the database's own clock. So the claim this
+column can support is: *this row was written within a minute of the instant it
+says it was*, enforced against raw SQL and not only against this API.
+
+A write whose `recorded_at` precedes its `decided_at` is still refused in Python
+AND by a CHECK constraint in the portable DDL. Because the writer stamps
+`recorded_at`, the case that now reaches that rule is a caller claiming a
+decision in the FUTURE, which is the same falsehood from the other end.
+
+LATE ARRIVAL IS DECLARED, NEVER SILENT
+The gap between the two clocks is measured and stored (`ingest_lag_seconds`), and
+past `LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS` a row must name a
+`LateRecordingReason`. A decision recorded three days late is entirely
+legitimate -- an integration outage, an overnight batch, a dispatcher working off
+paper. Recording it as though it were contemporaneous is not, and the difference
+between those two is the whole distinction this record is supposed to carry.
+
+TAMPER EVIDENCE
+Every transition carries `prev_hash`/`hash`, computed by the SAME normative
+`compute_hash` the decision-event ledger uses (ADR-0003). The audit found the
+ledger's re-verifiability being read as though it covered this table, which had
+no chain at all. `lifecycle_verify.py` re-derives the chain from stored rows and
+states precisely what that does and does not prove.
 
 WHY THE TIMESTAMPS ARE FIXED-WIDTH AND THE REST OF THE REPOSITORY'S ARE NOT
 Everything else here stores timestamps as `datetime.isoformat()`, whose fraction
@@ -51,10 +81,12 @@ other -- there is one implementation and two callers, not two implementations.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from packages.canonical.events import compute_hash
 from packages.canonical.ids import RequestId, RequestTransitionId, TenantId, new_id
 from packages.canonical.state_machine import (
     SERVICE_REQUEST_INITIAL_STATE,
@@ -73,6 +105,66 @@ ActorType = Literal["system", "human"]
 
 _FIXED_WIDTH_UTC = "%Y-%m-%dT%H:%M:%S.%f+00:00"
 
+#: Past this many seconds between the decision and its recording, the row must
+#: NAME why. 300s is a bound on "contemporaneous" for a dispatch decision: a
+#: scheduler writes in milliseconds and a human dispatcher in seconds, so five
+#: minutes is already an outlier for a live integration and is comfortably inside
+#: a normal batch or replay window. The number is a judgement, and it is written
+#: down here once: the same literal appears in the portable DDL's CHECK and a
+#: conformance test pins the two together, because a threshold that drifted
+#: between application and database would mean rows the application called late
+#: that the database accepted with no explanation at all.
+LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS = 300.0
+
+#: How far a stored `recorded_at` may sit from the DATABASE's own clock before
+#: the insert is refused. This is the bound that makes `recorded_at` transaction
+#: time rather than a caller assertion, so it wants to be tight -- but it has to
+#: absorb the skew between whichever host runs the writer and whichever runs the
+#: database, and a bound so tight that ordinary skew trips it would be turned off
+#: by the first person it woke at 3am. 60s is the compromise, enforced by the
+#: BEFORE INSERT triggers in sql/lifecycle_immutability_sqlite.sql and
+#: infra/compose/initdb/02-lifecycle-ledger-bootstrap.sql. Both directions matter:
+#: backwards is the audit's forgery, forwards is a row claiming to have been
+#: written in a future nobody can check yet.
+RECORDED_AT_TOLERANCE_SECONDS = 60.0
+
+
+class LateRecordingReason(str, Enum):
+    """WHY a decision reached the record later than it was made.
+
+    A CLOSED VOCABULARY, exactly as `ReasonCode` is and for the same reason: free
+    text here would be a prose field on an evidence record, and prose is what gets
+    written when nobody wants to say which of these it actually was. Five members,
+    each naming a materially different failure of contemporaneity -- an operator
+    reading this back needs to know whether the gap was a scheduled batch (normal),
+    an outage (an availability problem), or a human typing yesterday's decisions
+    in (a data-quality problem).
+
+    NOT a member, deliberately: anything meaning "test fixture" or "unknown". A
+    vocabulary member that exists to let a caller past the rule IS the rule not
+    existing. The synthetic fixtures in the conformance suite declare
+    BATCH_IMPORT, which is what they honestly are: decisions dated 2026-07-01
+    written into a database today.
+    """
+
+    BATCH_IMPORT = "BATCH_IMPORT"
+    """A scheduled export/import cycle: the decision was made in the operator's
+    system and reached Milexium on the next run."""
+
+    INTEGRATION_OUTAGE = "INTEGRATION_OUTAGE"
+    """The live path was down and the decisions were replayed once it returned."""
+
+    MANUAL_BACKFILL = "MANUAL_BACKFILL"
+    """A human entered decisions after the fact -- the weakest provenance of the
+    five, and the one an auditor should look at hardest."""
+
+    OFFLINE_DISPATCH = "OFFLINE_DISPATCH"
+    """The decision was made without connectivity (a radio call, a paper manifest)
+    and recorded when the vehicle or the dispatcher came back online."""
+
+    SYSTEM_MIGRATION = "SYSTEM_MIGRATION"
+    """History carried in from a predecessor system at cutover."""
+
 
 class BackdatedRecordError(ValueError):
     """A write whose `recorded_at` precedes its `decided_at`.
@@ -81,6 +173,27 @@ class BackdatedRecordError(ValueError):
     module exists to support: a row that says it was written BEFORE the decision
     it records is either a clock defect or a fabricated history, and either way
     the record can no longer be read as evidence of decision-time capture.
+    """
+
+
+class UndeclaredLateRecordError(ValueError):
+    """A transition recorded long after it was decided, with no reason given.
+
+    Its own type because the remedy is specific and is NOT "retry": the caller has
+    to say which `LateRecordingReason` applies. Raising `ValueError` here would
+    push an ingest into catching a type that also means "your reason code is not
+    in the vocabulary", and the two need different handling -- one is a bug in the
+    payload, the other is a fact about the integration that somebody has to state.
+    """
+
+
+class LifecycleChainError(ValueError):
+    """A stored transition whose hash does not match its own contents.
+
+    Raised on READ, never on write. A row that fails this is either a mutation
+    that got past the immutability triggers and the privilege boundary, or a
+    restore from a tampered dump, or a genuine corruption -- and all three mean
+    the same thing to a reader: this is not evidence any more.
     """
 
 
@@ -142,6 +255,107 @@ class TimeWindow(BaseModel):
         return (self.end - self.start).total_seconds() / 60.0
 
 
+#: Domain separator inside the hashed payload. A lifecycle transition and a
+#: decision event are hashed by the SAME function, so without this a payload
+#: crafted for one could in principle be presented as the other; with it the two
+#: hash spaces cannot overlap. Versioned, because the day a field is added to the
+#: hashed set every existing hash legitimately stops matching and a reader needs
+#: to be able to tell that apart from tampering.
+LIFECYCLE_HASH_RECORD_TYPE = "request_state_transition/v1"
+
+
+def _enum_value(value: object) -> object:
+    """The `.value` of an enum member, or the value itself if it is not one.
+
+    See `transition_payload` for why this is not defensive clutter: it runs before
+    validation, so it must render an invalid input rather than crash on it and
+    steal the error from the layer that owns the rule.
+    """
+    return value.value if isinstance(value, Enum) else value
+
+
+def _window_payload(window: "TimeWindow | None") -> dict | None:
+    return None if window is None else {
+        "start": iso_fixed_utc(window.start),
+        "end": iso_fixed_utc(window.end),
+    }
+
+
+def transition_payload(
+    *,
+    transition_id: object,
+    tenant_id: object,
+    request_id: object,
+    from_state: ServiceRequestState,
+    to_state: ServiceRequestState,
+    decided_at: datetime,
+    recorded_at: datetime,
+    actor_type: str,
+    actor_id: str,
+    reason_codes: tuple[ReasonCode, ...],
+    requested_window: "TimeWindow | None",
+    negotiated_window: "TimeWindow | None",
+    late_recording_reason: "LateRecordingReason | None",
+) -> dict:
+    """EVERY asserted field of a transition, as the dict that gets hashed.
+
+    `transition_id` is in here so a row's identity is bound to its contents --
+    without it two rows could have their ids swapped and both chains would still
+    verify. `ingest_lag_seconds` is deliberately NOT here: it is a pure function
+    of the two timestamps, which ARE here, and `RequestTransition` refuses any row
+    whose stored lag disagrees with them. Hashing a derived float would add a
+    serialisation-precision failure mode for no additional coverage.
+
+    The timestamps go in as their FIXED-WIDTH rendering, i.e. exactly the bytes
+    the database stores, so a hash recomputed from a stored row and a hash
+    computed before the write are comparing the same thing.
+
+    IT MUST NOT ASSUME ITS INPUTS ARE VALID. On the write path this runs BEFORE
+    `RequestTransition` has validated anything, so a caller passing free text where
+    a `ReasonCode` belongs reaches here first. Reading `.value` off it unguarded
+    turned the intended `ValidationError` -- "that is not in the vocabulary" --
+    into an `AttributeError` from inside the hasher, which is both the wrong error
+    and the wrong LAYER: the vocabulary rule is the model's to enforce, and this
+    function's job is only to render whatever it is handed deterministically.
+    `_enum_value` keeps it renderable so the real check can still be the one that
+    fires. (Caught by `test_free_text_cannot_reach_the_record_in_place_of_a_reason_code`,
+    which is exactly what it is for.)
+    """
+    return {
+        "record": LIFECYCLE_HASH_RECORD_TYPE,
+        "transition_id": str(transition_id),
+        "tenant_id": str(tenant_id),
+        "request_id": str(request_id),
+        "from_state": _enum_value(from_state),
+        "to_state": _enum_value(to_state),
+        "decided_at": iso_fixed_utc(decided_at),
+        "recorded_at": iso_fixed_utc(recorded_at),
+        "actor_type": actor_type,
+        "actor_id": actor_id,
+        "reason_codes": [_enum_value(code) for code in reason_codes],
+        "requested_window": _window_payload(requested_window),
+        "negotiated_window": _window_payload(negotiated_window),
+        "late_recording_reason": (
+            None if late_recording_reason is None else _enum_value(late_recording_reason)
+        ),
+    }
+
+
+def lifecycle_transition_hash(
+    *, prev_hash: str | None, payload: dict, sequence: int, request_id: object
+) -> str:
+    """The normative lifecycle-chain hash.
+
+    Deliberately `packages.canonical.events.compute_hash` rather than a second
+    SHA-256 construction: ADR-0003 made that function normative for the decision
+    ledger, and a lifecycle record that chained itself a slightly different way
+    would give an evidence pack two link formats to explain. The aggregate this
+    chain is per is the REQUEST, so `request_id` is the aggregate id -- one chain
+    per request per tenant, which is exactly what `sequence` counts.
+    """
+    return compute_hash(prev_hash, payload, sequence, str(request_id), None)
+
+
 class RequestTransition(BaseModel):
     """ONE durable, append-only row of a request's lifecycle record.
 
@@ -176,8 +390,11 @@ class RequestTransition(BaseModel):
     )
     recorded_at: UtcDateTime = Field(
         description=(
-            "TRANSACTION time: when Milexium wrote this row. REQUIRED and never "
-            "before `decided_at`."
+            "TRANSACTION time: when Milexium wrote this row. Stamped by the "
+            "WRITER (packages/canonical/transaction_clock.py), never by the "
+            "caller -- `record_transition` has no such argument -- and bounded by "
+            "a database trigger against the server's own clock. Never before "
+            "`decided_at`."
         )
     )
     actor_type: ActorType
@@ -198,6 +415,39 @@ class RequestTransition(BaseModel):
     )
     negotiated_window: TimeWindow | None = Field(
         default=None, description="The pickup window offered instead, as agreed at decision time."
+    )
+    ingest_lag_seconds: float = Field(
+        ge=0.0,
+        description=(
+            "MEASURED recorded_at - decided_at. Stored rather than left to be "
+            "recomputed by every reader, so 'how late was this record' is a "
+            "column an analyst can filter on and an evidence pack can carry, not "
+            "a subtraction someone might do differently."
+        ),
+    )
+    late_recording_reason: LateRecordingReason | None = Field(
+        default=None,
+        description=(
+            "Why the gap. MANDATORY once the lag exceeds "
+            "LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS, forbidden below it -- a "
+            "reason on a contemporaneous row would make the field mean nothing."
+        ),
+    )
+    prev_hash: str | None = Field(
+        default=None,
+        description=(
+            "The hash of this request's previous transition. None at sequence 1 "
+            "and never anywhere else -- a NULL further along would be a chain "
+            "silently re-rooted."
+        ),
+    )
+    hash: str = Field(
+        min_length=64,
+        description=(
+            "SHA-256 over this row's asserted contents and its predecessor's "
+            "hash. Recomputed and CHECKED by this model, so a `RequestTransition` "
+            "holding contents that disagree with its own hash cannot exist."
+        ),
     )
 
     @model_validator(mode="after")
@@ -232,6 +482,70 @@ class RequestTransition(BaseModel):
                     "offer Y', and without X the delta a rider actually experienced "
                     "cannot be computed later from this record"
                 )
+
+        # THE LAG IS RE-DERIVED, NOT TRUSTED. The stored column is a measurement,
+        # and a measurement that can disagree with the two values it was measured
+        # from is a place to hide an edit: change `decided_at` on a stored row and
+        # the lag column is what would otherwise still say the record was prompt.
+        # 1e-6 is one microsecond -- the resolution of the timestamps themselves.
+        measured = (self.recorded_at - self.decided_at).total_seconds()
+        if abs(self.ingest_lag_seconds - measured) > 1e-6:
+            raise ValueError(
+                f"ingest_lag_seconds is {self.ingest_lag_seconds!r} but the two "
+                f"stored clocks are {measured!r} apart: this row's measured ingest "
+                "lag disagrees with its own timestamps"
+            )
+
+        if measured > LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS:
+            if self.late_recording_reason is None:
+                raise UndeclaredLateRecordError(
+                    f"this decision was recorded {measured:.0f}s after it was made, "
+                    f"beyond the {LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS:.0f}s "
+                    "contemporaneity bound, with no late_recording_reason. A late "
+                    "record is legitimate; a late record presented as a "
+                    "contemporaneous one is not"
+                )
+        elif self.late_recording_reason is not None:
+            raise ValueError(
+                f"this row was recorded {measured:.3f}s after the decision -- inside "
+                "the contemporaneity bound -- so it must NOT name a "
+                f"late_recording_reason ({self.late_recording_reason.value!r}). A "
+                "reason on a prompt row would make the field unreadable as a signal"
+            )
+
+        if (self.sequence == 1) != (self.prev_hash is None):
+            raise ValueError(
+                f"sequence {self.sequence} with prev_hash {self.prev_hash!r}: the "
+                "first transition of a chain has no predecessor and every later one "
+                "has exactly one"
+            )
+
+        expected = lifecycle_transition_hash(
+            prev_hash=self.prev_hash,
+            payload=transition_payload(
+                transition_id=self.transition_id,
+                tenant_id=self.tenant_id,
+                request_id=self.request_id,
+                from_state=self.from_state,
+                to_state=self.to_state,
+                decided_at=self.decided_at,
+                recorded_at=self.recorded_at,
+                actor_type=self.actor_type,
+                actor_id=self.actor_id,
+                reason_codes=self.reason_codes,
+                requested_window=self.requested_window,
+                negotiated_window=self.negotiated_window,
+                late_recording_reason=self.late_recording_reason,
+            ),
+            sequence=self.sequence,
+            request_id=self.request_id,
+        )
+        if self.hash != expected:
+            raise LifecycleChainError(
+                f"transition {self.transition_id!s} carries hash {self.hash!r} but "
+                f"its contents hash to {expected!r}: this row has been altered "
+                "since it was written, or was never written by this system"
+            )
         return self
 
     @property
@@ -263,6 +577,26 @@ class OutcomeExplanation(BaseModel):
     )
     is_terminal: bool
     decided_at: UtcDateTime = Field(description="When the most recent recorded decision was made.")
+    recorded_at: UtcDateTime = Field(
+        description=(
+            "When Milexium WROTE that most recent decision down. Reported beside "
+            "`decided_at` rather than left in the transition list because the two "
+            "being far apart is a fact about the evidence, and a reader shown only "
+            "the decision time cannot tell a live capture from a backfill."
+        )
+    )
+    ingest_lag_seconds: float = Field(
+        description="`recorded_at` - `decided_at` for that decision, in seconds."
+    )
+    late_recording_reason: "LateRecordingReason | None" = Field(
+        default=None,
+        description=(
+            "The declared reason the outcome reached the record late, or None if "
+            "it was recorded within the contemporaneity bound. None here means "
+            "'recorded promptly', NOT 'no reason was given' -- the record cannot "
+            "hold a late row with no reason."
+        ),
+    )
     outcome_reason_codes: tuple[ReasonCode, ...] = Field(
         default=(),
         description=(
@@ -314,18 +648,25 @@ def next_transition(
     reason_codes: tuple[ReasonCode, ...] = (),
     requested_window: TimeWindow | None = None,
     negotiated_window: TimeWindow | None = None,
+    late_reason: LateRecordingReason | None = None,
 ) -> RequestTransition:
     """Validate a proposed transition against the stored chain and build the row.
 
-    PURE: reads no clock, touches no database. `head` is the request's current
-    last transition (None for a request with no history yet), which the caller --
-    always a store -- has just read back under its own tenant scope.
+    PURE: reads no clock, touches no database. `recorded_at` is passed IN by the
+    store, which read it from `transaction_clock.py` -- keeping this function
+    clock-free is what lets the whole chain rule set be replayed deterministically
+    over a stored history. `head` is the request's current last transition (None
+    for a request with no history yet), which the caller -- always a store -- has
+    just read back under its own tenant scope; its hash becomes this row's
+    `prev_hash`, which is why the chain link cannot be supplied by a caller either.
 
     Both stores call THIS function, so the rules below are one implementation
     with two callers rather than two implementations that can drift.
 
     Raises, in this order:
-      * `BackdatedRecordError` -- `recorded_at` before `decided_at`.
+      * `BackdatedRecordError` -- `recorded_at` before `decided_at`. Since the
+        writer stamps `recorded_at`, what this now catches is a decision claimed
+        in the FUTURE.
       * `LifecycleOrderError`  -- the chain does not continue: a first transition
         that does not start at the machine's entry state, a `from_state` that
         disagrees with what is stored, or a decision time earlier than the
@@ -333,12 +674,34 @@ def next_transition(
       * `TransitionError`      -- the CONTRACT forbids `from_state -> to_state`.
         Appending anything after a terminal state lands here, because a terminal
         state's allowed set is empty.
+      * `UndeclaredLateRecordError` -- the gap between the two clocks exceeds the
+        contemporaneity bound and no reason was declared. Raised HERE, ahead of
+        the chain rules, because pydantic would wrap the model's copy of the same
+        rule in a `ValidationError` and the caller needs the specific type.
     """
     if recorded_at < decided_at:
         raise BackdatedRecordError(
             f"recorded_at {recorded_at.isoformat()} precedes decided_at "
             f"{decided_at.isoformat()}: a record cannot be written before the "
-            "decision it records"
+            "decision it records. The writer stamps recorded_at from the system "
+            "clock, so this means the decision is claimed in the future"
+        )
+
+    # RAISED HERE AS WELL AS IN THE MODEL, and the duplication is deliberate.
+    # Pydantic WRAPS any ValueError a model validator raises in a
+    # `ValidationError`, so the model's copy of this rule cannot reach a caller as
+    # `UndeclaredLateRecordError` -- and the remedy for this failure ("say which
+    # LateRecordingReason applies") is specific enough that it needs to be
+    # distinguishable from "your payload is malformed" without string-matching.
+    # The model keeps its own copy as the second net for records built outside a
+    # store; this one is what a caller of `record_transition` actually catches.
+    lag_seconds = (recorded_at - decided_at).total_seconds()
+    if lag_seconds > LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS and late_reason is None:
+        raise UndeclaredLateRecordError(
+            f"this decision was recorded {lag_seconds:.0f}s after it was made, "
+            f"beyond the {LIFECYCLE_LATE_ARRIVAL_THRESHOLD_SECONDS:.0f}s "
+            "contemporaneity bound, with no late_reason. A late record is "
+            "legitimate; a late record presented as a contemporaneous one is not"
         )
 
     if head is None:
@@ -366,8 +729,26 @@ def next_transition(
 
     check_transition(from_state, to_state)
 
+    transition_id = new_id(RequestTransitionId)
+    prev_hash = None if head is None else head.hash
+    payload = transition_payload(
+        transition_id=transition_id,
+        tenant_id=tenant_id,
+        request_id=request_id,
+        from_state=from_state,
+        to_state=to_state,
+        decided_at=decided_at,
+        recorded_at=recorded_at,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        reason_codes=tuple(reason_codes),
+        requested_window=requested_window,
+        negotiated_window=negotiated_window,
+        late_recording_reason=late_reason,
+    )
+
     return RequestTransition(
-        transition_id=new_id(RequestTransitionId),
+        transition_id=transition_id,
         tenant_id=tenant_id,
         request_id=request_id,
         sequence=sequence,
@@ -380,6 +761,17 @@ def next_transition(
         reason_codes=tuple(reason_codes),
         requested_window=requested_window,
         negotiated_window=negotiated_window,
+        # Measured from the two clocks that are about to be stored, and re-derived
+        # by the model from those same two -- so it cannot be passed in wrong.
+        ingest_lag_seconds=(recorded_at - decided_at).total_seconds(),
+        late_recording_reason=late_reason,
+        prev_hash=prev_hash,
+        hash=lifecycle_transition_hash(
+            prev_hash=prev_hash,
+            payload=payload,
+            sequence=sequence,
+            request_id=request_id,
+        ),
     )
 
 
@@ -435,6 +827,9 @@ def explain(
         terminal_state=final.to_state if final.is_terminal else None,
         is_terminal=final.is_terminal,
         decided_at=final.decided_at,
+        recorded_at=final.recorded_at,
+        ingest_lag_seconds=final.ingest_lag_seconds,
+        late_recording_reason=final.late_recording_reason,
         outcome_reason_codes=final.reason_codes,
         all_reason_codes=tuple(seen),
         requested_window=requested_window,

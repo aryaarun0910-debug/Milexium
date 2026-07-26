@@ -24,10 +24,15 @@ rather than argued away:
    ADR-0046/0052) BEFORE any isolation result here is read as evidence. PostgreSQL
    checks both attributes before ownership and before FORCE, so a privileged
    credential would make every policy in this file pure decoration.
-2. *The OWNER bypasses the policy.* `milexium_dev` owns the table, and a table
-   owner bypasses RLS unless FORCE is set.
-   `test_force_row_level_security_is_load_bearing` lifts FORCE, watches the
-   boundary collapse, and restores it.
+2. *The OWNER bypasses the policy.* A table owner bypasses RLS unless FORCE is
+   set. This changed shape in MX-A-LIFECYCLE-IMMUTABILITY-012: the lifecycle table
+   is now owned by `milexium_ledger_owner` (so that the acting credential cannot
+   drop the append-only triggers), which means plain ENABLE is what binds THIS
+   connection and FORCE is what binds the ledger owner. Both halves are still
+   proved: `test_force_row_level_security_is_load_bearing` lifts FORCE on a
+   deliberately UNSEALED schema and watches the boundary collapse, and
+   `test_the_deployment_credential_cannot_lift_force_at_all` proves the sealed
+   credential cannot reach that switch, or ENABLE, or the policy itself.
 3. *The block is passing on an empty table.* Every denial is paired with a
    positive control proving the row it is not seeing exists and IS visible to its
    own tenant.
@@ -49,7 +54,7 @@ packet's evidence requirement is that these RUN.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -64,22 +69,32 @@ from packages.canonical.ids import (  # noqa: E402
     TenantId,
     new_id,
 )
-from packages.canonical.lifecycle import TimeWindow, iso_fixed_utc  # noqa: E402
+from packages.canonical.lifecycle import (  # noqa: E402
+    LateRecordingReason,
+    TimeWindow,
+    iso_fixed_utc,
+    lifecycle_transition_hash,
+    transition_payload,
+)
 from packages.canonical.postgres_storage import (  # noqa: E402
     PostgresCanonicalStore,
     _read_dev_password,
     is_reachable as pg_is_reachable,
 )
 from packages.canonical.state_machine import ServiceRequestState  # noqa: E402
+from packages.canonical.transaction_clock import transaction_time  # noqa: E402
 from packages.canonical.vocab import ReasonCode  # noqa: E402
 
 _TABLE = "request_state_transitions"
 
 _INSERT = (
     f"INSERT INTO {_TABLE} (transition_id, tenant_id, request_id, sequence, from_state, "  # noqa: S608
-    "to_state, decided_at, recorded_at, actor_type, actor_id, reason_codes) "
-    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+    "to_state, decided_at, recorded_at, actor_type, actor_id, reason_codes, "
+    "ingest_lag_seconds, late_recording_reason, prev_hash, hash) "
+    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
 )
+
+_LEDGER_OWNER = "milexium_ledger_owner"
 
 
 def _utc(*args: int) -> datetime:
@@ -107,6 +122,30 @@ def pg():
         store.close()
 
 
+@pytest.fixture
+def unsealed_pg():
+    """A store whose lifecycle table is still owned by the acting role.
+
+    Needed by exactly one test: the FORCE-collapse demonstration, which requires
+    ownership to be meaningful. See that test for why the sealed configuration
+    cannot host it and why the pair is stronger than either half.
+    """
+    if not pg_is_reachable():
+        pytest.skip("PostgreSQL (milexium_dev, port 5432) is not reachable on this machine")
+    store = PostgresCanonicalStore.connect(
+        schema=f"mx_life_rls_unsealed_{uuid.uuid4().hex}", _leave_lifecycle_unsealed=True
+    )
+    try:
+        yield store
+    finally:
+        try:
+            store._conn.rollback()
+        except Exception:  # pragma: no cover - teardown must never mask a failure
+            pass
+        store.drop_schema()
+        store.close()
+
+
 def _query(store, statement: str, params: tuple = ()) -> list[tuple]:
     return store._conn.execute(statement, params).fetchall()
 
@@ -127,15 +166,35 @@ def _insert_raw(store, tenant_id: TenantId, *, acting: TenantId | None = None) -
     half has to refuse.
     """
     request_id = new_id(RequestId)
+    transition_id = new_id(RequestTransitionId)
+    # THE TIMESTAMPS ARE NOW RELATIVE, not the fixed 2026-07-01 pair this helper
+    # used to write. Since MX-A-LIFECYCLE-IMMUTABILITY-012 the database bounds
+    # `recorded_at` to its own clock, so a raw insert stating a historical
+    # transaction time is refused outright -- and every isolation test in this file
+    # would then fail on the clock guard instead of demonstrating the policy.
+    decided_at = transaction_time() - timedelta(days=1)
+    recorded_at = transaction_time()
+    payload = transition_payload(
+        transition_id=transition_id, tenant_id=tenant_id, request_id=request_id,
+        from_state=ServiceRequestState.REQUESTED, to_state=ServiceRequestState.DENIED,
+        decided_at=decided_at, recorded_at=recorded_at, actor_type="human",
+        actor_id="dispatcher-token-7", reason_codes=(ReasonCode.NO_ACCESSIBLE_CAPACITY,),
+        requested_window=None, negotiated_window=None,
+        late_recording_reason=LateRecordingReason.BATCH_IMPORT,
+    )
     store._use_tenant(acting if acting is not None else tenant_id)
     store._conn.execute(
         _INSERT,
         (
-            str(new_id(RequestTransitionId)), str(tenant_id), str(request_id), 1,
+            str(transition_id), str(tenant_id), str(request_id), 1,
             ServiceRequestState.REQUESTED.value, ServiceRequestState.DENIED.value,
-            iso_fixed_utc(_utc(2026, 7, 1, 9, 14, 3)),
-            iso_fixed_utc(_utc(2026, 7, 1, 9, 14, 4)),
+            iso_fixed_utc(decided_at), iso_fixed_utc(recorded_at),
             "human", "dispatcher-token-7", '["NO_ACCESSIBLE_CAPACITY"]',
+            (recorded_at - decided_at).total_seconds(),
+            LateRecordingReason.BATCH_IMPORT.value, None,
+            lifecycle_transition_hash(
+                prev_hash=None, payload=payload, sequence=1, request_id=request_id
+            ),
         ),
     )
     store._conn.commit()
@@ -177,23 +236,40 @@ def test_the_acting_role_is_bound_by_row_security(pg) -> None:
     assert bypasses is False, f"acting role {acting!r} holds BYPASSRLS"
 
 
-def test_the_acting_role_owns_the_lifecycle_table(pg) -> None:
-    """FORCE is only meaningful against the OWNER. For any other role an ordinary
-    privilege error, not the policy, would be what stands in the way, and
-    `test_force_row_level_security_is_load_bearing` would prove nothing when it
-    lifts FORCE."""
+def test_the_acting_role_does_not_own_the_lifecycle_table(pg) -> None:
+    """THIS ASSERTION IS THE REVERSE OF WHAT IT WAS, and the reversal is a
+    tightening rather than a regression.
+
+    It used to assert that the acting role OWNED this table, because FORCE ROW
+    LEVEL SECURITY only binds the owner and the FORCE-collapse demonstration
+    needed ownership to be meaningful. MX-A-LIFECYCLE-IMMUTABILITY-012 took that
+    ownership away: the table now belongs to `milexium_ledger_owner`, a role no
+    application credential can assume, because a table's owner can drop the
+    immutability triggers on it.
+
+    What that changes for tenant isolation, stated precisely so nothing is assumed:
+    this connection is now an ORDINARY user of the table, so plain
+    `ENABLE ROW LEVEL SECURITY` is what binds it -- FORCE is what binds the ledger
+    owner. The isolation results in this file are therefore still policy results,
+    and the FORCE demonstration moves to an explicitly unsealed schema below,
+    where ownership still exists to be lifted.
+    """
     (owner,) = _query(
         pg,
-        "SELECT c.relowner::regrole::text FROM pg_class c "
+        "SELECT pg_get_userbyid(c.relowner) FROM pg_class c "
         "JOIN pg_namespace n ON n.oid = c.relnamespace "
         "WHERE n.nspname = %s AND c.relname = %s",
         (pg._schema, _TABLE),
     )[0]
     (acting,) = _query(pg, "SELECT current_user")[0]
 
-    assert owner == acting, (
-        f"{_TABLE} is owned by {owner!r} but the store acts as {acting!r} -- FORCE "
-        "would not be what constrains it"
+    assert owner == _LEDGER_OWNER, (
+        f"{_TABLE} is owned by {owner!r} rather than the ledger owner -- has the "
+        "cluster bootstrap been run on this instance?"
+    )
+    assert owner != acting, (
+        f"the acting credential {acting!r} owns the lifecycle table, so it can drop "
+        "the append-only triggers and the immutability claim is a convention again"
     )
 
 
@@ -431,25 +507,39 @@ def test_a_transition_stamped_with_a_foreign_tenant_is_rejected(pg) -> None:
     assert _raw_tenant_ids(pg) == [], "the forged row landed in the victim's record"
 
 
-def test_a_delete_cannot_reach_another_tenants_transitions(pg) -> None:
-    """The USING clause governs DELETE as well as SELECT, so an unqualified
-    `DELETE FROM request_state_transitions` -- the shape a careless cleanup script
-    takes -- removes only the acting tenant's rows.
+def test_a_delete_reaches_no_tenants_transitions_at_all(pg) -> None:
+    """WHAT THIS TEST USED TO PROVE, AND WHY IT NOW PROVES SOMETHING STRONGER.
 
-    Worth its own test rather than inferred from the SELECT result: this table is
-    an append-only evidence ledger, and destroying another operator's copy of it
-    is a worse outcome than reading it."""
+    It used to issue an unqualified `DELETE FROM request_state_transitions` as
+    tenant B and assert that only B's rows disappeared -- the policy's USING clause
+    governing DELETE, so a careless cleanup script could not reach across the
+    tenant boundary. That was true, and it was also an admission: the acting
+    credential could delete an operator's service-denial history as long as it was
+    the RIGHT operator's.
+
+    MX-A-LIFECYCLE-IMMUTABILITY-012 removed DELETE from the credential entirely.
+    The statement now fails, and BOTH tenants' rows survive -- so the isolation
+    property the old test asserted is subsumed rather than lost. Both are checked
+    below: the acting tenant's rows are the ones this test would previously have
+    watched vanish."""
     tenant_a, tenant_b = _new_tenant(pg), _new_tenant(pg)
     _insert_raw(pg, tenant_a)
     _insert_raw(pg, tenant_b)
 
     pg._use_tenant(tenant_b)
-    pg._conn.execute(f"DELETE FROM {_TABLE}")  # noqa: S608 -- no WHERE clause, on purpose
-    pg._conn.commit()
+    with pytest.raises(psycopg.Error):
+        pg._conn.execute(f"DELETE FROM {_TABLE}")  # noqa: S608 -- no WHERE clause, on purpose
+        pg._conn.commit()
+    pg._conn.rollback()
 
     pg._use_tenant(tenant_a)
     assert _raw_tenant_ids(pg) == [str(tenant_a)], (
         "an unqualified DELETE as tenant B destroyed tenant A's lifecycle record"
+    )
+    pg._use_tenant(tenant_b)
+    assert _raw_tenant_ids(pg) == [str(tenant_b)], (
+        "the acting tenant's own rows were deleted -- append-only is not enforced, "
+        "only cross-tenant deletion is, which is a much weaker claim"
     )
 
 
@@ -458,14 +548,25 @@ def test_a_delete_cannot_reach_another_tenants_transitions(pg) -> None:
 # =========================================================================
 
 
-def test_force_row_level_security_is_load_bearing(pg) -> None:
+def test_force_row_level_security_is_load_bearing(unsealed_pg) -> None:
     """The boundary is shown COLLAPSING the instant FORCE is lifted, then restored.
 
     Without this, `relforcerowsecurity is True` would be a bit asserted because the
-    file sets it, not because we know what it does. The acting role OWNS this
-    table, so ENABLE alone leaves it entirely unconstrained -- an ENABLE-only
-    version of `rls_postgres.sql` would make every other test in this module pass
-    while isolating nothing."""
+    file sets it, not because we know what it does. FORCE only matters against the
+    table's OWNER: ENABLE alone leaves an owning connection entirely unconstrained,
+    so an ENABLE-only version of `rls_postgres.sql` would make every other test in
+    this module pass while isolating nothing.
+
+    WHY THIS ONE TEST USES AN UNSEALED SCHEMA. On the deployment path the lifecycle
+    table is owned by `milexium_ledger_owner` and the acting credential cannot
+    `ALTER TABLE` it at all -- which is a stronger position, and which also means
+    the collapse cannot be demonstrated from there. So the demonstration runs
+    against a deliberately unsealed schema where the acting role is still the
+    owner, and the companion test below proves that the SEALED configuration
+    refuses the same statement outright. Neither test alone would say enough:
+    this one shows what FORCE does; that one shows the credential cannot reach it.
+    """
+    pg = unsealed_pg
     tenant_a = _new_tenant(pg)
     _insert_raw(pg, tenant_a)
     pg._use_tenant(_new_tenant(pg))  # an unrelated, empty tenant
@@ -484,6 +585,38 @@ def test_force_row_level_security_is_load_bearing(pg) -> None:
 
     assert _raw_tenant_ids(pg) == [], "the boundary did not come back when FORCE was restored"
     pg._conn.commit()
+
+
+def test_the_deployment_credential_cannot_lift_force_at_all(pg) -> None:
+    """The sealed half of the pair above: on the real path this connection is not
+    the owner, so it cannot lift FORCE, cannot lift ENABLE, and cannot reach any
+    other `ALTER TABLE` switch on this table.
+
+    That is what makes the tenant boundary here different in kind from the one on
+    every other table in this schema: elsewhere the acting role owns the table and
+    the policy binds it only because FORCE is set -- a bit the same role could
+    unset. Here it cannot even try."""
+    for statement in (
+        f"ALTER TABLE {_TABLE} NO FORCE ROW LEVEL SECURITY",
+        f"ALTER TABLE {_TABLE} DISABLE ROW LEVEL SECURITY",
+        f"DROP POLICY tenant_isolation ON {_TABLE}",
+    ):
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            pg._conn.execute(statement)  # noqa: S608
+            pg._conn.commit()
+        pg._conn.rollback()
+
+    enabled, forced = _query(
+        pg,
+        "SELECT c.relrowsecurity, c.relforcerowsecurity FROM pg_class c "
+        "JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = %s AND c.relname = %s",
+        (pg._schema, _TABLE),
+    )[0]
+    assert enabled is True and forced is True, (
+        "row security was turned off by a connection that was supposed to be unable "
+        "to touch it"
+    )
 
 
 # =========================================================================
@@ -508,7 +641,7 @@ def test_another_tenants_chain_cannot_advance_or_block_this_ones(pg) -> None:
     first_a = pg.record_transition(
         tenant_id=tenant_a, request_id=request_id,
         from_state=ServiceRequestState.REQUESTED, to_state=ServiceRequestState.NEGOTIATED,
-        decided_at=_utc(2026, 7, 1, 9, 14, 3), recorded_at=_utc(2026, 7, 1, 9, 14, 4),
+        decided_at=_utc(2026, 7, 1, 9, 14, 3), late_reason=LateRecordingReason.BATCH_IMPORT,
         actor_type="system", actor_id="scheduler",
         reason_codes=(ReasonCode.NO_ACCESSIBLE_CAPACITY,),
         requested_window=TimeWindow(start=_utc(2026, 7, 1, 8, 0), end=_utc(2026, 7, 1, 8, 30)),
@@ -517,7 +650,7 @@ def test_another_tenants_chain_cannot_advance_or_block_this_ones(pg) -> None:
     first_b = pg.record_transition(
         tenant_id=tenant_b, request_id=request_id,
         from_state=ServiceRequestState.REQUESTED, to_state=ServiceRequestState.DENIED,
-        decided_at=_utc(2026, 7, 1, 7, 0), recorded_at=_utc(2026, 7, 1, 7, 0),
+        decided_at=_utc(2026, 7, 1, 7, 0), late_reason=LateRecordingReason.BATCH_IMPORT,
         actor_type="human", actor_id="dispatcher-token-9",
         reason_codes=(ReasonCode.MAX_RIDE_TIME,),
     )
@@ -533,7 +666,7 @@ def test_another_tenants_chain_cannot_advance_or_block_this_ones(pg) -> None:
     second_a = pg.record_transition(
         tenant_id=tenant_a, request_id=request_id,
         from_state=ServiceRequestState.NEGOTIATED, to_state=ServiceRequestState.SCHEDULED,
-        decided_at=_utc(2026, 7, 1, 9, 14, 7), recorded_at=_utc(2026, 7, 1, 9, 14, 8),
+        decided_at=_utc(2026, 7, 1, 9, 14, 7), late_reason=LateRecordingReason.BATCH_IMPORT,
         actor_type="system", actor_id="scheduler",
     )
     assert second_a.sequence == 2
