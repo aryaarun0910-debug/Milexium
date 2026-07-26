@@ -1,21 +1,43 @@
 """Build a contact-research worksheet for design-partner outreach.
 
 The cold email is written (generate_design_partner_emails.py) and personalized
-with each agency's own NTD deadhead-dollar figure. The one thing the NTD data
-CANNOT give us is a human to send it to: the ops / mobility / paratransit
-manager's name and email. That is the genuinely manual, human part - LinkedIn
-plus agency websites - and this worksheet exists to make it as fast as possible.
+with the agency's own NTD numbers and its position in the national panel. The
+one thing the NTD data CANNOT give us is a human to send it to: the ops /
+mobility / paratransit manager's name and email. That is the genuinely manual,
+human part - LinkedIn plus agency websites - and this worksheet exists to make
+it as fast as possible.
 
 It emits one row per target agency, pre-filled with everything we already know
 (the agency, its real NTD numbers, the ready-to-paste hook sentence, and
 click-to-research URLs), and BLANK columns for the contact name / title /
 email / LinkedIn / website you fill in by hand. Work it top-down: the rows are
-ranked by deadhead dollars, so the biggest hooks come first.
+ranked by cost-per-trip percentile, so the operators furthest from the
+national middle come first.
 
-Target selection follows design_partner_pitch.md exactly: the mid-size sweet
-spot, NOT the mega-metros. Roughly 50k-300k annual demand-response trips with
-deadhead over 15% - big enough that the savings are real money, small enough
-that an ops director can say yes to a pilot without a procurement gauntlet.
+TARGETING AND THE HOOK NO LONGER USE DEADHEAD
+---------------------------------------------
+This file used to select on `deadhead_pct_hours >= 0.15` ("big enough that the
+savings are real money"), rank on `value_10pct_deadhead_cut`, and write a
+hedged dollar estimate of a 10 percent deadhead cut into every hook. All three
+are removed (packet MX-CLAIMS-DOLLAR-SWEEP-013). Deadhead share does not
+identify an expensive agency - Pearson +0.017, OLS R2 0.0003 on n=405
+(research/h5b_structure_vs_cost.json); Spearman +0.024 over 406 operators
+against +0.738 for cost per HOUR, with cost per trip flat at $48.53 in the
+lowest deadhead quartile against $54.09 in the highest
+(outreach/panel_findings.json, `dr_deadhead_predicts_cost_per_trip`, REJECTED
+by the panel gate) - so selecting on it selected on noise, and pricing it sold
+a recovery nobody has measured.
+
+Selection is now size band plus cost per trip at or above the national median:
+cost per trip is the outcome itself rather than a proxy for it, it varies 5.0x
+across US operators (`dr_cost_per_trip_dispersion_2024`, gate-passed), and
+being above the median is a fact about the filing rather than a diagnosis.
+
+NOTE FOR WHOEVER RUNS THIS NEXT: the live worksheet was built under the OLD
+criteria, so a regeneration will not reproduce the same 109 agencies. That is
+intended - the old pool was selected on a signal now known to be flat - but it
+means the existing hand-researched contacts must be carried over, not blown
+away. The --force guard below exists for exactly this.
 
 Output: outreach/contact_research_worksheet.csv
 
@@ -35,9 +57,12 @@ import pandas as pd
 HERE = Path(__file__).parent
 OUTFILE = HERE / "contact_research_worksheet.csv"
 
-# The sweet spot from design_partner_pitch.md: mid-size, real deadhead, not metros.
+# The sweet spot from design_partner_pitch.md: mid-size, not metros.
 MIN_TRIPS, MAX_TRIPS = 50_000, 300_000
-MIN_DEADHEAD = 0.15
+# At or above the national median cost per trip. Not a diagnosis - half the
+# panel is above the median by construction - just the half where the question
+# "which of the two things underneath this is yours?" is worth asking.
+MIN_COST_PER_TRIP_PERCENTILE = 50.0
 
 # A couple of big-city agencies slip under the 300k-trip cap because their
 # paratransit arm is mid-sized even though the parent runs a massive multimodal
@@ -72,23 +97,35 @@ def short_agency(name: str) -> str:
                   name).strip() or name
 
 
-def email_hook(r) -> str:
+def email_hook(r, panel) -> str:
     """The exact opening paragraph of the cold email - paste-ready once a name
-    is filled in, so the worksheet preview and the sent draft always match. The
-    dollar figure is a deliberately rounded, hedged ESTIMATE: NTD reports
-    deadhead as a share of vehicle-hours, and attributing cost uniformly to
-    hours is a modelling assumption, not guaranteed cash. Kept honest on
-    purpose - a precise savings promise is what a director who knows their own
-    books would nuke."""
-    dh = f"{r.deadhead_pct_hours:.0%}"
-    approx = f"${round(float(r.value_10pct_deadhead_cut), -4):,.0f}"
+    is filled in, so the worksheet preview and the sent draft always match.
+
+    Carries NO dollar figure. Every number in it is either the agency's own
+    filed figure or its rank within the same year's national panel, so an ops
+    director who knows their own books can check all of it and none of it
+    asserts a recovery. The previous version priced a hypothetical 10 percent
+    deadhead cut; see the module docstring for why that is gone.
+    """
+    pct = pctile(panel.cost_per_trip, r.cost_per_trip)
     return (f"Your agency's 2024 NTD filing reports {r.trips:,.0f} "
-            f"demand-response trips at ${r.cost_per_trip:,.2f} per trip, and "
-            f"about {dh} of your vehicle-hours run empty (deadhead). Attributing "
-            f"cost to hours, trimming that by even 10 percent points to "
-            f"something like {approx} a year, though how much is really "
-            f"recoverable depends on your fixed-versus-variable costs, which is "
-            f"exactly what we'd want to pin down with you.")
+            f"demand-response trips at ${r.cost_per_trip:,.2f} per trip. "
+            f"Against the {len(panel):,} US operators filing demand-response "
+            f"service that year that puts you at percentile {pct:.0f}, and the "
+            f"two numbers underneath it are ${r.cost_per_vrh:,.2f} per revenue "
+            f"hour (national median ${panel.cost_per_vrh.median():,.2f}) and "
+            f"{r.trips_per_vrh:,.2f} trips per revenue hour (median "
+            f"{panel.trips_per_vrh.median():,.2f}). Nationally about half the "
+            f"spread in cost per trip is the price of an hour and about half is "
+            f"how many trips fit into one, and only the second is anything a "
+            f"scheduler sets - which of those two is yours is the thing we "
+            f"can't tell from the outside.")
+
+
+def pctile(series, value) -> float:
+    """Percentile of one operator within the national panel for a metric."""
+    s = series.dropna()
+    return float((s < value).mean() * 100)
 
 
 def google_url(r) -> str:
@@ -130,19 +167,22 @@ if __name__ == "__main__":
                     f"blank your research. Use --force only if you're sure, or "
                     f"back the file up first.")
 
-    df = pd.read_csv(HERE.parent / "ntd" / "agency_economics.csv",
-                     dtype={"ntd_id": str})
-    df = df[df.report_year == 2024].copy()
-    df = df[(df.trips >= MIN_TRIPS) & (df.trips <= MAX_TRIPS)
-            & (df.deadhead_pct_hours >= MIN_DEADHEAD)
-            & (df.value_10pct_deadhead_cut > 0)]
+    econ = pd.read_csv(HERE.parent / "ntd" / "agency_economics.csv",
+                       dtype={"ntd_id": str})
+    # The comparison panel is every 2024 filer and is taken BEFORE the
+    # targeting filter, so a percentile quoted to an operator is national.
+    panel = econ[econ.report_year == 2024].copy()
+    cpt_floor = panel.cost_per_trip.quantile(MIN_COST_PER_TRIP_PERCENTILE / 100)
+    df = panel[(panel.trips >= MIN_TRIPS) & (panel.trips <= MAX_TRIPS)
+               & (panel.cost_per_trip >= cpt_floor)
+               & panel.cost_per_vrh.notna() & panel.trips_per_vrh.notna()]
     if not args.include_metros:
         metro = df.agency.str.contains(
             "|".join(re.escape(m) for m in BIG_CITY_METROS), case=False)
         df = df[~metro]
     if args.state:
         df = df[df.state == args.state.upper()]
-    df = df.sort_values("value_10pct_deadhead_cut", ascending=False)
+    df = df.sort_values("cost_per_trip", ascending=False)
     if args.top:
         df = df.head(args.top)
 
@@ -168,13 +208,20 @@ if __name__ == "__main__":
             "phone": "",
             "status": "to research",
             # --- the hook numbers, for reference (pre-filled) ---
-            "deadhead_dollars_per_yr": round(r.value_10pct_deadhead_cut),
-            "deadhead_pct": round(r.deadhead_pct_hours, 3),
-            "annual_dr_trips": int(r.trips),
+            # No dollar column. `deadhead_pct` stays because it is a figure the
+            # agency itself filed, but it is reference only: it does not select
+            # targets, rank them, or appear in the hook.
             "cost_per_trip": round(r.cost_per_trip, 2),
+            "cost_per_trip_pctile": round(
+                pctile(panel.cost_per_trip, r.cost_per_trip)),
+            "cost_per_vrh": round(r.cost_per_vrh, 2),
+            "trips_per_vrh": round(r.trips_per_vrh, 2),
+            "deadhead_pct": (round(r.deadhead_pct_hours, 3)
+                             if pd.notna(r.deadhead_pct_hours) else ""),
+            "annual_dr_trips": int(r.trips),
             "vehicles": r.vehicles,
             "org_type": r.organization_type,
-            "email_hook": email_hook(r),
+            "email_hook": email_hook(r, panel),
             # --- your notes ---
             "notes": "",
         })
@@ -182,11 +229,13 @@ if __name__ == "__main__":
     out = pd.DataFrame(rows)
     out.to_csv(OUTFILE, index=False)
     print(f"wrote {len(out)} target rows to {OUTFILE}")
-    print(f"pool: {MIN_TRIPS:,}-{MAX_TRIPS:,} DR trips, deadhead >= "
-          f"{MIN_DEADHEAD:.0%}" + (f", state={args.state.upper()}" if args.state else ""))
+    print(f"pool: {MIN_TRIPS:,}-{MAX_TRIPS:,} DR trips, cost per trip >= "
+          f"${cpt_floor:,.2f} (national percentile "
+          f"{MIN_COST_PER_TRIP_PERCENTILE:.0f} of {len(panel):,} 2024 filers)"
+          + (f", state={args.state.upper()}" if args.state else ""))
     if len(out):
-        preview = out[["priority", "short_name", "state",
-                       "deadhead_dollars_per_yr", "org_fit"]].head(12)
+        preview = out[["priority", "short_name", "state", "cost_per_trip",
+                       "cost_per_trip_pctile", "org_fit"]].head(12)
         print(preview.to_string(index=False))
     print("\nFill contact_name / contact_email / linkedin_url per row, then a "
           "fresh session with the Gmail connector turns these into drafts.")

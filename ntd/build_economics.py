@@ -1,14 +1,37 @@
 """Build the per-agency demand-response economics table from raw NTD pulls.
 
 For every agency: latest reported year, annual trips, operating expense,
-cost per trip, revenue hours, trips per revenue hour, deadhead share, and
-the dollar value of a 10 percent deadhead reduction (the outreach hook).
+cost per trip, revenue hours, trips per revenue hour, cost per revenue hour,
+deadhead share and deadhead cost.
 
-Deadhead math: NTD reports actual total hours and deadhead hours. We
-attribute operating expense to hours uniformly, so
+`deadhead_cost` IS AN ACCOUNTING IDENTITY, NOT A SAVING
+-------------------------------------------------------
+NTD reports actual total hours and deadhead hours. Attributing operating
+expense to hours uniformly gives
+
   deadhead_cost = opex * deadhead_hours / actual_total_hours
-  value_of_10pct_deadhead_cut = 0.10 * deadhead_cost
-This is deliberately conservative and fully reproducible from public data.
+
+which is arithmetic on the agency's own filing: this is what those empty
+vehicle-hours cost at the agency's own average cost per hour. HOW MUCH OF IT
+IS RECOVERABLE IS UNKNOWN and this file does not model it. Fixed costs do not
+fall with utilisation, and no operator fixed/variable split exists in this
+repo.
+
+A `value_10pct_deadhead_cut` column used to live here and has been REMOVED
+(packet MX-CLAIMS-DOLLAR-SWEEP-013). It multiplied the identity above by a
+hypothetical 10 percent cut and presented the product as an annual saving. It
+is not one, and the diagnostic premise underneath it does not hold: deadhead
+share does not identify an expensive agency. Pearson +0.017, OLS R2 0.0003 on
+n=405 (research/h5b_structure_vs_cost.json); Spearman +0.024 over 406
+operators against +0.738 for cost per HOUR, with cost-per-trip quartile
+medians flat at $48.53 (lowest deadhead quartile) to $54.09 (highest) --
+outreach/panel_findings.json, finding `dr_deadhead_predicts_cost_per_trip`,
+which the panel gate REJECTED on effect size.
+
+What replaces it is comparison, not valuation: an agency's position against
+the national panel on cost per trip, on productivity (trips per revenue hour)
+and on cost per revenue hour. Those are computable, checkable, and make no
+claim about what any intervention would recover.
 
 Output: ntd/agency_economics.csv, ntd/market_sizing.md
 """
@@ -80,16 +103,15 @@ df["deadhead_pct_hours"] = np.where(
     df.actual_hours > 0, df.deadhead_hours / df.actual_hours, np.nan)
 df["deadhead_pct_miles"] = np.where(
     df.actual_miles > 0, df.deadhead_miles / df.actual_miles, np.nan)
+# Accounting identity only -- see the module docstring. Never a saving.
 df["deadhead_cost"] = df.opex * df.deadhead_pct_hours
-df["value_10pct_deadhead_cut"] = 0.10 * df.deadhead_cost
 df["ada_share"] = np.where(df.trips > 0, df.ada_trips / df.trips, np.nan)
 
 for c in ["cost_per_trip", "trips_per_vrh", "cost_per_vrh"]:
     df[c] = df[c].round(2)
 for c in ["deadhead_pct_hours", "deadhead_pct_miles", "ada_share"]:
     df[c] = df[c].round(4)
-for c in ["deadhead_cost", "value_10pct_deadhead_cut"]:
-    df[c] = df[c].round(0)
+df["deadhead_cost"] = df.deadhead_cost.round(0)
 
 df = df.sort_values("trips", ascending=False)
 df.to_csv(HERE / "agency_economics.csv", index=False)
@@ -107,12 +129,19 @@ seg = (y24.groupby(bands, observed=True)
 
 dh = y24.dropna(subset=["deadhead_cost"])
 
+
+def q(series, p):
+    return series.dropna().quantile(p)
+
+
 lines = [
     "# US demand-response market, bottom-up from NTD",
     "",
     f"Source: FTA National Transit Database annual data (datasets ekg5-frzt,"
-    f" wwdp-t4re on data.transportation.gov), modes DR and DT, pulled"
-    f" {pd.Timestamp.today().date()}. All figures below are report year 2024"
+    f" wwdp-t4re on data.transportation.gov), modes DR and DT. Raw extracts"
+    f" live in ntd/raw/ and are pulled by ntd/fetch_ntd.py; this table was"
+    f" rebuilt {pd.Timestamp.today().date()} from those extracts, which is not"
+    f" the same date as the pull. All figures below are report year 2024"
     f" reporters only; ntd/agency_economics.csv also carries agencies whose"
     f" latest filing is 2022 or 2023.",
     "",
@@ -126,15 +155,57 @@ lines = [
     f"- Mean cost per trip (expense-weighted): "
     f"${y24.opex.sum() / y24.trips.sum():.2f}",
     "",
+    "## National reference distribution (2024)",
+    "",
+    "The comparison baselines. An operator's position in these distributions"
+    " is computable from its own filing and checkable by the operator; it"
+    " asserts nothing about what any change would recover.",
+    "",
+    f"| metric | p10 | median | p90 | p90/p10 |",
+    f"|:--|--:|--:|--:|--:|",
+    f"| Cost per trip | ${q(y24.cost_per_trip, .10):,.2f} | "
+    f"${y24.cost_per_trip.median():,.2f} | ${q(y24.cost_per_trip, .90):,.2f} |"
+    f" {q(y24.cost_per_trip, .90) / q(y24.cost_per_trip, .10):.2f}x |",
+    f"| Cost per revenue hour | ${q(y24.cost_per_vrh, .10):,.2f} | "
+    f"${y24.cost_per_vrh.median():,.2f} | ${q(y24.cost_per_vrh, .90):,.2f} |"
+    f" {q(y24.cost_per_vrh, .90) / q(y24.cost_per_vrh, .10):.2f}x |",
+    f"| Trips per revenue hour | {q(y24.trips_per_vrh, .10):,.2f} | "
+    f"{y24.trips_per_vrh.median():,.2f} | {q(y24.trips_per_vrh, .90):,.2f} |"
+    f" {q(y24.trips_per_vrh, .90) / q(y24.trips_per_vrh, .10):.2f}x |",
+    "",
+    "Roughly half the variation in cost per trip is productivity and roughly"
+    " half is input price (50.1% price / 49.9% productivity, finding"
+    " `dr_cost_per_trip_dispersion_2024` in outreach/panel_findings.json). Cost"
+    " per HOUR is the variable that actually ranks with cost per trip:"
+    " Spearman +0.738 across 406 operators.",
+    "",
     "## Deadhead (agencies reporting hours detail)",
+    "",
+    "**These are accounting identities, not an opportunity.** `deadhead_cost`"
+    " is what an operator's empty vehicle-hours cost at its own reported"
+    " average cost per hour. How much of it is recoverable is unknown: fixed"
+    " costs do not fall with utilisation and no operator fixed/variable split"
+    " exists in this repo. No figure in this section may be presented as a"
+    " saving, an opportunity, or a benefit of adopting Milexium.",
     "",
     f"- Agencies with deadhead detail: {len(dh):,}",
     f"- Their combined operating expense: ${dh.opex.sum():,.0f}",
     f"- Expense-weighted deadhead share of hours: "
     f"{(dh.deadhead_cost.sum() / dh.opex.sum()):.1%}",
-    f"- Combined annual deadhead cost: ${dh.deadhead_cost.sum():,.0f}",
-    f"- Value of a 10 percent deadhead reduction across them: "
-    f"${dh.value_10pct_deadhead_cut.sum():,.0f} per year",
+    f"- Combined annual cost of those empty hours (accounting identity): "
+    f"${dh.deadhead_cost.sum():,.0f}",
+    f"- Per-agency deadhead share: median "
+    f"{dh.deadhead_pct_hours.median():.1%}, p90 "
+    f"{q(dh.deadhead_pct_hours, .90):.1%}",
+    "",
+    "**Deadhead share does not identify an expensive agency.** Pearson +0.017,"
+    " OLS R2 0.0003 on n=405 (research/h5b_structure_vs_cost.json). Spearman"
+    " +0.024 over 406 operators, against +0.738 for cost per hour, with cost"
+    " per trip essentially flat across deadhead quartiles ($48.53 lowest to"
+    " $54.09 highest) -- outreach/panel_findings.json, finding"
+    " `dr_deadhead_predicts_cost_per_trip`, REJECTED by the panel gate on"
+    " effect size. A high deadhead figure is a description of an operator's"
+    " hours, not a diagnosis of its costs.",
     "",
     "## Segmentation by annual trips (2024)",
     "",
@@ -142,12 +213,22 @@ lines = [
     "",
     "## How to use these numbers",
     "",
-    "- Outreach: every row of agency_economics.csv gives a personalized"
-    " opener: trips, cost per trip, deadhead share, and the dollar value of"
-    " a 10 percent deadhead cut, all from the agency's own NTD filing.",
-    "- YC market size: the operating expense total above is the annual spend"
-    " Milexium optimizes against; software captures a fraction of the"
-    " savings it creates, not the whole budget. State both numbers plainly.",
+    "- **Outreach: position, not valuation.** Every row of"
+    " agency_economics.csv gives an operator its own trips, cost per trip,"
+    " cost per revenue hour and trips per revenue hour, and the reference"
+    " distribution above turns those into a national position the operator"
+    " cannot see from inside its own data. Do not attach a dollar saving to"
+    " that position -- the gap to the median is not known to be recoverable,"
+    " and asserting that it is would be the same causal claim the platform"
+    " refuses to make everywhere else.",
+    "- **YC market size: state the spend, not a capture.** The operating"
+    " expense total above is the annual spend US demand-response runs on. It"
+    " is a market size. It is not a saving Milexium has created, and no"
+    " fraction of it may be quoted as one until an operator's own"
+    " fixed/variable split says what is recoverable.",
+    "- **Status: Demonstrated, never Validated.** These are well-measured"
+    " descriptions of what agencies FILED. No operator has confirmed any of"
+    " it against their own books.",
 ]
 (HERE / "market_sizing.md").write_text("\n".join(lines), encoding="utf-8")
 
@@ -157,4 +238,5 @@ print(f"2024 trips: {y24.trips.sum():,.0f}  opex: ${y24.opex.sum():,.0f}")
 print(f"median cost/trip 2024: ${y24.cost_per_trip.median():.2f}")
 print(f"deadhead share (expense-weighted): "
       f"{dh.deadhead_cost.sum() / dh.opex.sum():.1%}")
-print(f"value of 10pct deadhead cut: ${dh.value_10pct_deadhead_cut.sum():,.0f}")
+print(f"cost of those empty hours (accounting identity, NOT a saving): "
+      f"${dh.deadhead_cost.sum():,.0f}")

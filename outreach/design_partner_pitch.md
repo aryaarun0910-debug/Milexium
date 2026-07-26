@@ -9,16 +9,23 @@ So every email here is engineered to move toward that, one step at a time.
 
 ## The funnel (never skip a step)
 
-1. **Cold email** leading with the agency's OWN NTD deadhead-dollar figure.
-   The personalized number is the pattern-interrupt. Ask: a 15-minute call.
+1. **Cold email** leading with the agency's OWN NTD position: what it costs
+   them to move somebody, where that sits among the 1,920 US operators filing
+   demand-response service, and the two numbers underneath it (cost per
+   revenue hour, trips per revenue hour). The personalized number is the
+   pattern-interrupt. Ask: a 15-minute call.
    (generate_design_partner_emails.py produces these, one per agency.)
 2. **15-minute call:** listen for where scheduling actually breaks (denials,
    no-shows, late pickups, standing-order chaos). Do NOT pitch a model.
 3. **Free analysis offer:** "Send us a de-identified export of your trip data
-   and we'll show you exactly where the deadhead is and what fixing it is
-   worth - no cost, no obligation." This is the data-acquisition move. A free,
-   specific, quantified analysis is a very easy yes, and it hands you the
-   proprietary data.
+   and we'll show you exactly which hours and which runs your empty time sits
+   in - no cost, no obligation." This is the data-acquisition move. A free,
+   specific analysis is a very easy yes, and it hands you the proprietary data.
+   **The offer is to locate it, never to price it.** What a fixed hour of
+   empty running is worth depends on the operator's own fixed-versus-variable
+   split, which is in no public filing; offering to say "what fixing it is
+   worth" promises a number nobody can produce and would be caught by the
+   first director who knows their own books.
 4. **Design partner:** "Be one of our first partners - you shape the product,
    you get founding-partner terms, and you get the audit-trail/compliance
    tooling first." Now you have a logo, a reference, and a live data feed.
@@ -28,17 +35,32 @@ So every email here is engineered to move toward that, one step at a time.
 
 ## Who to target FIRST (this matters more than the copy)
 
-**Not the giants.** The top rows by dollar value (MTA NYC, LA Metro, WMATA,
-SEPTA) have million-dollar deadhead numbers but are the wrong first targets:
-multi-year procurement, layers of gatekeepers, will not design-partner with
-two founders. Save them for after you have a reference customer.
+**Not the giants.** The largest systems (MTA NYC, LA Metro, WMATA, SEPTA) are
+the wrong first targets whatever their numbers look like: multi-year
+procurement, layers of gatekeepers, will not design-partner with two founders.
+Save them for after you have a reference customer.
+
+**Not the micro-operators either.** Rank the national panel on cost per trip
+alone and the top of the list is tribal and rural programs filing twenty trips
+a year at four figures each. Arithmetically the most expensive operators in the
+country; not operations that need a scheduler.
 
 **The sweet spot:** mid-size agencies, roughly **50,000-300,000 annual
-demand-response trips**, ideally with **deadhead over 15%** (real money to
-save) and organized as a **county/regional authority or non-profit** (they
-pick their own software; no state-DOT procurement gauntlet). Big enough that
-$200k-$800k/yr of deadhead is worth a call, small enough that the ops
-director can say yes to a pilot themselves.
+demand-response trips**, **at or above the national median cost per trip**, and
+organized as a **county/regional authority or non-profit** (they pick their own
+software; no state-DOT procurement gauntlet). Big enough to run a real
+scheduling operation, small enough that the ops director can say yes to a pilot
+themselves.
+
+The old criterion here was **deadhead over 15%**, on the reasoning that a high
+empty-hour share meant real money to save. It does not. Deadhead share does not
+identify an expensive agency: Spearman **+0.024** against cost per trip across
+406 operators, against **+0.738** for cost per *hour*, and cost per trip is flat
+across deadhead quartiles at **$48.53** in the lowest against **$54.09** in the
+highest (`outreach/panel_findings.json`, finding
+`dr_deadhead_predicts_cost_per_trip`, **rejected** by the panel gate). Pearson
+**+0.017**, OLS **R² 0.0003** at n=405
+(`research/h5b_structure_vs_cost.json`). Selecting on it was selecting on noise.
 
 Concretely from the data: agencies like rabbittransit (PA), Delaware Transit,
 Denton County (TX), OATS (MO), Suffolk County Transit (NY) - regional
@@ -52,9 +74,20 @@ outreach (easier to reference "we're talking to several agencies in your area").
 
 ## The cold email (what and why)
 
-- **Leads with their number, not our bio.** "Your filing shows $X/yr in
-  deadhead" beats "I'm a student who won a competition." The credential goes
-  in one line, mid-email, never the opener.
+- **Leads with their number, not our bio.** "Your filing puts you at percentile
+  75 of 1,920 operators on cost per trip" beats "I'm a student who won a
+  competition." The credential goes in one line, mid-email, never the opener.
+- **Their position, never a saving.** No email, deck, call or public page
+  attaches a dollar figure to the distance between an agency and the national
+  median. That distance is not known to be recoverable, and saying it is would
+  be the same causal claim the platform refuses to make everywhere else —
+  `packages/replay/teardown.py` will not emit a savings envelope without the
+  operator's own fixed/variable split, and copy does not get a lower standard
+  than code. A dollar figure that is pure arithmetic on the agency's own filing
+  ("these empty vehicle-hours cost $X at your own reported cost per hour") may
+  be stated **only** while labelled an accounting identity and paired with the
+  fact that recoverability is unknown. Never as a saving, an opportunity, or a
+  benefit of adopting Milexium.
 - **Names the real buying trigger:** compliance/defensibility, not efficiency.
   "Every denial comes with the reason, which makes your ADA/NTD reporting
   defensible" is what an ops director actually loses sleep over.

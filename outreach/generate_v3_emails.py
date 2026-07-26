@@ -30,6 +30,7 @@ Usage:
 
 from __future__ import annotations
 
+import csv
 import json
 import re
 from pathlib import Path
@@ -124,26 +125,35 @@ def body_for(ins: dict, first_name: str, short_name: str) -> str:
         f"{dh}%, against a {med}% median.",
     ]
 
-    # The dollar line only appears when there is a real gap to close, and it is
-    # always hedged: overstating recoverable cash to someone who knows their own
-    # books loses the account on line three. The hedge is what makes it credible.
+    # THERE IS NO DOLLAR LINE, BY DESIGN.
     #
-    # Word budget: the dollar line costs ~22 words, so when it is present the
-    # attribution collapses to a short clause. Sub-80 words is the whole point
-    # (150+ words = 42% fewer replies), and the rank is doing the work either way.
-    val = ins.get("modelled_gap_value_usd")
-    if val and val >= 100_000:
-        amount = (
-            f"${val/1_000_000:.1f}M"
-            if val >= 1_000_000
-            else f"${round(val/1000)*1000:,}"
-        )
+    # This block used to read: "At your cost per hour the gap is roughly $X a
+    # year — though how much is genuinely recoverable depends on your
+    # fixed-versus-variable split." It is removed (packet
+    # MX-CLAIMS-DOLLAR-SWEEP-013). The hedge was real and was not the issue.
+    # $X was the value of a counterfactual in which the operator sat at the
+    # peer median deadhead share, so the sentence asserted that the distance to
+    # the median is recoverable — and separately, that deadhead distance is not
+    # evidence of a cost problem at all (Spearman +0.024 against cost per trip
+    # over 406 operators, versus +0.738 for cost per hour;
+    # outreach/panel_findings.json). build_peer_insight.py no longer computes
+    # the figure, so it cannot be rendered here even by accident.
+    #
+    # What goes in its place is the operator's cost per revenue hour against
+    # the same peer group: their own filed number, the variable that actually
+    # tracks cost per trip, and still nothing they can see from inside their
+    # own data. Word budget is unchanged — sub-80 words is the whole point.
+    cph = ins.get("cost_per_vrh")
+    med_cph = ins.get("peer_median_cost_per_vrh")
+    if cph and med_cph:
         lines += [
             "",
-            "That's from your own NTD filing, benchmarked nationally.",
+            "That's from your own NTD filing, benchmarked nationally. Alongside "
+            f"it you run ${cph:,.0f} per revenue hour against a ${med_cph:,.0f} "
+            "median for that same group.",
             "",
-            f"At your cost per hour the gap is roughly {amount} a year — though how "
-            "much is genuinely recoverable depends on your fixed-versus-variable split.",
+            "I can't tell you from outside what either of those is worth to you "
+            "— that depends on your fixed-versus-variable split.",
         ]
     else:
         lines += [
@@ -178,9 +188,37 @@ def body_for(ins: dict, first_name: str, short_name: str) -> str:
     return "\n".join(lines)
 
 
+def opted_out_names() -> set[str]:
+    """Organisations that asked in writing never to be contacted again.
+
+    build_peer_insight.py already refuses to compute an insight for these, so
+    they cannot reach peer_insights.json. This second pass exists because a
+    STALE draft on disk is indistinguishable from a fresh one at send time: an
+    opt-out honoured only at compute time still leaves an addressed email in
+    the folder from before the opt-out arrived. Same reasoning as the held
+    targets above -- a note in a file is not a safeguard, an absent draft is.
+    """
+    path = HERE / "contact_research_worksheet.csv"
+    if not path.exists():
+        return set()
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        return {
+            row["short_name"] for row in csv.DictReader(fh)
+            if (row.get("do_not_contact") or "").strip()
+        }
+
+
 def main() -> None:
     insights = json.loads(INSIGHTS.read_text(encoding="utf-8"))
     written, manual, skipped, held, unverified = 0, [], [], [], []
+
+    removed = []
+    for name in sorted(opted_out_names()):
+        draft = DRAFTS / f"V3_{slug(name)}.txt"
+        if draft.exists():
+            draft.unlink()
+            removed.append(name)
+        insights.pop(name, None)
 
     for short_name, ins in sorted(insights.items()):
         if short_name in HOLD_FOR_VERIFICATION:
@@ -221,6 +259,9 @@ def main() -> None:
         written += 1
 
     print(f"\nwrote {written} v3 drafts to {DRAFTS.relative_to(HERE.parent)}")
+    if removed:
+        print(f"\nOPT-OUT ENFORCED, stale draft deleted ({len(removed)}): "
+              + ", ".join(removed))
     for name in held:
         print(f"\nHELD (no draft generated): {name}\n  reason: {HOLD_FOR_VERIFICATION[name]}")
     if skipped:

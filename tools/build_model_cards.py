@@ -23,6 +23,26 @@ real = json.loads((RD / "metrics_real.json").read_text())
 ntd = json.loads((RD / "metrics_ntd_monthly.json").read_text())
 leak = json.loads((RD / "leakage_audit_report.json").read_text())
 
+# Banned in generated copy: a generator that reintroduces a corrected claim is
+# its own class of defect, so the prohibition lives beside the strings rather
+# than in a review checklist. Enforced by
+# conformance/property-tests/test_claim_discipline.py, which regenerates this
+# file's output into a temp path and fails on any of these.
+#
+# "validated"     - ADR-0001 reserves it for consented operator data against a
+#                   declared baseline. Milexium has none.
+# "production model" - nothing here is deployed to or running for an operator.
+BANNED_IN_GENERATED_COPY = ("validated", "production model")
+
+STATUS_CONTRACT = (
+    "**Status: Demonstrated, never Validated.** Every model below is trained "
+    "and evaluated on public data. Under ADR-0001, *Validated* requires "
+    "consented operator data against a declared baseline and Milexium has "
+    "none, so no result here validates any operator's capacity planning, "
+    "scheduling, or dispatch. See the status contract in "
+    "`docs/COMPETITIVE_POSITIONING.md`."
+)
+
 ZONE = {"nyc_access_a_ride": "borough", "chicago_tnp": "community area",
         "mta_bus": "route", "mta_subway": "station"}
 GRAN = {"nyc_access_a_ride": "hourly", "chicago_tnp": "hourly",
@@ -38,7 +58,7 @@ def zone_hour_card(key, m):
 
 - **Role:** {role}
 - **Task:** forecast next-hour demand per {ZONE[key]}, {GRAN[key]} granularity, day-ahead.
-- **Model:** XGBoost, count:poisson (validated as the right objective, see
+- **Model:** XGBoost, count:poisson (selected in the objective bakeoff, see
   OBJECTIVE_BAKEOFF_RESULTS.md), GPU-trained.
 - **Data / split:** train {m['train_span']} | tune {m.get('tune_span','-')} |
   cal {m.get('cal_span','-')} | valid {m['valid_span']} ({m['n_valid']:,} rows).
@@ -63,6 +83,13 @@ cards = ["# Milexium model cards",
          f"_Generated {date.today()} by tools/build_model_cards.py from the "
          "committed metrics artifacts. Every number here traces to a JSON in "
          "realdata/. Regenerate after any retrain._",
+         "",
+         # The ADR-0001 status contract. This paragraph was added to
+         # docs/MODEL_CARDS.md by hand and the generator did not carry it, so
+         # the next regeneration would have silently deleted the strongest
+         # honesty statement in the document. It lives here now: a claim that
+         # only exists in generated output has to be owned by the generator.
+         STATUS_CONTRACT,
          "",
          "All models share one protocol: strict temporal holdout, a "
          "seasonal-naive baseline reported next to every result, and a "
@@ -109,11 +136,14 @@ cards += [
     "## Not shipped",
     "",
     "The pretrain-then-finetune transformer (kaggle/) was run on real GPUs and "
-    "**lost to XGBoost** on AAR (0.933 vs 0.986); it is R&D evidence, not a "
-    "production model. See kaggle/results/. We ship the simpler model on "
-    "purpose.",
+    "**lost to XGBoost** on AAR (0.933 vs 0.986); it is R&D evidence and is "
+    "not shipped. See kaggle/results/. We ship the simpler model on purpose — "
+    "as a local reference implementation, not a production model: nothing here "
+    "is deployed to or running for an operator.",
     "",
 ]
 
-OUT.write_text("\n".join(cards))
+# Explicit UTF-8: write_text() defaults to the locale encoding, which on
+# Windows is cp1252 and cannot represent the em dash above.
+OUT.write_text("\n".join(cards), encoding="utf-8")
 print(f"wrote {OUT} ({len(cards)} lines)")

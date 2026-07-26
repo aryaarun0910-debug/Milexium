@@ -1,0 +1,410 @@
+id: MX-CLAIMS-DOLLAR-SWEEP-013
+status: completed
+dispatched_date: "2026-07-26"
+completed_date: "2026-07-26"
+adr: >
+  none — this packet writes no ADR. It repairs claim language and deletes claim
+  MACHINERY in artifacts that generate outbound copy, against contracts that
+  already exist: ADR-0001 (status vocabulary), ADR-0058 (panel-findings gate)
+  and the refusal already implemented in packages/replay/teardown.py, which
+  will not emit a savings envelope without an operator's own fixed/variable
+  cost split. It introduces no platform mechanism, no schema and no runtime
+  behaviour. The standing rule it leaves behind (outreach/README.md, ntd/README.md)
+  restates those contracts where copy actually gets written; it does not amend
+  them.
+objective: >
+  MX-DOCS-CLAIM-SWEEP-012 removed the $94M deadhead opportunity figure from the
+  YC draft and reported four live defects it did not own. This packet closes
+  those, and they outrank the documents 012 fixed: unlike a draft, these
+  artifacts GENERATE claims and send them to real US transit agencies, and one
+  of them is the backend for a self-serve widget destined for a public website.
+  A public tool that hands any agency an unsupported savings number is the
+  single most damaging artifact this repo could ship.
+
+  The finding that invalidates all of it: deadhead share does not identify an
+  expensive agency. Pearson +0.017, OLS R2 0.0003 at n=405
+  (research/h5b_structure_vs_cost.json); Spearman +0.024 against cost per trip
+  across 406 operators versus +0.738 for cost per HOUR, with cost-per-trip
+  quartile medians flat at $48.53 / $53.34 / $52.30 / $54.09
+  (outreach/panel_findings.json, `dr_deadhead_predicts_cost_per_trip`, REJECTED
+  by the panel gate on effect size). The arithmetic cost of empty running is
+  real. The diagnostic and causal claim built on it is not.
+
+  Repair, not retreat: replace the unsupported SAVINGS framing with a
+  defensible COMPARISON framing, so outreach ends up with a hook that is more
+  checkable than the one it lost, not with an apologetic gap.
+owned_paths:
+  - ntd/**
+  - outreach/**
+  - tools/build_model_cards.py
+  - conformance/property-tests/test_claim_discipline.py
+  - workstreams/packets/MX-CLAIMS-DOLLAR-SWEEP-013.yaml
+read_only_dependencies:
+  - research/h5b_structure_vs_cost.json          # the deadhead-vs-cost null
+  - research/h5e_ridesharing.json                # occupancy, the replacement finding
+  - outreach/panel_findings.json                 # gate-passed sector numbers
+  - architecture/decisions/0001-adopt-expansion-blueprint-and-control-plane.md
+  - architecture/decisions/0058-panel-findings-gate.md
+  - docs/MODEL_CARDS.md                          # read to match corrected wording; NOT written
+  - packages/replay/teardown.py                  # the refusal copy is held to
+  - workstreams/packets/MX-DOCS-CLAIM-SWEEP-012.yaml
+  - packages/**                                  # NOT touched — agents concurrent
+  - docs/**                                      # NOT touched
+  - research/**                                  # NOT touched — read only
+  - conformance/property-tests/test_realdata_governance.py   # NOT touched
+normative_contracts:
+  - >
+    No savings, ROI or "opportunity" figure may be published while no operator
+    fixed/variable cost split exists. packages/replay/teardown.py already
+    refuses to emit a savings envelope without one; copy does not get a lower
+    standard than code.
+  - >
+    A dollar figure that is pure arithmetic on the agency's own filing ("these
+    empty vehicle-hours cost $X at your own reported average cost per hour")
+    may be stated ONLY while labelled an accounting identity and paired with an
+    explicit statement that recoverability is unknown. It may never be
+    presented as a saving, an opportunity, or a benefit of adopting Milexium.
+  - >
+    Where a function's entire purpose is to produce an unsupported number, the
+    function is REMOVED rather than watered down. A hedge on a figure whose
+    premise is false makes the falsehood harder to notice, not safer.
+  - >
+    ADR-0001 status vocabulary: Exists / Specified / Demonstrated / Validated /
+    Production. Nothing here is Validated. Every artifact in this packet
+    describes what agencies FILED, which is not what happened, and no operator
+    has confirmed any of it against their own books.
+  - >
+    Every published number names the artifact it came from: research/*.json,
+    outreach/panel_findings.json, or an ADR. An unsourceable number is deleted,
+    not softened.
+  - >
+    A record of what was SENT to an agency is evidence and is never edited to
+    make a check pass. Preserving it beats a green test.
+required_outputs:
+  - >
+    ntd/peer_position.py replacing ntd/savings_calculator.py, with
+    compute_savings() removed outright and compare_agency() in its place.
+  - >
+    ntd/build_economics.py no longer computing value_10pct_deadhead_cut, and
+    ntd/market_sizing.md carrying a national reference distribution instead of
+    the $94,399,949 line.
+  - >
+    Position-based hooks in ntd/build_outreach_targets.py,
+    outreach/build_contact_worksheet.py and
+    outreach/generate_design_partner_emails.py, with one shared definition.
+  - >
+    outreach/build_peer_insight.py no longer computing modelled_gap_value_usd
+    and outreach/generate_v3_emails.py no longer rendering it.
+  - >
+    tools/build_model_cards.py reproducing the corrected docs/MODEL_CARDS.md
+    byte-for-byte apart from the generation date.
+  - >
+    conformance/property-tests/test_claim_discipline.py, mutation-checked.
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_claim_discipline.py -q   # 8 passed"
+  - "py -3 -m pytest conformance/property-tests/test_panel_findings.py -q     # 76 passed"
+  - "py -3 -m pytest conformance/property-tests/test_demo_walkthrough.py conformance/property-tests/test_teardown.py -q  # 63 passed"
+  - "grep -rn '94,399,949' ntd/                                              # no match"
+  - "grep -rn 'value_10pct_deadhead_cut' ntd/ outreach/                       # only prose recording the removal"
+  - "test ! -f ntd/savings_calculator.py                                      # removed, not reworded"
+artifacts_changed:
+  - >
+    ntd/savings_calculator.py -> ntd/peer_position.py. REMOVED OUTRIGHT:
+    compute_savings(ntd_id, deadhead_cut_pcts), both of its branches, and the
+    module name itself, which was the claim. Branch one priced a hypothetical
+    deadhead cut; branch two priced "closing X% of the gap to the national
+    median", which is worse because it assumes the cost gap is recoverable —
+    precisely the causal claim the platform refuses elsewhere. REPLACED BY
+    compare_agency(ntd_id): percentile position on cost per trip, cost per
+    revenue hour and trips per revenue hour against the 1,920-operator 2024
+    panel, plus the deadhead accounting identity carrying
+    DEADHEAD_IDENTITY_NOTE and an explicit "is_a_saving": false.
+  - >
+    ntd/build_economics.py — the column value_10pct_deadhead_cut is DELETED, so
+    the number cannot be read by any downstream consumer even by accident.
+    deadhead_cost stays and is documented as an accounting identity. The
+    generated ntd/market_sizing.md loses "Value of a 10 percent deadhead
+    reduction across them: $94,399,949 per year" and gains a National Reference
+    Distribution table (cost per trip $16.26 / $37.97 / $81.68, cost per
+    revenue hour $38.91 / $76.88 / $148.55, trips per revenue hour 1.13 / 2.05
+    / 3.99) plus the null result stated in full beside the deadhead totals.
+  - >
+    ntd/build_outreach_targets.py — both dollar claims removed from hook().
+    Replaced by the agency's national percentile on cost per trip and the two
+    quantities underneath it. value_10pct_deadhead_cut dropped from the output
+    columns; cost_per_vrh and trips_per_vrh added.
+  - >
+    outreach/build_contact_worksheet.py — email_hook() no longer prices a 10
+    percent deadhead cut. Target selection no longer filters on
+    deadhead_pct_hours >= 0.15 and no longer ranks on deadhead dollars; it now
+    filters on the mid-size band plus cost per trip at or above the national
+    median and ranks on cost per trip. Output column deadhead_dollars_per_yr
+    replaced by cost_per_trip_pctile / cost_per_vrh / trips_per_vrh.
+  - >
+    outreach/contact_research_worksheet.csv — 95 unsent rows had email_hook
+    regenerated into the comparison wording, because that column is the live
+    paste-ready sending surface and 40 rows were "ready to send". The 14 rows
+    that are a RECORD (13 sent, 1 opted out) were left byte-identical. Column
+    deadhead_dollars_per_yr dropped; cost_per_trip_pctile, cost_per_vrh,
+    trips_per_vrh added.
+  - >
+    outreach/generate_design_partner_emails.py — hook_paragraph() removed;
+    the module now imports the single shared definition
+    build_contact_worksheet.email_hook so the worksheet preview a human
+    reviewed and the draft that gets sent cannot drift. Subject line moved from
+    the agency's deadhead percentage to its own filed cost per trip. The
+    free-analysis offer now promises to LOCATE empty time, never to price it.
+  - >
+    outreach/build_peer_insight.py — modelled_gap_value_usd removed. gap_points
+    (unpriced) retained, and cost_per_vrh / peer_median_cost_per_vrh /
+    cost_per_vrh_rank added, because cost per hour is the variable that
+    actually ranks with cost per trip. outreach/peer_insights.json regenerated.
+  - >
+    outreach/generate_v3_emails.py — the dollar line "At your cost per hour the
+    gap is roughly $X a year" removed and replaced by the operator's cost per
+    revenue hour against the same peer group. 45 v3 drafts regenerated.
+  - >
+    outreach/design_partner_pitch.md — funnel step 1 leads with position rather
+    than a deadhead-dollar figure; step 3 offers to locate empty time, not to
+    value it; the targeting criterion "deadhead over 15% (real money to save)"
+    replaced, with the measurement that killed it recorded in place; a standing
+    "their position, never a saving" rule added to the cold-email section.
+  - >
+    outreach/README.md — the STOP notice retained and corrected (see
+    failure_injections), plus a table of every claim removed and the standing
+    rule, and the sent-record warning.
+  - >
+    ntd/README.md — column list corrected, the accounting-identity rule stated,
+    and the removal of value_10pct_deadhead_cut and savings_calculator.py
+    recorded with the numbers that justify it.
+  - >
+    tools/build_model_cards.py — "validated as the right objective" (x4 cards)
+    and "not a production model" corrected to match the strings 012 fixed in
+    docs/MODEL_CARDS.md, so regeneration no longer silently undoes that fix.
+  - >
+    conformance/property-tests/test_claim_discipline.py — new, 8 tests.
+removed_outright:
+  - "ntd/savings_calculator.py (file) and its compute_savings() function."
+  - "ntd/agency_economics.csv column value_10pct_deadhead_cut."
+  - "outreach/peer_insights.json field modelled_gap_value_usd."
+  - "outreach/contact_research_worksheet.csv column deadhead_dollars_per_yr."
+  - "outreach/generate_design_partner_emails.py hook_paragraph()."
+  - >
+    ntd/market_sizing.md line "Value of a 10 percent deadhead reduction across
+    them: $94,399,949 per year" — the origin of the $94M figure removed from
+    the YC draft by MX-DOCS-CLAIM-SWEEP-012.
+agencies_already_sent_a_dollar_figure:
+  note: >
+    FACTUAL RECORD FOR THE FOUNDER. No agency was contacted and no sent record
+    was altered by this packet. All 13 sent agencies received a dollar figure —
+    there is no subset that did not. Their email_hook values in
+    contact_research_worksheet.csv are preserved verbatim and pinned by name in
+    test_claim_discipline.py, which fails if any is ever rewritten. The v3
+    drafts on disk WERE regenerated (they are gitignored and disposable by
+    design), so the figures below are the durable record of what was rendered.
+  sent_2026_07_21:
+    wording: >
+      "Attributing cost to hours, trimming that by even 10 percent points to
+      something like $X a year, though how much is really recoverable depends
+      on your fixed-versus-variable costs."
+    agencies:
+      - "SamTrans (San Mateo County Transit District, CA) — $510,000"
+      - "Intercity Transit (WA) — $290,000"
+      - "Laketran (OH) — $280,000"
+  sent_2026_07_24_v3_tranche_1:
+    wording: >
+      "At your cost per hour the gap is roughly $X a year — though how much is
+      genuinely recoverable depends on your fixed-versus-variable split."
+      X = value of closing the deadhead gap to the PEER MEDIAN, which is the
+      worse of the two claims: a counterfactual, not an identity.
+    agencies:
+      - "OMNI (Omnitrans, CA) — $1.5M"
+      - "Ann Arbor Area Transportation Authority (MI) — $1.9M"
+      - "Transit Authority of Northern Kentucky (KY) — $2.1M"
+      - "Area Regional Transit (St. Lucie County, FL) — $905,000"
+      - "City of Tallahassee (FL) — $866,000"
+      - "Tulare County Regional Transit Agency (CA) — $902,000"
+      - "Riverside Connect (City of Riverside, CA) — $643,000"
+      - "STEP, Inc. (PA) — $754,000"
+      - "Pomona Valley Transportation Authority (CA) — $500,000"
+      - "Bayway (Bay County TPO, FL) — $395,000"
+  fourteenth_organisation_needs_a_human_decision:
+    - >
+      Anne Arundel County (MD) is NOT one of the 13 — its status is "DECLINED
+      2026-07-25 - opt-out honoured" and do_not_contact is set. But it was
+      plainly contacted (it replied asking to be removed), and its preserved
+      email_hook carries "$360,000 a year". Which wording actually reached them
+      cannot be determined from the repo, because the v3 drafts are gitignored.
+      Recorded here so the founder has it; no action taken.
+security_and_privacy_invariants:
+  - "No email sent, no draft pushed to Gmail, no contact record altered."
+  - "No git add / commit / push. No ADR written."
+  - >
+    docs/**, research/**, packages/** and
+    conformance/property-tests/test_realdata_governance.py untouched —
+    concurrent agents own those trees. Findings there are REPORTED with
+    file:line, not edited.
+  - >
+    docs/JOURNAL.md and docs/archive/** deliberately untouched even though the
+    $94M figure appears there. outreach/archive/exemplars_v2.md left for the
+    same reason and excluded from the regression sweep by name: an append-only
+    record of what was believed on the day is evidence that the claim was made
+    and later killed, and that history is an asset.
+failure_injections:
+  - >
+    MUTATION-CHECKED, 7 injections, all RED, all reverted. (1) v3 dollar line
+    restored to generate_v3_emails.py -> caught by the emitted-string sweep.
+    (2) "$94,399,949 per year" restored to market_sizing.md -> caught. (3)
+    "validated as the right objective" restored to tools/build_model_cards.py
+    -> caught by regenerating the model cards into a temp path. (4)
+    value_10pct_deadhead_cut restored to build_economics.py and the table
+    rebuilt -> caught twice, by the column check and the sweep. (5) a SENT
+    agency's hook rewritten into the new wording -> caught (see next entry).
+    (6) a savings hook injected into a live worksheet row -> caught. (7)
+    compute_savings() re-added to peer_position.py -> caught.
+  - >
+    MUTATION 5 PASSED ON THE FIRST ATTEMPT AND THE TEST WAS WRONG. The
+    sent-record check asserted ">= 13 rows still carry the old hook"; because 14
+    rows qualify, overwriting SamTrans's record left 13 and the suite stayed
+    green. A count is satisfied by the wrong thirteen. The check now pins the
+    exact organisations by name. This is recorded because the failure mode —
+    a threshold that a fourteenth row silently covers for — is the same shape
+    as the defect the packet exists to fix.
+  - >
+    MUTATION 2 INITIALLY ESCAPED THE GENERAL SWEEP. The first version excused
+    any hit sitting within three lines of retirement language ("removed",
+    "rejected", ...), so a restored $94M line in market_sizing.md was excused by
+    the paragraph underneath it, which says the relationship was rejected. Only
+    the targeted "$94M is back" assertion caught it. The excuse is now OPT-IN
+    via a four-file allowlist of hand-written documents and is unavailable to
+    generated artifacts, since a generated file never legitimately narrates its
+    own history.
+  - >
+    The Python half of the sweep parses the AST and scans EMITTED STRING
+    LITERALS, excluding comments and docstrings, rather than raw lines. A line
+    scan cannot tell a claim the code prints from a comment explaining that the
+    claim was deleted, and this packet adds a lot of the latter. It is also
+    strictly stronger: f-strings and implicit concatenation are reassembled, and
+    the original offending copy was split across source lines.
+  - >
+    Two numbers in the dispatch brief were NOT written because they do not
+    trace to a JSON artifact. The cost-per-trip QUINTILE medians
+    ($53.10/$48.30/$52.21/$53.10/$55.00) quoted in outreach/README.md cite
+    research/h5b_structure_vs_cost.PY, which computes quintiles but persists
+    none of them; h5b_structure_vs_cost.JSON has no quintile field. The README
+    now cites the gate-passed QUARTILE medians ($48.53 / $53.34 / $52.30 /
+    $54.09) from outreach/panel_findings.json instead. Same correction 012
+    made in docs; the outreach copy still had the untraceable version.
+  - >
+    The occupancy finding is published with its own rejection attached. The
+    brief presents occupancy as the replacement for deadhead, and it is — but
+    the closely related pooling claim `dr_pooling_efficiency_declined` was
+    REJECTED by the panel gate on BOTH effect size (|-4.6%| vs a 5.0% floor)
+    and composition (only 363 of 1,607 balanced-panel agencies, 22.6%, file
+    Passenger Miles Traveled at all; it is a Full Reporter obligation so the
+    filers skew large and urban). Occupancy at -10.0% clears the effect floor
+    where trip length does not, but it inherits the identical selection bias.
+    outreach/README.md therefore scopes it as a hypothesis for shadow mode
+    rather than a sector finding, and names the rejection.
+compatibility_matrix:
+  - "All 7 dispatched items closed. 4 further defects found and fixed in owned paths."
+  - >
+    139 pre-existing tests across the three consumers of ntd/agency_economics.csv
+    (test_panel_findings 76, test_demo_walkthrough + test_teardown 63) pass
+    unchanged after the column deletion. Neither reads value_10pct_deadhead_cut.
+  - >
+    tools/build_model_cards.py now reproduces the committed docs/MODEL_CARDS.md
+    byte-for-byte except the generation date. Verified by diff; docs/ was read,
+    never written.
+found_beyond_the_dispatch:
+  - >
+    SEVERITY-1, FIXED, NOT A CLAIM DEFECT. Anne Arundel County explicitly opted
+    out on 2026-07-25 ("please remove us from your mailing list", NEVER contact
+    again) and is correctly marked do_not_contact — but outreach/build_peer_insight.py
+    and outreach/generate_v3_emails.py never read that column, so the agency
+    pipeline still generated outreach/drafts/V3_anne_arundel_county.txt
+    addressed to transportation@aacounty.org, the exact inbox that asked to be
+    removed. generate_expert_emails.py has always honoured it; the agency
+    pipeline did not, and an opt-out enforced by only one of two pipelines is
+    not an opt-out. Now enforced in both, at both layers: no insight is computed
+    for an opted-out organisation, and any stale draft on disk is deleted on
+    every run — a stale draft is indistinguishable from a fresh one at send
+    time. This predates the packet; the draft was on disk before any change.
+  - >
+    ntd/build_outreach_targets.py described a filtered median as national. The
+    panel was computed AFTER `df = df[df.trips >= 20_000]`, so every hook that
+    said "the national median is $X" quoted $36.61, the median of operators
+    above 20k trips, rather than the true national $37.97 over 1,920 filers.
+    Fixed by taking the comparison panel before the targeting filter. The same
+    shape of error is now avoided explicitly in build_contact_worksheet.py and
+    generate_design_partner_emails.py.
+  - >
+    Ranking the national panel on cost per trip alone puts 20-trip tribal and
+    rural programs at the top — arithmetically the most expensive operators in
+    the country and completely wrong targets. The old deadhead-dollar ranking
+    hid this by accident because it scaled with size. The mid-size band from
+    design_partner_pitch.md is now applied in the generator too, and the trap is
+    written into the pitch document.
+  - >
+    tools/build_model_cards.py would have deleted the ADR-0001 status paragraph
+    ("**Status: Demonstrated, never Validated.** ...") from docs/MODEL_CARDS.md
+    on its next run. 012 added it to the document by hand; the generator never
+    carried it. This is the same defect class as the two strings the brief
+    named, and strictly worse in effect — it removes the strongest honesty
+    statement in the file rather than adding a weak one. The paragraph is now a
+    STATUS_CONTRACT constant in the generator with its own test.
+  - >
+    tools/build_model_cards.py called OUT.write_text() with no encoding. On
+    Windows that is cp1252, which cannot represent the em dash the corrected
+    wording uses. Now explicit UTF-8.
+  - >
+    NOT FIXED, OUTSIDE OWNED PATHS, REPORTED. packages/replay/teardown.py:82
+    and :759 justify DEFAULT_REDUCTION_FRACTION = 0.10 by appeal to
+    "ntd/agency_economics.csv's value_10pct_deadhead_cut convention". That
+    column no longer exists, so the justification is now dangling — and it was
+    always circular, since the column was the artifact this packet deleted for
+    being unsupported. The 0.10 default needs a reason of its own or needs to go.
+    The same sentence is baked into artifacts/demo-walkthrough/evidence_pack.json:437.
+  - >
+    NOT FIXED, OUTSIDE OWNED PATHS, REPORTED. Three references to the deleted
+    module now dangle and need a packet that owns docs/ and packages/.
+    docs/DATA_SOURCES.md:26 still lists ntd/savings_calculator.py as a derived
+    product ("self-serve 'your agency's own numbers' calculator, backend for
+    the future website widget") — it should point at ntd/peer_position.py and
+    drop the savings framing. packages/replay/teardown.py:83 cites
+    "ntd/savings_calculator.py's scenarios" alongside the deleted column.
+    docs/RND_QUESTIONS.md:21 asks an open question — whether a public calculator
+    "that shows an agency's own NTD-derived savings number" breaches the locked
+    no-public-demo rule — which this packet has answered by removing the
+    calculator; the question is now moot and should be closed rather than left
+    open. docs/JOURNAL.md:1312 also names it and is correctly left alone.
+  - >
+    NOT FIXED, DELIBERATELY OUT OF SCOPE. The v3 hook still LEADS with a
+    deadhead rank ("9th of 151 on empty vehicle-hours"). This packet owned
+    dollar claims; the rank is a true fact that is not a diagnosis, and
+    outreach/README.md already carries the standing instruction not to send
+    another deadhead-ranked agency email until the peer engine is rebuilt on
+    occupancy. 45 regenerated v3 drafts are therefore clean of dollar claims but
+    still blocked from sending by that rule.
+upstream_blockers: []
+downstream_consumers:
+  - >
+    The website widget (Arya + Chris, website phase). ntd/peer_position.py is
+    its backend and now returns a position rather than a savings figure.
+  - "The v3 agency outreach tranches, blocked pending the occupancy rebuild."
+  - >
+    Any future deck, landing page or proposal. outreach/README.md now carries
+    the standing dollar-claim rule and the table of what was removed;
+    conformance/property-tests/test_claim_discipline.py enforces it.
+notes: >
+  Deliberately NOT done, and why. No ADR, no git operations, no email. The
+  worksheet was not regenerated wholesale — build_contact_worksheet.py refuses
+  to overwrite hand-entered research and that guard was respected; only the
+  email_hook column of unsent rows was rewritten in place, because that column
+  is the live paste-ready sending surface and 40 rows were marked ready to send.
+  A consequence worth flagging: the live worksheet's 109 agencies were selected
+  under the OLD criteria (deadhead >= 15%), and the generator's criteria have
+  changed, so a future regeneration will not reproduce the same pool. That is
+  intended — the old pool was selected on a signal now known to be flat — but
+  the hand-researched contacts must be carried across rather than blown away,
+  and the docstring says so at the point of use.

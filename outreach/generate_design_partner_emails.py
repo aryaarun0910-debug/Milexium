@@ -6,15 +6,22 @@ leads with THEIR numbers, not with "I'm a student." The personalized figure is
 the pattern-interrupt that gets the 15-minute call; the design-partner /
 free-analysis offer (see design_partner_pitch.md) is made on that call.
 
-Honesty about the deadhead dollar figure: NTD reports deadhead as a share of
-vehicle-HOURS. build_economics.py attributes operating expense to hours
-uniformly, so the "value of a 10% deadhead cut" is a MODELLED estimate, not
-guaranteed cash - fixed costs (salaries, depreciation, admin) don't fall
-proportionally. So the copy leads the SUBJECT with the agency's real reported
-deadhead percentage (a hard filing fact) and treats the dollar number in the
-body as an explicit, rounded estimate whose real value is what the free
-analysis is for. That keeps the first sentence unchallengeable by a director
-who knows their own books.
+NO DOLLAR SAVING APPEARS IN THIS COPY. It used to: the subject led with the
+agency's reported deadhead percentage and the body priced a hypothetical 10
+percent cut as a hedged estimate. Both are gone (packet
+MX-CLAIMS-DOLLAR-SWEEP-013). The hedge was not the problem; the premise was.
+Deadhead share does not identify an expensive agency - Pearson +0.017, OLS R2
+0.0003 on n=405 (research/h5b_structure_vs_cost.json); Spearman +0.024 over
+406 operators against +0.738 for cost per HOUR, cost per trip flat at $48.53
+in the lowest deadhead quartile against $54.09 in the highest
+(outreach/panel_findings.json, `dr_deadhead_predicts_cost_per_trip`, REJECTED
+by the panel gate). Hedging a number that does not mean what the sentence
+implies just makes it harder to notice.
+
+The hook is now the agency's national POSITION on cost per trip and the two
+quantities underneath it, and there is exactly one definition of it -
+`build_contact_worksheet.email_hook` - imported here so the worksheet preview
+and the sent draft can never drift apart.
 
 Two modes:
 
@@ -40,6 +47,11 @@ from pathlib import Path
 from urllib.parse import quote
 
 import pandas as pd
+
+# One definition of the hook, shared with the worksheet. Both scripts live in
+# this directory and are run as `py -3 outreach/<script>.py`, so the plain
+# import resolves.
+from build_contact_worksheet import MAX_TRIPS, MIN_TRIPS, email_hook, pctile
 
 HERE = Path(__file__).parent
 DRAFTS = HERE / "drafts"
@@ -69,26 +81,10 @@ def short_agency(name: str) -> str:
                   name).strip() or name
 
 
-def subject_line(short_name: str, dh_frac: float) -> str:
-    # The deadhead % is the agency's own reported figure (deadhead hours /
-    # total hours) - a hard fact, not the modelled dollar estimate. Safe to
-    # put in the subject; a director can't dispute their own filing.
-    return f"{short_name}'s {dh_frac:.0%} paratransit deadhead"
-
-
-def hook_paragraph(trips, cpt, dh_frac, dollars) -> str:
-    # Trips and cost-per-trip are hard filing facts. The dollar figure is an
-    # explicit estimate: rounded, hedged, and framed as the thing the free
-    # analysis exists to pin down - not a savings promise.
-    dh = f"{dh_frac:.0%}"
-    approx = f"${round(float(dollars), -4):,.0f}"
-    return (f"Your agency's 2024 NTD filing reports {float(trips):,.0f} "
-            f"demand-response trips at ${float(cpt):,.2f} per trip, and about "
-            f"{dh} of your vehicle-hours run empty (deadhead). Attributing cost "
-            f"to hours, trimming that by even 10 percent points to something "
-            f"like {approx} a year, though how much is really recoverable "
-            f"depends on your fixed-versus-variable costs, which is exactly what "
-            f"we'd want to pin down with you.")
+def subject_line(short_name: str, cost_per_trip: float) -> str:
+    # The agency's own filed cost per trip. A hard fact, no valuation in it,
+    # and a director cannot dispute their own filing.
+    return f"{short_name}'s ${float(cost_per_trip):,.0f} cost per trip"
 
 
 def body_for(first_name: str, hook: str) -> str:
@@ -114,44 +110,55 @@ already on record.
 
 I'm not here to sell you anything today, we're students trying to learn from
 people who actually run this before we build the wrong thing. In return we'll
-run a free analysis on your own trip data and show you where the deadhead is
-really hiding, at no cost and no obligation. Could I borrow 15 minutes to walk
-you through what we found in your public numbers?
+run a free analysis on your own trip data and show you which hours and which
+runs your empty time actually sits in, at no cost and no obligation. What we
+won't do is tell you what that's worth - nobody can price that from outside
+your own fixed-versus-variable split. Could I borrow 15 minutes to walk you
+through what we found in your public numbers?
 
 Thanks for reading this far,
 {SENDER}
 {SENDER_EMAIL}"""
 
 
-def email_for(r) -> tuple[str, str]:
+def email_for(r, panel) -> tuple[str, str]:
     """Placeholder-name draft from an economics row."""
     agency = short_agency(r.agency)
-    if pd.notna(r.deadhead_pct_hours) and pd.notna(r.value_10pct_deadhead_cut) \
-            and r.value_10pct_deadhead_cut > 0:
-        subject = subject_line(agency, r.deadhead_pct_hours)
-        hook = hook_paragraph(r.trips, r.cost_per_trip, r.deadhead_pct_hours,
-                              r.value_10pct_deadhead_cut)
+    if pd.notna(r.cost_per_vrh) and pd.notna(r.trips_per_vrh):
+        subject = subject_line(agency, r.cost_per_trip)
+        hook = email_hook(r, panel)
     else:
+        # Reduced reporters file no hours detail, so the two numbers underneath
+        # cost per trip do not exist for them. State the position and stop.
         subject = f"A question about {agency}'s paratransit costs"
         hook = (f"Your agency's 2024 NTD filing reports {r.trips:,.0f} "
-                f"demand-response trips at ${r.cost_per_trip:,.2f} per trip. We "
-                f"pulled every US agency's numbers and yours stood out enough "
-                f"that we wanted to reach out.")
+                f"demand-response trips at ${r.cost_per_trip:,.2f} per trip, "
+                f"which is percentile "
+                f"{pctile(panel.cost_per_trip, r.cost_per_trip):.0f} of the "
+                f"{len(panel):,} US operators filing demand-response service "
+                f"that year. We pulled every US agency's numbers and wanted to "
+                f"understand yours rather than guess at them.")
     return subject, body_for("[FIRST NAME]", hook)
 
 
 def run_placeholder(top: int, state: str | None) -> None:
-    df = pd.read_csv(HERE.parent / "ntd" / "agency_economics.csv",
-                     dtype={"ntd_id": str})
-    df = df[df.report_year == 2024].copy()
+    econ = pd.read_csv(HERE.parent / "ntd" / "agency_economics.csv",
+                       dtype={"ntd_id": str})
+    # National panel taken before any state filter, so a percentile is national.
+    panel = econ[econ.report_year == 2024].copy()
+    # The mid-size band from design_partner_pitch.md, applied here too. Ranking
+    # the whole panel on cost per trip alone puts 20-trip tribal programs at the
+    # top -- arithmetically the most expensive operators in the country and
+    # completely wrong targets. The previous ranking (deadhead dollars) hid this
+    # by accident, because it scaled with size.
+    df = panel[(panel.trips >= MIN_TRIPS) & (panel.trips <= MAX_TRIPS)]
     if state:
         df = df[df.state == state.upper()]
-    df["rank_val"] = df.value_10pct_deadhead_cut.fillna(0)
-    df = df.sort_values(["rank_val", "trips"], ascending=False).head(top)
+    df = df.sort_values(["cost_per_trip", "trips"], ascending=False).head(top)
 
     index_rows = []
     for r in df.itertuples():
-        subject, body = email_for(r)
+        subject, body = email_for(r, panel)
         fname = f"{r.state}_{slug(r.agency)}.txt"
         (DRAFTS / fname).write_text(f"{subject}\n\n{body}\n", encoding="utf-8")
         index_rows.append({"file": fname, "agency": r.agency, "city": r.city,
@@ -181,9 +188,10 @@ def run_merge() -> None:
     for r in ready.itertuples():
         first = (str(r.contact_name).strip().split()[0]
                  if filled(r.contact_name) else "there")
-        subject = subject_line(r.short_name, float(r.deadhead_pct))
-        hook = hook_paragraph(r.annual_dr_trips, r.cost_per_trip,
-                              float(r.deadhead_pct), r.deadhead_dollars_per_yr)
+        subject = subject_line(r.short_name, float(r.cost_per_trip))
+        # The worksheet's own hook column, verbatim: one definition, so the
+        # preview a human reviewed is byte-identical to what gets sent.
+        hook = str(r.email_hook)
         body = body_for(first, hook)
         # One-click: opens a Gmail compose window with to/subject/body filled.
         compose = ("https://mail.google.com/mail/?view=cm&fs=1"

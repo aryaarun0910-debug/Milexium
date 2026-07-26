@@ -16,25 +16,61 @@ national deadhead rank. That metric does not identify an expensive agency.**
 Measured twice, independently:
 
 - Spearman **+0.024** between deadhead share and cost per trip across 406
-  operators (ADR-0058), against **+0.738** for cost per *hour*.
-- Pearson **+0.017**, OLS **R² = 0.0003**, n=405, with cost-per-trip quintile
-  medians flat at **$53.10 / $48.30 / $52.21 / $53.10 / $55.00**
-  (`research/h5b_structure_vs_cost.py`).
+  operators, against **+0.738** for cost per *hour*, with cost-per-trip
+  **quartile** medians flat at **$48.53 / $53.34 / $52.30 / $54.09**
+  (`panel_findings.json`, finding `dr_deadhead_predicts_cost_per_trip` in the
+  `rejected` list).
+- Pearson **+0.017**, OLS **R² = 0.0003**, n=405
+  (`research/h5b_structure_vs_cost.json`).
 
-The *arithmetic* saving from cutting deadhead is still real. The **diagnostic**
-claim — that a high deadhead rank means an agency has a cost problem — is false,
-and every v3 agency email is built on it.
+The *arithmetic* cost of empty running is still real, as an accounting
+identity. The **diagnostic** claim — that a high deadhead rank means an agency
+has a cost problem — is false, and every v3 agency email is built on it.
 
 **What replaces it:** occupancy. Ride-sharing collapsed **−10.0%** 2015→2024
 (1.213 → 1.092 passenger miles per vehicle mile) while trips got *shorter*, not
 longer; 66.8% of agencies lost occupancy and recovery has stalled
-(`research/h5e_ridesharing.py`). Occupancy is what a scheduling optimiser
+(`research/h5e_ridesharing.json`). Occupancy is what a scheduling optimiser
 actually sets, which makes it both the better diagnosis and the one our product
 speaks to. **Scope it to large operators** — the passenger-miles filers are a
-non-random 26% of agencies by count, though 66% by trips.
+non-random 26% of agencies by count, though 66% by trips — and note that the
+closely related pooling claim was **rejected** by the panel gate
+(`dr_pooling_efficiency_declined`, on effect size and composition). Occupancy
+clears the 5% effect floor where trip length does not, but it inherits the same
+Full-Reporter selection bias, so it is a scoped hypothesis for shadow mode, not
+a sector finding.
 
 Do not send another deadhead-ranked agency email until the peer engine is
 rebuilt on occupancy.
+
+### The dollar figures are already gone (MX-CLAIMS-DOLLAR-SWEEP-013)
+
+The *rank* is still deadhead. The *money* is no longer anywhere. Every savings
+and opportunity dollar claim in `ntd/` and `outreach/` has been removed:
+
+| was | now |
+|---|---|
+| `ntd/savings_calculator.py`, the public-website widget | removed; `ntd/peer_position.py` returns a national position instead |
+| "A 10 percent deadhead reduction is worth about $X a year to you" | the agency's percentile on cost per trip, cost per revenue hour and trips per revenue hour |
+| "closing even a quarter of that gap is worth about $X a year" | removed outright — it assumed the gap to the median is recoverable |
+| "$94,399,949 per year" in `ntd/market_sizing.md` | the same total, labelled an accounting identity, plus the null result beside it |
+| "At your cost per hour the gap is roughly $X a year" (v3) | the operator's cost per revenue hour against the same peer group |
+| `value_10pct_deadhead_cut`, `modelled_gap_value_usd`, `deadhead_dollars_per_yr` | columns and fields deleted, so the number cannot be rendered by accident |
+
+**The standing rule.** A dollar figure may appear only when it is arithmetic on
+the agency's own filing — "these empty vehicle-hours cost $X at your own
+reported cost per hour" — and only while labelled an accounting identity that
+states recoverability is unknown. Never as a saving, an opportunity, or a
+benefit of adopting Milexium. `packages/replay/teardown.py` refuses to emit a
+savings envelope without the operator's own fixed/variable split; copy does not
+get a lower standard than code. Enforced by
+`conformance/property-tests/test_claim_discipline.py`.
+
+**13 agencies were already sent a dollar figure** (10 on 2026-07-24, 3 on
+2026-07-21), and a 14th organisation that opted out was contacted before that.
+Their `email_hook` values in `contact_research_worksheet.csv` are **preserved
+verbatim** and must stay that way — that column is the record of what they
+actually received, and the same test fails if it is ever rewritten.
 
 ## The one rule that matters most
 

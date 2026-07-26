@@ -24,9 +24,30 @@ Honesty rules (non-negotiable, mirrors the repo's evidence discipline)
 - A target with too few peers to rank honestly emits `insufficient_peers`
   and gets NO stat -- it must be approached a different way rather than
   given a weak number.
-- The dollar figure is a MODELLED gap (opex attributed to hours uniformly), so
-  it is always emitted with hedged wording. Fixed costs do not fall
-  proportionally; the free analysis is what pins the real number down.
+- NO DOLLAR FIGURE IS EMITTED. `modelled_gap_value_usd` used to be computed
+  here as (own deadhead % - peer median deadhead %) * actual_hours * own cost
+  per hour, and generate_v3_emails.py rendered it as "at your cost per hour the
+  gap is roughly $X a year". It is REMOVED (packet
+  MX-CLAIMS-DOLLAR-SWEEP-013), and the hedge that travelled with it is not a
+  defence, because the problem was the premise rather than the precision. That
+  figure is not an accounting identity on the operator's own filing; it is the
+  value of a COUNTERFACTUAL in which the operator sits at the peer median, and
+  it therefore asserts that the distance to the median is recoverable. Nothing
+  measures that. Worse, the distance being priced is a deadhead distance, and
+  deadhead share does not identify an expensive agency: Spearman +0.024 against
+  cost per trip over 406 operators, versus +0.738 for cost per HOUR
+  (outreach/panel_findings.json, `dr_deadhead_predicts_cost_per_trip`,
+  REJECTED by the panel gate); Pearson +0.017, OLS R2 0.0003 at n=405
+  (research/h5b_structure_vs_cost.json).
+
+STILL OUTSTANDING IN THIS FILE (not fixed by that packet, which owned dollar
+claims only): the RANK itself is still a deadhead rank. Being 9th of 151 on
+empty vehicle-hours is a true fact about an operator, but it is not evidence
+that the operator has a cost problem, and leading with it implies that it is.
+outreach/README.md carries the standing instruction not to send another
+deadhead-ranked agency email until this engine is rebuilt on occupancy
+(research/h5e_ridesharing.json), scoped to the larger operators who file
+passenger miles.
 
 Peer group definition
 ---------------------
@@ -101,14 +122,18 @@ def insight_for(df: pd.DataFrame, ntd_id: int) -> dict:
     median_tph = float(peers["trips_per_vrh"].median())
     tph_rank = int((peers["trips_per_vrh"] > tph).sum()) + 1
 
-    # Modelled value of closing the deadhead gap to the peer median. Uses the
-    # agency's own opex-per-hour, and is only meaningful when they are ABOVE
-    # median (i.e. there is a gap to close).
+    # Distance to the peer median, in percentage points. Deliberately NOT
+    # priced: see the module docstring. A gap in points is a comparison; the
+    # same gap in dollars is a claim that closing it is worth that much.
     gap_pts = dh - median_dh
-    gap_value = None
-    if gap_pts > 0 and row["actual_hours"] and row["opex"]:
-        cost_per_hour = float(row["opex"]) / float(row["actual_hours"])
-        gap_value = gap_pts * float(row["actual_hours"]) * cost_per_hour
+
+    # Cost per revenue hour, and where it sits in the peer group. This is the
+    # variable that actually ranks with cost per trip (+0.738 vs +0.024 for
+    # deadhead), so it is the honest place a reader's eye should land.
+    cph = float(row["cost_per_vrh"]) if pd.notna(row["cost_per_vrh"]) else None
+    median_cph = float(peers["cost_per_vrh"].median())
+    cph_rank = (int((peers["cost_per_vrh"] > cph).sum()) + 1
+                if cph is not None else None)
 
     return {
         "status": "ok",
@@ -122,18 +147,24 @@ def insight_for(df: pd.DataFrame, ntd_id: int) -> dict:
         "trips_per_vrh": round(tph, 2),
         "peer_median_trips_per_vrh": round(median_tph, 2),
         "trips_per_vrh_rank": tph_rank,
+        "cost_per_vrh": round(cph, 2) if cph is not None else None,
+        "peer_median_cost_per_vrh": round(median_cph, 2),
+        "cost_per_vrh_rank": cph_rank,
         "n_peers": n,
         "gap_points": round(gap_pts * 100, 1) if gap_pts > 0 else None,
-        "modelled_gap_value_usd": round(gap_value) if gap_value else None,
+        "no_dollar_value_is_emitted": (
+            "the distance to the peer median is not known to be recoverable; "
+            "pricing it would assert a causal claim nothing here measures"),
         "peer_group": (
             f"{n} US demand-response operators reporting {int(row['trips']*BAND_LO):,}-"
             f"{int(row['trips']*BAND_HI):,} annual trips in NTD {YEAR}"
         ),
         "evidence": (
             f"ntd/agency_economics.csv, report_year={YEAR}, ntd_id={ntd_id}; "
-            f"peer band {BAND_LO}x-{BAND_HI}x trips (n={n}); rank on deadhead_pct_hours "
-            f"descending; gap value = (own dh% - peer median dh%) * actual_hours * "
-            f"(opex/actual_hours)"
+            f"peer band {BAND_LO}x-{BAND_HI}x trips (n={n}); ranks on "
+            f"deadhead_pct_hours, trips_per_vrh and cost_per_vrh, each "
+            f"descending; gap_points = own dh% - peer median dh%, in points, "
+            f"unpriced"
         ),
     }
 
@@ -174,10 +205,23 @@ def main() -> None:
     args = ap.parse_args()
 
     df = pd.read_csv(NTD)
+    all_rows = list(csv.DictReader(open(WORKSHEET, encoding="utf-8-sig")))
+
+    # OPT-OUTS ARE DROPPED HERE, BEFORE ANYTHING IS COMPUTED ABOUT THEM.
+    # `do_not_contact` is permanent and structural (outreach/README.md), and
+    # generate_expert_emails.py has always honoured it -- but this agency
+    # pipeline did not, so Anne Arundel County, which asked in writing to be
+    # removed from the list, still had a ready-to-send draft generated with
+    # transportation@aacounty.org in the To: line. An opt-out that only one of
+    # two pipelines enforces is not an opt-out.
+    opted_out = sorted(
+        r["short_name"] for r in all_rows if (r.get("do_not_contact") or "").strip()
+    )
     rows = [
         r
-        for r in csv.DictReader(open(WORKSHEET, encoding="utf-8-sig"))
+        for r in all_rows
         if (r.get("contact_email") or "").strip()
+        and not (r.get("do_not_contact") or "").strip()
     ]
     if args.agency:
         rows = [r for r in rows if args.agency.lower() in r["short_name"].lower()]
@@ -204,6 +248,9 @@ def main() -> None:
     OUT.write_text(json.dumps(out, indent=2, sort_keys=True), encoding="utf-8")
     print(f"wrote {OUT.relative_to(REPO)}")
     print("status counts:", counts)
+    if opted_out:
+        print(f"do_not_contact, no insight computed ({len(opted_out)}): "
+              + ", ".join(opted_out))
     for name, ins in sorted(out.items()):
         if ins.get("headline"):
             print(f"\n[{name}] n_peers={ins['n_peers']}")
