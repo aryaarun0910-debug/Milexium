@@ -1,0 +1,72 @@
+id: MX-A-RUNREF-PLATFORM-TENANT-004
+status: dispatched
+dispatched_date: "2026-07-25"
+objective: >
+  Two Program A gaps that must land together because they share files.
+  (1) Give vehicle_ref/run_ref a CANONICAL HOME -- ADR-0038 surfaced that the
+  exact field deadhead measurement depends on lives only on the Connect-layer
+  record and cannot be persisted to MilexiumDB. (2) Implement the reserved
+  platform-tenant convention DECIDED in ADR-0040 but deliberately not built.
+owned_paths:
+  - app/canonical/entities.py
+  - app/canonical/ids.py
+  - app/canonical/__init__.py
+  - app/canonical/sql/schema_v0_1.sql        # additive columns ONLY, must stay SQLite-portable
+  - app/canonical/sql/rls_postgres.sql       # model_versions policy only
+  - app/canonical/storage.py
+  - app/canonical/postgres_storage.py
+  - app/core/model_registry.py               # platform-model resolution ONLY (do not touch feature_store.py/promotion.py/drift.py)
+  - evidence/conformance/property-tests/test_run_reference.py
+  - evidence/conformance/property-tests/test_platform_tenant.py
+read_only_dependencies:
+  - app/connect/operator_export.py (OperatorTripRecord -- where vehicle_ref/run_ref lives today)
+  - app/replay/teardown.py (the consumer that needs it persisted)
+  - knowledge/architecture/decisions/0040-platform-tenant-convention.md (the decision; implement exactly this)
+  - knowledge/architecture/decisions/0018 + 0037 (RLS: ENABLE *and* FORCE, owner-bypass rationale)
+task_1_run_reference:
+  problem: >
+    ADR-0038: vehicle_ref/run_ref is carried on the Connect-layer record only and
+    recorded as a `dropped` semantic loss on every row. Deadhead is ONLY
+    measurable by chaining one vehicle's consecutive trips, so the single field
+    the whole teardown depends on cannot survive a write to MilexiumDB.
+  required: >
+    Give it a canonical home. Preferred shape: additive nullable columns on the
+    existing service_requests / outcomes tables (whichever the operator trip
+    record maps onto) rather than a new entity -- a run reference is an attribute
+    of an operational record, not an aggregate of its own. Add matching fields to
+    the canonical entity, thread them through BOTH stores, and prove a
+    round-trip. schema_v0_1.sql must stay portable (no Postgres-only construct)
+    and must still run unmodified on SQLite -- verify that.
+task_2_platform_tenant:
+  problem: >
+    ADR-0040 chose a reserved platform tenant for models belonging to no
+    customer, rejecting nullable tenant_id. Not yet implemented.
+  required: >
+    - A single well-known PLATFORM_TENANT_ID constant in app/canonical.
+    - The model_versions RLS policy becomes ASYMMETRIC, exactly as ADR-0040
+      specifies: USING (tenant_id = GUC OR tenant_id = PLATFORM) so any tenant may
+      READ platform models; WITH CHECK (tenant_id = GUC) ONLY, so no tenant
+      session can WRITE a platform-stamped row.
+    - The reserved tenant must be a real row in `tenants` to satisfy the FK --
+      seed it as part of store setup, idempotently.
+    - model_registry resolution handles platform-owned models without a special
+      case at every call site.
+security_and_privacy_invariants:
+  - "ADVERSARIAL TEST IS THE DELIVERABLE for task 2: prove a tenant session CANNOT write a row stamped with PLATFORM_TENANT_ID, and CAN read one. A constant without the policy, or a policy without this test, is worse than the current honest placeholder because it looks finished."
+  - "tenant_id stays NOT NULL everywhere. Do not make it optional -- ADR-0040 rejected that."
+  - "ENABLE *and* FORCE on any table you touch: milexium_dev owns these tables and an owner bypasses RLS by default."
+  - "Postgres tests skip cleanly when the instance is absent so CI stays green."
+failure_injections:
+  - "a tenant session writing tenant_id=PLATFORM is rejected"
+  - "unset milexium.tenant_id GUC still denies all (deny-all default preserved)"
+  - "a run reference round-trips through BOTH stores and survives a read-back"
+  - "schema_v0_1.sql still executes unmodified on SQLite"
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_run_reference.py evidence/conformance/property-tests/test_platform_tenant.py -q"
+  - "py -3 -m pytest app/ evidence/conformance/ -q   # 781 baseline must still pass"
+evidence_to_emit: ["test counts; whether the Postgres/RLS tests RAN or skipped; proof SQLite still runs the base schema"]
+notes: >
+  Do NOT touch app/core/{feature_store,promotion,drift}.py (a concurrent
+  packet owns them), app/api, app/sdk, app/evidence,
+  app/replay, app/connect, observation_store.py, postgis_postgres.sql,
+  pyproject, CI, shared docs, ADRs, or git.

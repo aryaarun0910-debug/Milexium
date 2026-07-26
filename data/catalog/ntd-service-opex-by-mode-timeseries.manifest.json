@@ -12,11 +12,11 @@
   "expected_download_gb": 0.074,
   "expected_expanded_gb": 0.074,
   "expected_retained_gb": 0.074,
-  "schema_and_format": "CSV, ~409,700 data rows. One row per agency x mode x type-of-service x report year x measure, covering service supplied (vehicle revenue miles/hours, actual vs revenue, deadhead, days of service, average speed) and operating expenses. Complements the ntd-monthly-ridership-all-modes DEMAND panel with the SUPPLY and COST side over 30+ years. Distinct from the repo's existing ntd/raw/metrics_dr.csv and service_dr.csv, which are the 2022-2024 window filtered to demand-response modes only.",
+  "schema_and_format": "CSV, ~409,700 data rows. One row per agency x mode x type-of-service x report year x measure, covering service supplied (vehicle revenue miles/hours, actual vs revenue, deadhead, days of service, average speed) and operating expenses. Complements the ntd-monthly-ridership-all-modes DEMAND panel with the SUPPLY and COST side over 30+ years. Distinct from the repo's existing business/ntd/raw/metrics_dr.csv and service_dr.csv, which are the 2022-2024 window filtered to demand-response modes only.",
   "sensitive_fields": [],
   "update_frequency": "annual (portal Update Frequency R/P1Y); a new report-year edition supersedes. source_checksum is null -- trust-on-first-use against an openly published federal table.",
   "source_checksum": null,
-  "canonical_contract": "none-yet -- aggregate agency-mode-year service and cost data. It is a covariate/benchmark source for Program E forecasting and for the deadhead work behind ADR-0039, not an instance of a canonical entity. packages.canonical.entities.DeadheadSegment is trip-level; this table's deadhead figures are annual rollups and cannot be lifted into it without fabrication.",
+  "canonical_contract": "none-yet -- aggregate agency-mode-year service and cost data. It is a covariate/benchmark source for Program E forecasting and for the deadhead work behind ADR-0039, not an instance of a canonical entity. app.canonical.entities.DeadheadSegment is trip-level; this table's deadhead figures are annual rollups and cannot be lifted into it without fabrication.",
   "quality_tests": [
     {
       "name": "header_has_agency_mode_and_year",

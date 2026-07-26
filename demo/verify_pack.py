@@ -1,9 +1,9 @@
 """Independently re-derive an exported Milexium evidence pack.
 
-    py -3 -m demo.verify_pack artifacts/demo-walkthrough
+    py -3 -m demo.verify_pack evidence/artifacts/demo-walkthrough
 
 This is the third party's side of the walkthrough, and it is deliberately thin:
-it reads one JSON file off disk, hands it to `packages.evidence.
+it reads one JSON file off disk, hands it to `app.evidence.
 verify_evidence_pack`, and prints what came back. It computes no figure of its
 own -- if it did, a reader would have to trust this module too.
 
@@ -21,8 +21,8 @@ What that one call re-derives, none of it from a manifest claim:
     from the embedded segments and the manifest's DECLARED inputs, plus the
     segment fingerprint that binds the figures to those segments.
 
-`packages/evidence/teardown_evidence.py` (the re-derivation) does not import
-`packages/replay/teardown.py` (the generator), so agreement is not the generator
+`app/evidence/teardown_evidence.py` (the re-derivation) does not import
+`app/replay/teardown.py` (the generator), so agreement is not the generator
 agreeing with itself.
 """
 
@@ -32,7 +32,7 @@ import json
 import sys
 from pathlib import Path
 
-from packages.evidence import EvidencePack, verify_evidence_pack
+from app.evidence import EvidencePack, verify_evidence_pack
 
 PACK_NAME = "evidence_pack.json"
 
@@ -67,7 +67,7 @@ def verify_pack_file(pack_path: Path, *, say=print) -> dict:
         # The count of quantities the verifier actually recomputed. Reported
         # because "no mismatches" is worthless without knowing how many things
         # were checked -- a verifier that checks nothing also finds nothing.
-        from packages.evidence import rederive_teardown
+        from app.evidence import rederive_teardown
 
         rederivation = rederive_teardown(teardown)
         checks = len(rederivation.checked)
@@ -99,7 +99,7 @@ def verify_pack_file(pack_path: Path, *, say=print) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    target = Path(argv[0]) if argv else Path("artifacts/demo-walkthrough")
+    target = Path(argv[0]) if argv else Path("evidence/artifacts/demo-walkthrough")
     pack_path = target if target.is_file() else target / PACK_NAME
     if not pack_path.exists():
         print(f"[stop] not found: {pack_path}")

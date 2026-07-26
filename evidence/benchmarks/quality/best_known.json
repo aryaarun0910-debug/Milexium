@@ -1,0 +1,21 @@
+{
+  "_about": "Published reference objective values (total routing distance) for the single-depot Cordeau type-a dial-a-ride benchmark instances. Used by evidence/benchmarks/quality/darp_benchmark.py to compute REAL optimality gaps. Values transcribed from the Cordeau (2006) branch-and-cut results table; 'proven_optimal' marks instances that paper solved to certified optimality (the value is the true optimum), while the rest are the best-known upper bounds it reports (from the Cordeau & Laporte 2003 tabu heuristic) -- a gap against those is a gap-to-best-known, not gap-to-optimum. Only instances whose value we could source and cite are listed; a5-40..a8-96 are intentionally absent (no value in our cited source), so the harness reports them as feasible-without-a-published-comparison rather than inventing a number.",
+  "_source_primary": "Cordeau, J.-F. (2006). A Branch-and-Cut Algorithm for the Dial-a-Ride Problem. Operations Research 54(3):573-586.",
+  "_source_transcribed_from": "Course presentation reproducing the Cordeau (2006) results table: https://rasmuspagh.net/courses/CAOS/DARP.pdf (accessed 2026-07). Cross-checked (a2-16, a2-20, a2-24, a3-18, a3-24) against independent web-published citations of the same optima.",
+  "_distance_convention": "Euclidean distance between node coordinates, unrounded (double precision); travel time equals distance. Our solver uses the identical convention, so gaps are directly comparable.",
+  "_caveat": "The single-depot Cordeau optima (e.g. a2-16 = 294.25) differ from multi-depot / heterogeneous DARP results sometimes reported for the same instance names (e.g. 284.18); we deliberately use the single-depot values that match the instance files acquired here.",
+  "instances": {
+    "a2-16": {"best_known": 294.25, "proven_optimal": true},
+    "a2-20": {"best_known": 344.83, "proven_optimal": true},
+    "a2-24": {"best_known": 431.12, "proven_optimal": true},
+    "a3-18": {"best_known": 300.48, "proven_optimal": true},
+    "a3-24": {"best_known": 344.83, "proven_optimal": true},
+    "a3-30": {"best_known": 494.85, "proven_optimal": false},
+    "a3-36": {"best_known": 583.19, "proven_optimal": false},
+    "a4-16": {"best_known": 282.68, "proven_optimal": true},
+    "a4-24": {"best_known": 375.02, "proven_optimal": false},
+    "a4-32": {"best_known": 485.50, "proven_optimal": false},
+    "a4-40": {"best_known": 557.69, "proven_optimal": false},
+    "a4-48": {"best_known": 668.82, "proven_optimal": false}
+  }
+}

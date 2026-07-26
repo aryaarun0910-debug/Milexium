@@ -23,8 +23,8 @@ PUB = REPO / "data" / "raw" / "public"
 MONTHLY = PUB / "ntd-monthly-ridership-all-modes.529952083544f257.csv"
 OPEX = PUB / "ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv"
 WEBLINKS = PUB / "ntd-gtfs-weblinks.9c73ba1b2ddf3bc5.csv"
-ECON = REPO / "ntd" / "agency_economics.csv"
-CENSUS = REPO / "ntd" / "census_latent_demand.csv"
+ECON = REPO / "business" / "ntd" / "agency_economics.csv"
+CENSUS = REPO / "business" / "ntd" / "census_latent_demand.csv"
 DEADHEAD_SUMMARY = REPO / "data" / "catalog" / "calitp-scheduled-deadhead.summary.json"
 
 # CPI-U annual averages (BLS, all urban consumers, 1982-84=100).

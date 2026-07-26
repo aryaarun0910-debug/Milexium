@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "spec revisions (versioned via git upstream)",
   "source_checksum": null,
-  "canonical_contract": "packages.canonical.entities.Outcome (GTFS-Realtime operational signals -> Outcome, the closest canonical operational record; see packages/connect/gtfs_realtime.py and the operational-entity gap flagged for ADR 0030+)",
+  "canonical_contract": "app.canonical.entities.Outcome (GTFS-Realtime operational signals -> Outcome, the closest canonical operational record; see app/connect/gtfs_realtime.py and the operational-entity gap flagged for ADR 0030+)",
   "quality_tests": [
     {
       "name": "parses_as_feedmessage",

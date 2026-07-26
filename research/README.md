@@ -13,8 +13,8 @@ and `blueprint/19-agent-swarm-execution-system.md` in the expansion plan.
   at platform scale rather than discarding it).
 
 **Owner:** Forge/Fabric workstream (Program J). Mutation agents cannot edit their
-own promotion policy or hidden evaluators — those live in `architecture/contracts/`
-and `conformance/adversarial/`, not here.
+own promotion policy or hidden evaluators — those live in `knowledge/architecture/contracts/`
+and `evidence/conformance/adversarial/`, not here.
 
 **Version policy:** append-only. An experiment record is never deleted, only
 superseded by a dated follow-up that references it.

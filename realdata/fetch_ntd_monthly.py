@@ -8,7 +8,7 @@ x 20+ years x monthly, the actual product target variable at national
 breadth (vs our hourly single-agency AAR panel, which is depth). Nobody in
 this market assembles paratransit demand this way.
 
-Distinct from ntd/ (annual economics: cost, deadhead, revenue). This is the
+Distinct from business/ntd/ (annual economics: cost, deadhead, revenue). This is the
 monthly demand time series - complementary, and the right source for
 per-agency seasonality, trend, and COVID-shock recovery curves.
 

@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use; the retained digest is recorded in calitp-gtfs-stop-times.acquired.json.",
   "source_checksum": null,
-  "canonical_contract": "packages.canonical.entities.DeadheadSegment (Program A, ADR-0047). The first departure and last arrival of each trip become the boundaries between which a DeadheadSegment's started_at/ended_at are computed; the first and last stop_id become from_stop_ref/to_stop_ref. No canonical entity is created for a stop time itself -- StopTimeObservation is TELEMETRY (what a vehicle was observed doing) and this is a SCHEDULE, so mapping these rows onto it would assert observation where none exists.",
+  "canonical_contract": "app.canonical.entities.DeadheadSegment (Program A, ADR-0047). The first departure and last arrival of each trip become the boundaries between which a DeadheadSegment's started_at/ended_at are computed; the first and last stop_id become from_stop_ref/to_stop_ref. No canonical entity is created for a stop time itself -- StopTimeObservation is TELEMETRY (what a vehicle was observed doing) and this is a SCHEDULE, so mapping these rows onto it would assert observation where none exists.",
   "quality_tests": [
     {
       "name": "header_carries_trip_key_and_second_offsets",
@@ -32,7 +32,7 @@
   "derived_artifacts": [
     "data/catalog/calitp-scheduled-deadhead.summary.json",
     "data/catalog/calitp-scheduled-deadhead.md",
-    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with tools/derive_scheduled_deadhead.py)"
+    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with platform/tools/derive_scheduled_deadhead.py)"
   ],
   "zone": "raw/public"
 }

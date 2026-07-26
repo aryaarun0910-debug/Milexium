@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "monthly (portal Update Frequency R/P1M). source_checksum is null -- the register changes as agencies re-certify links.",
   "source_checksum": null,
-  "canonical_contract": "none-yet -- a feed registry, not observational or operational data. It is Connect-layer input: it tells packages.connect which agency feeds exist and where, before any adapter runs.",
+  "canonical_contract": "none-yet -- a feed registry, not observational or operational data. It is Connect-layer input: it tells app.connect which agency feeds exist and where, before any adapter runs.",
   "quality_tests": [
     {
       "name": "header_has_ntd_id_and_weblink",

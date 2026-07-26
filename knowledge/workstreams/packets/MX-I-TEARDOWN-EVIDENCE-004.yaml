@@ -1,0 +1,77 @@
+id: MX-I-TEARDOWN-EVIDENCE-004
+status: completed
+completed_date: "2026-07-25"
+objective: >
+  Let an evidence pack carry a deadhead teardown (ADR-0039) and let a third
+  party RE-DERIVE its headline figures from the pack alone. The teardown is the
+  artifact a design partner is actually handed -- a specific, checkable finding
+  about their own operation -- and it was built to be verifiable (deterministic
+  teardown_id, order-independent segment_sha256, every input as (name, value,
+  source), numbered method steps) with nothing verifying it. This packet makes
+  the finding recomputable rather than merely recorded: verification recomputes
+  the minutes, the buckets, the run attribution and the money from the embedded
+  segments and the manifest's declared inputs, so a tampered figure fails.
+owned_paths:
+  - app/evidence/teardown_evidence.py
+  - app/evidence/teardown_capture.py
+  - app/evidence/export.py
+  - app/evidence/__init__.py
+read_only_dependencies:
+  - app/replay/teardown.py (DeadheadTeardown, TeardownManifest, CostEnvelope, VehicleSegment, FIXED_COST_HEDGE, DEADHEAD_TEARDOWN_NOTE)
+  - app/replay/comparison.py (MODELLED_COMPARISON_NOTE)
+  - app/canonical/events.py (canonical_json)
+  - app/verify/hash_chain_verifier.py (verify_chain)
+normative_contracts:
+  - knowledge/architecture/decisions/0039-deadhead-teardown.md (manifest, hedges, provenance, privacy)
+  - knowledge/architecture/decisions/0017-evidence-pack-export.md (independent verifiability; redaction is a weaker artifact)
+  - knowledge/architecture/decisions/0019 via blueprint/01-north-star-and-boundaries.md (modelled, not causal proof)
+  - blueprint/07-explain-replay-and-evidence.md (machine-verifiable exports)
+  - blueprint/10-security-privacy-and-ai-governance.md (redaction is not de-identification)
+inputs_and_fixtures: []
+required_outputs:
+  - app/evidence/teardown_evidence.py
+  - app/evidence/teardown_capture.py
+  - evidence/conformance/property-tests/test_teardown_evidence.py
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_teardown_evidence.py -q"
+  - "py -3 -m pytest app/ evidence/conformance/ -q"
+performance_budget: {}
+security_and_privacy_invariants:
+  - "verify_evidence_pack RECOMPUTES the teardown's totals, hour/day buckets, run attribution and money figures from the embedded segments and the manifest's declared (name, value, source) inputs; no claimed figure is an input to its own check"
+  - "the re-derivation module imports nothing from app.replay, asserted against its AST -- a verifier that called the generator would only prove the generator agrees with itself"
+  - "a redacted pack masks every run identifier in both the ranking and the embedded segments; an unidentified run stays None rather than being masked, because None is a fact about the source"
+  - "a redacted pack keeps the checks that survive redaction (minutes/money) and reports the fingerprint check as not-checked (None), never as passed"
+  - "provenance survives to the pack manifest and is validated to real_public|synthetic; there is no operator value and the pack model rejects one"
+  - "no pack field may present the cost envelope as a guaranteed or realised saving (validator raises); FIXED_COST_HEDGE / DEADHEAD_TEARDOWN_NOTE / MODELLED_COMPARISON_NOTE are carried verbatim, and capture refuses a teardown whose framing was restated"
+  - "a packed segment carries exactly four structural fields and forbids extras, so no rider identifier can reach an exported pack"
+failure_injections:
+  - "headline money figure tripled + bundle checksum re-anchored -> teardown_figures_rederived False, reverified False"
+  - "total_deadhead_minutes doubled + re-anchored -> caught with a named mismatch"
+  - "figure altered without re-anchoring -> bundle checksum catches it as well (both nets independent)"
+  - "hour bucket minutes moved between hours (totals preserved) -> caught"
+  - "declared cost_per_vehicle_hour altered while the money figure is left alone -> caught (proves inputs -> figures, not read-back)"
+  - "flattering segment subset swapped in -> teardown_fingerprint_rederived False"
+  - "envelope claimed with no declared avoidable share -> caught"
+  - "pack manifest misdescribes the provenance of the teardown it carries -> caught"
+  - "capture_teardown given segments that are not the ones torn down -> raises TeardownCaptureError"
+  - "redacted pack with a tampered figure -> still caught (redaction is not a laundering path)"
+compatibility_matrix:
+  - "a pack with no teardown hashes and verifies exactly as before: the teardown key is added to the bundle payload only when one is carried, and the five ADR-0017 pack tests are unchanged"
+evidence_to_emit:
+  - "26 passing tests in evidence/conformance/property-tests/test_teardown_evidence.py"
+  - "baseline at packet start: 781 passed; this packet contributes 26"
+  - "full suite green on the final code: 944 passed, 0 failed (the repo grew past 807 while this packet ran -- concurrent packets landed their own tests)"
+forbidden_interface_changes:
+  - "no change to app/replay/** (teardown imported read-only)"
+  - "_bundle_hash keeps its 3-positional-argument call shape"
+  - "no 'operator' DataProvenance value introduced anywhere"
+upstream_blockers: []
+known_limitations:
+  - "teardown_id is carried and covered by the bundle checksum but is NOT recomputed: reproducing it would mean copying the generator's private id-payload shape, which is the coupling this packet exists to avoid. The data-to-figure binding is segment_sha256, which IS re-derived."
+  - "re-derivation compares within 1e-6 absolute + 1e-9 relative (figures are emitted rounded to 6dp); a change smaller than that is invisible to re-derivation, though the bundle checksum still catches any byte change."
+  - "the cost inputs are parsed out of the manifest's human-readable input records ('<rate> <currency>', '<low> .. <high>'); an unparseable record is reported as a mismatch, never defaulted -- but the parser is coupled to that recorded format."
+  - "a redacted pack proves its figures follow from the segments it carries, not that those are the segments the teardown ran on. Preserving that binding under redaction needs per-field commitments, already listed as not built in ADR-0017."
+  - "pre-existing and NOT fixed here: redact_pack masks raw_events payloads but leaves the same payload values in the pack's `evidence` (EvidencePacket dump). Out of scope for this packet and unrelated to the teardown, which appears in neither -- flagged for a Program I follow-up."
+downstream_consumers:
+  - Design-partner hand-off: the teardown a partner can recompute without us
+  - Future MilexiumClient.export_pack SDK method

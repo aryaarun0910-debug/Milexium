@@ -24,7 +24,7 @@ REAL VERSUS SYNTHETIC, stated once here and again on every line that carries a
 number:
 
   REAL, committed, in this repository:
-    * ntd/agency_economics.csv -- FTA National Transit Database 2024 demand-
+    * business/ntd/agency_economics.csv -- FTA National Transit Database 2024 demand-
       response filings. Source of the cost per vehicle-revenue-hour the teardown
       values empty time at, and of the peer deadhead distribution.
     * realdata/panels/aar_hourly_borough.csv.gz -- NYC MTA Access-A-Ride
@@ -38,7 +38,7 @@ number:
     * demo/data/SYNTHETIC_operator_export_part2_resend.csv
       No operator has ever sent this repository an export. These two files are
       what a vendor extract LOOKS like -- the column names, the defects and the
-      shape are modelled on docs/OPERATOR_DATA_INTAKE.md -- and nothing derived
+      shape are modelled on knowledge/docs/OPERATOR_DATA_INTAKE.md -- and nothing derived
       from them is evidence about any real agency.
 
 STATUS. Everything here is **Demonstrated**. Nothing is Validated: validation
@@ -65,7 +65,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from packages.canonical import (
+from app.canonical import (
     DecisionEventType,
     PolicyId,
     ReasonCode,
@@ -73,13 +73,13 @@ from packages.canonical import (
     VehicleId,
     new_id,
 )
-from packages.connect import (
+from app.connect import (
     OperatorExportAdapter,
     build_ingest_report,
     repair_rule_of,
 )
-from packages.connect.operator_export import REDACTION_MARKER
-from packages.decide import (
+from app.connect.operator_export import REDACTION_MARKER
+from app.decide import (
     DecisionPolicy,
     DecisionProblem,
     DecisionVehicle,
@@ -87,16 +87,16 @@ from packages.decide import (
     check_feasibility,
     solve,
 )
-from packages.evidence import build_evidence_pack, capture_teardown
-from packages.replay.teardown import CostBasis, VehicleSegment
-from packages.sdk import MilexiumClient
+from app.evidence import build_evidence_pack, capture_teardown
+from app.replay.teardown import CostBasis, VehicleSegment
+from app.sdk import MilexiumClient
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _DATA_DIR = Path(__file__).resolve().parent / "data"
-_DEFAULT_OUTPUT_DIR = _REPO_ROOT / "artifacts" / "demo-walkthrough"
+_DEFAULT_OUTPUT_DIR = _REPO_ROOT / "evidence" / "artifacts" / "demo-walkthrough"
 
 # --- real, committed inputs ------------------------------------------------
-NTD_ECONOMICS = _REPO_ROOT / "ntd" / "agency_economics.csv"
+NTD_ECONOMICS = _REPO_ROOT / "business" / "ntd" / "agency_economics.csv"
 AAR_PANEL = _REPO_ROOT / "realdata" / "panels" / "aar_hourly_borough.csv.gz"
 WEATHER_PANEL = _REPO_ROOT / "realdata" / "panels" / "weather_daily.csv"
 
@@ -105,7 +105,7 @@ EXPORT_PART1 = _DATA_DIR / "SYNTHETIC_operator_export_part1_first_send.csv"
 EXPORT_PART2 = _DATA_DIR / "SYNTHETIC_operator_export_part2_resend.csv"
 
 # The operator's own header mapped onto the published intake column list
-# (docs/OPERATOR_DATA_INTAKE.md). ActualDO, OnTimeFlagVendor and contact_1 have
+# (knowledge/docs/OPERATOR_DATA_INTAKE.md). ActualDO, OnTimeFlagVendor and contact_1 have
 # no canonical target and are deliberately left unmapped -- the adapter records
 # each by NAME ONLY and never retains its value.
 COLUMN_MAP = {
@@ -348,7 +348,7 @@ def _preflight(say, result: WalkthroughResult) -> None:
     say(_RULE)
     have_pg = importlib.util.find_spec("psycopg") is not None
     have_minio = importlib.util.find_spec("minio") is not None
-    say("canonical store: in-memory SQLite (packages.canonical.SqliteCanonicalStore)")
+    say("canonical store: in-memory SQLite (app.canonical.SqliteCanonicalStore)")
     say(
         f"PostgreSQL driver installed: {'yes' if have_pg else 'no'}  |  "
         f"MinIO client installed: {'yes' if have_minio else 'no'}"
@@ -461,7 +461,7 @@ def _step_2_intake(say, result: WalkthroughResult, client: MilexiumClient, recor
     say(f"source (SYNTHETIC): {EXPORT_PART2.name}  --  the same operator's corrected")
     say("re-send with the two identifier columns dropped at source.")
     say("")
-    say(f"HEADLINE (packages.connect.ingest_report, computed this run):")
+    say(f"HEADLINE (app.connect.ingest_report, computed this run):")
     for line in _wrap(report.headline, 74):
         say(f"  {line}")
     say("")
@@ -675,7 +675,7 @@ def _step_4_decide(say, result: WalkthroughResult, client: MilexiumClient, accep
     say(f"solver: {solution.solver_name} {solution.solver_version}  status "
         f"{solution.status.value.upper()}  proven_optimal={solution.proven_optimal}")
     say(f"served {len(solution.assignments)}/{len(requests)}, denied {len(solution.unserved)}")
-    say(f"independent feasibility check (packages.decide.feasibility -- it never imports")
+    say(f"independent feasibility check (app.decide.feasibility -- it never imports")
     say(f"  the solver): {len(violations)} violations -> "
         f"{'PASS' if not violations else 'FAIL'}")
     say("")
@@ -838,7 +838,7 @@ def _step_4_decide(say, result: WalkthroughResult, client: MilexiumClient, accep
 
 
 def _fresh_request_id():
-    from packages.canonical import RequestId
+    from app.canonical import RequestId
 
     return new_id(RequestId)
 
@@ -875,7 +875,7 @@ def _step_5_teardown(say, result: WalkthroughResult, accepted_rows):
     say("The deadhead teardown chains one vehicle's consecutive trips, so it needs one.")
     say("This step therefore reads the export's unmapped ActualDO column DIRECTLY,")
     say("outside the canonical path. Milexium's own canonical records cannot currently")
-    say("drive its own teardown. Nothing in packages/ was changed to hide that.")
+    say("drive its own teardown. Nothing in app/ was changed to hide that.")
     say("")
 
     segments, revenue_n, deadhead_n, unmeasured, unmeasured_reason = _build_segments(accepted_rows)
@@ -906,7 +906,7 @@ def _step_5_teardown(say, result: WalkthroughResult, accepted_rows):
         cost_per_vehicle_hour=cost_per_vrh,
         source=(
             f"REAL: median cost_per_vrh across {agency_count} demand-response agencies in "
-            f"the 2024 FTA National Transit Database (ntd/agency_economics.csv, "
+            f"the 2024 FTA National Transit Database (business/ntd/agency_economics.csv, "
             f"sha256 {_sha256(NTD_ECONOMICS)[:16]}...). A national stand-in rate, not this "
             "(synthetic) operator's own books"
         ),
@@ -1062,7 +1062,7 @@ def _build_segments(accepted_rows):
 
 
 def _run_teardown(segments, dataset_label, cost_basis, unmeasured, unmeasured_reason):
-    from packages.replay.teardown import teardown_deadhead
+    from app.replay.teardown import teardown_deadhead
 
     return teardown_deadhead(
         segments,
@@ -1129,9 +1129,9 @@ def _step_6_drift(say, result: WalkthroughResult) -> None:
         say("")
         return
 
-    from packages.canonical import ModelVersion, ModelVersionId, TenantId
-    from packages.forecast.features import feature_names_for
-    from packages.forecast.serve_drift import (
+    from app.canonical import ModelVersion, ModelVersionId, TenantId
+    from app.forecast.features import feature_names_for
+    from app.forecast.serve_drift import (
         assess_drift,
         derive_reference_from_rows,
         reference_from_model_artifact,
@@ -1470,7 +1470,7 @@ def _step_8_rederive(say, result: WalkthroughResult, pack_path: Path) -> None:
     say("the verification path never imports the code that produced the numbers -- so a")
     say("re-derivation cannot be satisfied by the generator agreeing with itself.")
     say("")
-    say("  py -3 -m demo.verify_pack artifacts/demo-walkthrough")
+    say("  py -3 -m demo.verify_pack evidence/artifacts/demo-walkthrough")
     say("")
 
     verification = verify_pack_file(pack_path, say=say)

@@ -1,0 +1,793 @@
+{
+  "generated_by": "business/outreach/build_panel_findings.py",
+  "status": "Demonstrated",
+  "status_note": "Demonstrated, never Validated. Every number here is computed from public NTD filings; there is no holdout, no counterfactual and no operator has confirmed any of it against their own books. A finding that survives this gate is a well-measured description of what agencies FILED, which is not the same as what happened.",
+  "panel": {
+    "universe": "US National Transit Database demand-response reporters",
+    "mode_codes": [
+      "DR"
+    ],
+    "mode_note": "NTD encodes demand-response taxi and TNC service as Mode=DR with Type-of-Service TX/TN rather than a separate DT mode code; this file contains zero rows with Mode=='DT', so filtering Mode=='DR' retains them",
+    "control_mode": "MB",
+    "sources": [
+      "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv",
+      "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv",
+      "business/ntd/agency_economics.csv"
+    ],
+    "external_constants": {
+      "cpi": "BLS CPI-U, US city average, all items, annual average (series CUUR0000SA0)",
+      "values": {
+        "2015": 237.017,
+        "2024": 313.689
+      }
+    }
+  },
+  "gate": {
+    "required_checks": [
+      "mode_provenance",
+      "composition",
+      "concentration"
+    ],
+    "min_effect_pct": 5.0,
+    "min_spread_ratio": 1.5,
+    "composition_retain_fraction": 0.5,
+    "concentration_band": [
+      0.5,
+      2.0
+    ],
+    "leave_out_top_n": 10,
+    "note": "A finding missing any required check is rejected for that reason alone -- silence is not a pass."
+  },
+  "not_computable": [
+    "Deadhead for any mode other than demand response, and deadhead as a time series: the only multi-year mode-tagged source we hold carries Vehicle Revenue Hours/Miles but no total (actual) hours, so there is no deadhead numerator in it. Every deadhead figure here is a 2024 cross-section.",
+    "Trip-level anything: wait times, on-time performance, denials, no-shows, ride durations, shared-ride factors. NTD is an annual and monthly aggregate return. No claim about individual rider experience can be made from these bytes.",
+    "Cause. Every finding here is a description of a filed number moving. Nothing in this panel identifies why it moved."
+  ],
+  "counts": {
+    "survived": 9,
+    "rejected": 8
+  },
+  "survived": [
+    {
+      "id": "dr_productivity_decline_2005_2024",
+      "status": "survived",
+      "claim": "US demand-response productivity has fallen for two decades: on a balanced panel of agencies reporting a full year in both 2005 and 2024, trips per vehicle revenue hour fell from 2.02 to 1.79.",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; Mode=='DR'; UPT and VRH summed per NTD ID per calendar year; agency-years with <12 monthly rows or VRH<=0 dropped; balanced on agencies present in both 2005 and 2024",
+      "numbers": {
+        "trips_per_vrh_2005": 2.0239,
+        "trips_per_vrh_2024": 1.7938,
+        "change_pct": -11.37,
+        "per_agency_median_change_pct": -11.0,
+        "pct_of_agencies_less_productive": 63.5,
+        "n_balanced_agencies": 263,
+        "trips_per_vrh_2019": 1.8309,
+        "change_2019_to_2024_pct": -0.74,
+        "not_covid_note": "2024 is within 0.7% of 2019, so the decline predates the pandemic and did not recover with it"
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed directly on Mode=='DR' rows of the mode-tagged monthly file; agrees with the mode-tagged DR total for 100.0% of 263 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|-11.4%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "unbalanced -10.3% vs balanced panel (n=263) -11.4%; sign held, magnitude retained 111% (floor 50%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "aggregate -11.4%, per-agency median -11.0% (ratio 0.97); leave-one-out over top 10 spans -12.7%..-10.2%; largest single operator is 5.8% of the panel"
+        }
+      ]
+    },
+    {
+      "id": "dr_recovery_dispersion_2019_2024",
+      "status": "survived",
+      "claim": "The national demand-response recovery figure is close to meaningless: the median operator is at 87% of its 2019 trips, but the 10th percentile is at 61% and the 90th at 152% -- a 2.5x spread across operators in the same year.",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; Mode=='DR'; annual UPT per NTD ID; both 2019 and 2024 required to have 12 monthly rows; ratio 2024/2019 per agency",
+      "numbers": {
+        "n_agencies": 373,
+        "median_recovery_pct": 87.4,
+        "p10_recovery_pct": 60.8,
+        "p90_recovery_pct": 152.2,
+        "p90_over_p10": 2.5,
+        "volume_weighted_national_recovery_pct": 91.2
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed directly on Mode=='DR' rows of the mode-tagged monthly file; agrees with the mode-tagged DR total for 100.0% of 373 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "spread 2.50x vs MIN_SPREAD_RATIO=1.5x"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "restricting to the 373 agencies that also filed a full 2023 gives 2.50x vs 2.50x on all 373 (within 25%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "volume-weighted national recovery is 91.2% -- a single number that describes almost nobody; restricting to the 323 agencies with >=25,000 trips in 2019 still gives a 2.44x p90/p10 spread, so the dispersion is not a small-operator artifact"
+        }
+      ]
+    },
+    {
+      "id": "dr_deadhead_level_2024",
+      "status": "survived",
+      "claim": "Roughly one demand-response vehicle-hour in seven is driven with nobody aboard: across 406 operators filing deadhead for 2024 the median is 15.1% of total vehicle-hours and the 90th percentile 25.5%.",
+      "source": "business/ntd/agency_economics.csv; report_year==2024; deadhead_pct_hours = deadhead_hours / actual_hours; agencies with no deadhead filing excluded",
+      "numbers": {
+        "n_operators": 406,
+        "median_deadhead_pct": 15.1,
+        "p90_deadhead_pct": 25.5,
+        "p10_deadhead_pct": 8.2,
+        "volume_weighted_deadhead_pct": 17.3,
+        "dr_dominant_n": 45,
+        "dr_dominant_median_pct": 16.9,
+        "dr_dominant_p90_pct": 25.9,
+        "internally_consistent_filings_pct": 86.5,
+        "year_scope": "2024 cross-section only -- no deadhead time series exists in any source we hold"
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "business/ntd/agency_economics.csv `trips` compared against the mode-tagged by-mode file: matches the DR-only total for 100.0% of agencies and the ALL-MODE total for 50.2%; and actual_hours - deadhead_hours == vrh for 86.5% of deadhead filers, which carries that DR scope onto the deadhead columns; agrees with the mode-tagged DR total for 100.0% of 1920 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "spread 3.11x vs MIN_SPREAD_RATIO=1.5x"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "restricting to the 45 agencies with >=80% of revenue hours in DR gives median 16.9% (vs 15.1%) and p90 25.9% (vs 25.5%) -- both within 25%"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "per-agency median 15.1% vs volume-weighted 17.3%; the largest DR operator is under 4% of national DR trips, so no single filer can set this"
+        }
+      ]
+    },
+    {
+      "id": "dr_cost_per_trip_dispersion_2024",
+      "status": "survived",
+      "claim": "What a demand-response trip costs varies 5.0x across US operators ($16 at the 10th percentile, $38 median, $82 at the 90th) -- and almost exactly half of that variation is productivity rather than input price.",
+      "source": "business/ntd/agency_economics.csv; report_year==2024; cost_per_trip = opex/trips, cost_per_vrh = opex/vrh, trips_per_vrh = trips/vrh; variance decomposition of ln(cost_per_trip) = ln(cost_per_vrh) - ln(trips_per_vrh), covariance split evenly between the two terms",
+      "numbers": {
+        "n_operators": 1920,
+        "cost_per_trip_p10_usd": 16.26,
+        "cost_per_trip_median_usd": 37.97,
+        "cost_per_trip_p90_usd": 81.68,
+        "p90_over_p10": 5.02,
+        "variance_share_input_price_pct": 50.1,
+        "variance_share_productivity_pct": 49.9,
+        "cost_per_vrh_p90_over_p10": 3.82,
+        "trips_per_vrh_p90_over_p10": 3.53
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "business/ntd/agency_economics.csv `trips` compared against the mode-tagged by-mode file: matches the DR-only total for 100.0% of agencies and the ALL-MODE total for 50.2%; agrees with the mode-tagged DR total for 100.0% of 1920 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "spread 5.02x vs MIN_SPREAD_RATIO=1.5x"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "restricting to the 272 operators above 100,000 annual trips gives a 54.2% price share vs 50.1% on all 1920, and a 3.99x spread vs 5.02x -- the split is not a micro-operator artifact"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "this is a distribution, not an aggregate: every statistic quoted is a per-agency quantile, so no operator is weighted by size at all. The volume-weighted mean cost per trip is $50.57, which sits at the 68th percentile of operators -- reported here precisely because it is not the same number"
+        }
+      ]
+    },
+    {
+      "id": "dr_productivity_loss_is_not_congestion",
+      "status": "survived",
+      "claim": "The productivity decline is not traffic and it is not longer trips. Demand-response average speed is flat over 2015-2024 (15.4 to 15.3 vehicle miles per revenue hour, -0.2%), while vehicle miles driven per passenger trip rose +11.6%. The vehicles are moving as fast as they ever did; they are covering more ground per rider delivered.",
+      "source": "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv; Mode=='DR'; Field in {Vehicle Revenue Miles, Vehicle Revenue Hours, Unlinked Passenger Trips}; report years 2015 and 2024; balanced on agencies present in both",
+      "numbers": {
+        "n_balanced_agencies": 1607,
+        "speed_vrm_per_vrh_2015": 15.35,
+        "speed_vrm_per_vrh_2024": 15.32,
+        "speed_change_pct": -0.19,
+        "speed_per_agency_median_change_pct": -1.62,
+        "vehicle_miles_per_trip_2015": 7.24,
+        "vehicle_miles_per_trip_2024": 8.08,
+        "vehicle_miles_per_trip_change_pct": 11.56,
+        "vehicle_miles_per_trip_per_agency_median_change_pct": 13.06
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed on Mode=='DR' rows of the mode-tagged by-mode file; agrees with the mode-tagged DR total for 100.0% of 1607 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|+11.6%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "unbalanced +11.6% vs balanced panel (n=1607) +11.6%; sign held, magnitude retained 100% (floor 50%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "aggregate +11.6%, per-agency median +13.1% (ratio 1.13); leave-one-out over top 10 spans +10.8%..+12.1%; largest single operator is 3.2% of the panel"
+        }
+      ]
+    },
+    {
+      "id": "dr_cost_growth_split_2015_2024",
+      "status": "survived",
+      "claim": "Demand-response cost per trip rose 77% in nominal terms 2015-2024 ($29.19 to $51.70), which is 34% after CPI. About 81% of the rise is the price of an hour of service and about 19% is delivering fewer trips per hour -- and only the second part is anything an operator schedules.",
+      "source": "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv; Mode=='DR'; Field in {Operating Expenses, Unlinked Passenger Trips, Vehicle Revenue Hours}; report years 2015 and 2024; balanced on agencies present in both; real terms deflated by BLS CPI-U, US city average, all items, annual average (series CUUR0000SA0)",
+      "numbers": {
+        "n_balanced_agencies": 1606,
+        "cost_per_trip_2015_usd": 29.19,
+        "cost_per_trip_2024_usd": 51.7,
+        "cost_per_trip_change_nominal_pct": 77.2,
+        "cost_per_trip_change_real_pct": 33.9,
+        "cost_per_trip_per_agency_median_change_nominal_pct": 80.6,
+        "cost_per_hour_2015_usd": 61.85,
+        "cost_per_hour_2024_usd": 98.02,
+        "cost_per_hour_change_nominal_pct": 58.5,
+        "cost_per_hour_change_real_pct": 19.7,
+        "trips_per_vrh_change_pct": -10.5,
+        "attribution_input_price_pct": 80.5,
+        "attribution_productivity_pct": 19.5,
+        "cpi_source": "BLS CPI-U, US city average, all items, annual average (series CUUR0000SA0)",
+        "cpi_values": {
+          "2015": 237.017,
+          "2024": 313.689
+        }
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed on Mode=='DR' rows of the mode-tagged by-mode file; agrees with the mode-tagged DR total for 100.0% of 1606 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|+77.2%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "unbalanced +77.2% vs balanced panel (n=1606) +77.2%; sign held, magnitude retained 100% (floor 50%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "aggregate +77.2%, per-agency median +80.6% (ratio 1.05); leave-one-out over top 10 spans +76.6%..+85.3%; largest single operator is 3.2% of the panel"
+        },
+        {
+          "check": "inflation",
+          "verdict": "pass",
+          "detail": "nominal +77.2%; CPI-U 2015->2024 deflator 1.3235 (237.017->313.689); REAL +33.9%; source: BLS CPI-U, US city average, all items, annual average (series CUUR0000SA0)"
+        }
+      ]
+    },
+    {
+      "id": "dr_hours_recovered_further_than_trips",
+      "status": "survived",
+      "claim": "Demand-response supply has recovered further than demand: the median operator runs 94% of its 2019 vehicle hours but carries only 87% of its 2019 trips, and 57 of 373 operators (15%) are now running MORE hours than in 2019 while carrying fewer riders.",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; Mode=='DR'; annual UPT and VRH per NTD ID; both 2019 and 2024 required to have 12 monthly rows",
+      "numbers": {
+        "n_agencies": 373,
+        "median_hours_recovery_pct": 93.8,
+        "median_trips_recovery_pct": 87.4,
+        "gap_points": 6.5,
+        "n_more_hours_fewer_trips": 57,
+        "pct_more_hours_fewer_trips": 15.3
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed directly on Mode=='DR' rows of the mode-tagged monthly file; agrees with the mode-tagged DR total for 100.0% of 373 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|+6.5%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "balanced by construction: every one of the 373 agencies supplies its own 2019 and 2024 endpoint for BOTH ratios, so no entrant or exit can move either median. Unbalanced medians over all filers would be 405 vs 402 different agencies and are deliberately not used"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "both figures are per-agency medians, not aggregates; the volume-weighted equivalents are 91.9% of 2019 hours and 91.2% of 2019 trips -- same direction, same order of gap"
+        }
+      ]
+    },
+    {
+      "id": "dr_productivity_decline_is_not_universal",
+      "status": "survived",
+      "claim": "The decline is not a law of physics: 96 of 263 operators (37%) are MORE productive than they were in 2005, and 70 (27%) raised productivity while also growing ridership.",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; Mode=='DR'; per-agency trips per VRH in 2005 and 2024, both full 12-month years; 'sizeable' = >=50,000 DR trips in 2005",
+      "numbers": {
+        "n_agencies_in_both_years": 263,
+        "n_more_productive": 96,
+        "pct_more_productive": 36.5,
+        "n_productivity_and_volume_up": 70,
+        "pct_productivity_and_volume_up": 26.6,
+        "n_sizeable": 189,
+        "n_sizeable_both_up": 46,
+        "pct_sizeable_both_up": 24.3,
+        "largest_examples": [
+          {
+            "agency": "Access Services  ",
+            "trips_per_vrh_2005": 1.47,
+            "trips_per_vrh_2024": 1.89,
+            "productivity_change_pct": 28.3,
+            "trips_change_pct": 126.7
+          },
+          {
+            "agency": "Maryland Transit Administration",
+            "trips_per_vrh_2005": 2.1,
+            "trips_per_vrh_2024": 2.12,
+            "productivity_change_pct": 0.7,
+            "trips_change_pct": 455.3
+          },
+          {
+            "agency": "MTA New York City Transit",
+            "trips_per_vrh_2005": 1.14,
+            "trips_per_vrh_2024": 1.22,
+            "productivity_change_pct": 7.5,
+            "trips_change_pct": 51.2
+          },
+          {
+            "agency": "VIA Metropolitan Transit",
+            "trips_per_vrh_2005": 2.03,
+            "trips_per_vrh_2024": 2.08,
+            "productivity_change_pct": 2.2,
+            "trips_change_pct": 50.5
+          },
+          {
+            "agency": "Orange County Transportation Authority",
+            "trips_per_vrh_2005": 1.67,
+            "trips_per_vrh_2024": 1.89,
+            "productivity_change_pct": 13.1,
+            "trips_change_pct": 9.1
+          }
+        ]
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed directly on Mode=='DR' rows of the mode-tagged monthly file; agrees with the mode-tagged DR total for 100.0% of 263 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|+36.5%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "restricting to the 189 operators above 50,000 trips in 2005 gives 24.3% vs 26.6% over all 263 -- the counter-trend group is not made of tiny operators whose ratios swing on a handful of trips"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "this is a COUNT of operators, so no operator is weighted at all; 5 of the largest are named with their own numbers so the claim can be checked one agency at a time"
+        }
+      ]
+    },
+    {
+      "id": "dr_demand_is_more_stable_than_bus",
+      "status": "survived",
+      "claim": "Demand-response demand is more stable month to month than fixed-route bus, not less: median coefficient of variation 7.8% for DR against 10.2% for bus in 2024, and a smaller peak-to-trough swing (27% vs 35% of mean monthly trips).",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; monthly UPT per NTD ID, calendar 2024, agencies with all 12 months and positive mean; CV = sd/mean, amplitude = (max-min)/mean; Mode=='DR' vs Mode=='MB'",
+      "numbers": {
+        "n_dr_agencies": 405,
+        "n_bus_agencies": 410,
+        "dr_median_cv_pct": 7.8,
+        "bus_median_cv_pct": 10.2,
+        "dr_median_amplitude_pct": 27.0,
+        "bus_median_amplitude_pct": 34.9,
+        "dr_p90_cv_pct": 15.8,
+        "bus_p90_cv_pct": 30.6
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "both series taken from the mode-tagged monthly file on their own Mode codes; agrees with the mode-tagged DR total for 100.0% of 405 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|+30.7%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "single-year cross-section with a full-12-month requirement on both panels (405 DR, 410 bus agencies), so no agency enters on a partial year; the same comparison on the two separate statistics (CV and peak-to-trough amplitude) gives the same ordering, which a composition artifact would not"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "both figures are medians over agencies, so the largest operator counts exactly as much as the smallest"
+        },
+        {
+          "check": "control_mode",
+          "verdict": "pass",
+          "detail": "demand response 0.08 vs fixed-route bus (MB) 0.10 on median monthly CV of UPT, 2024; claim requires DR is below MB"
+        }
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "id": "dr_fleet_utilisation_diverged_from_bus",
+      "status": "rejected",
+      "claim": "Demand-response fleets are being worked LESS hard than a decade ago while bus fleets are worked harder: revenue hours per peak vehicle -3.9% for DR against +9.4% for fixed-route bus, 2015-2024.",
+      "source": "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv; Mode=='DR' vs 'MB'; Vehicle Revenue Hours over Vehicles Operated in Maximum Service; balanced 2015/2024. VOMS is a PEAK vehicle count, so this is a utilisation proxy, not a fleet-hours measurement",
+      "numbers": {
+        "n_balanced_dr": 1607,
+        "dr_hours_per_peak_vehicle_2015": 1725.0,
+        "dr_hours_per_peak_vehicle_2024": 1657.0,
+        "dr_change_pct": -3.9,
+        "dr_per_agency_median_change_pct": -5.5,
+        "bus_change_pct": 9.4,
+        "bus_per_agency_median_change_pct": 4.2,
+        "caveat": "VOMS counts vehicles in maximum service, not vehicles owned; a fleet that shrank its peak pullout can show rising hours per vehicle without running any more service"
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "both panels drawn from the mode-tagged by-mode file on their own Mode codes; agrees with the mode-tagged DR total for 100.0% of 1607 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "FAIL",
+          "detail": "|-3.9%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "unbalanced -4.6% vs balanced panel (n=1607) -3.9%; sign held, magnitude retained 85% (floor 50%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "aggregate -3.9%, per-agency median -5.5% (ratio 1.39); leave-one-out over top 10 spans -4.7%..-2.0%; largest single operator is 3.6% of the panel"
+        },
+        {
+          "check": "control_mode",
+          "verdict": "pass",
+          "detail": "demand response -3.94 vs fixed-route bus (MB) 9.36 on change in revenue hours per peak vehicle 2015-2024; claim requires DR is below MB"
+        }
+      ],
+      "rejected_because": "effect_size: |-3.9%| vs MIN_EFFECT_PCT=5.0%"
+    },
+    {
+      "id": "dr_demand_is_uniquely_volatile",
+      "status": "rejected",
+      "claim": "Demand-response demand is uniquely volatile month to month, so operators need forecasting more than fixed-route does.",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; median per-agency coefficient of variation of monthly UPT, calendar 2024, 12-month-complete agencies; Mode=='DR' vs Mode=='MB'",
+      "numbers": {
+        "dr_median_cv_pct": 7.8,
+        "bus_median_cv_pct": 10.2,
+        "verdict": "FALSE -- the opposite is true"
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "both series taken from the mode-tagged monthly file on their own Mode codes; agrees with the mode-tagged DR total for 100.0% of 0 agencies (floor 95%)"
+        },
+        {
+          "check": "control_mode",
+          "verdict": "FAIL",
+          "detail": "demand response 0.08 vs fixed-route bus (MB) 0.10 on median monthly CV of UPT, 2024; claim requires DR exceeds MB"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "12-month-complete agencies in both panels"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "medians over agencies, unweighted"
+        }
+      ],
+      "rejected_because": "FALSE AND PERMANENTLY DEAD. Demand-response monthly demand varies LESS than fixed-route bus, not more: median CV 7.8% vs 10.2% in 2024. This claim is retained in the rejected list specifically so it cannot be quietly revived -- see dr_demand_is_more_stable_than_bus for the same measurement stated truthfully, and evidence/conformance/property-tests/test_panel_findings.py for the test that fails if it ever moves back to `survived`."
+    },
+    {
+      "id": "dr_deadhead_extreme_tail_2024",
+      "status": "rejected",
+      "claim": "A long tail of demand-response operators runs over 40% of vehicle-hours empty (9 of 406 filers), with the worst above 60%.",
+      "source": "business/ntd/agency_economics.csv; report_year==2024; deadhead_pct_hours > 0.40; DR share of revenue hours from data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv, Mode=='DR' VRH over all-mode VRH, report year 2024",
+      "numbers": {
+        "n_above_40pct_all_filers": 9,
+        "n_filers": 406,
+        "rate_above_40pct_all_filers": 2.22,
+        "n_above_40pct_among_dr_dominant": 1,
+        "n_dr_dominant": 45,
+        "rate_above_40pct_among_dr_dominant": 2.22,
+        "rate_above_40pct_above_size_floor": 1.37,
+        "size_floor_actual_hours": 10000,
+        "n_tail_below_1000_annual_hours": 2,
+        "n_tail_failing_filing_identity": 1,
+        "worst_three": [
+          {
+            "agency": "Alternativa de Transporte Integrado, dba: Autoridad de Trans",
+            "deadhead_pct": 84.5,
+            "actual_hours": 232,
+            "annual_trips": 209,
+            "dr_share_of_agency_revenue_hours_pct": 0.0
+          },
+          {
+            "agency": "Potomac and Rappahannock Transportation Commission, dba: Omn",
+            "deadhead_pct": 69.2,
+            "actual_hours": 40140,
+            "annual_trips": 22303,
+            "dr_share_of_agency_revenue_hours_pct": 3.7
+          },
+          {
+            "agency": "City of Culver City, dba: Culver CityBus",
+            "deadhead_pct": 65.5,
+            "actual_hours": 2505,
+            "annual_trips": 3832,
+            "dr_share_of_agency_revenue_hours_pct": 0.7
+          }
+        ]
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "deadhead columns are DR-scoped (see dr_deadhead_level_2024), so these are real demand-response deadhead figures -- the failures below are size and effect, not provenance; agrees with the mode-tagged DR total for 100.0% of 406 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "FAIL",
+          "detail": "9 of 406 filers is 2.22% of the panel. Calling 2% of operators 'a long tail' is a claim about nine agencies dressed as a claim about a sector, and above a 10,000-hour floor it thins further to 1.37%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "NOT a mode-mix artifact, contrary to the obvious reading: the rate is 2.22% across all 406 filers and 2.22% across the 45 that are demand-response-dominant (>=80% of revenue hours in DR). Only 45 of 406 filers are DR-dominant, so one survivor out of 9 is exactly what the subgroup size predicts. This check PASSES and the finding is still rejected"
+        },
+        {
+          "check": "concentration",
+          "verdict": "FAIL",
+          "detail": "the claim rests on 9 individually named operators, 2 of which run under 1,000 vehicle-hours a year (Alternativa de Transporte Integrado at 84.5% on 232 hours and 209 trips; Potomac and Rappahannock Transportation Commission at 69.2% on 40,140 hours and 22,303 trips; City of Culver City at 65.5% on 2,505 hours and 3,832 trips), and 1 of which fail the internal filing identity actual_hours - deadhead_hours == vrh. An agency reporting 36 vehicle-hours for a year is a rounding error, not an operation"
+        }
+      ],
+      "rejected_because": "effect_size: 9 of 406 filers is 2.22% of the panel. Calling 2% of operators 'a long tail' is a claim about nine agencies dressed as a claim about a sector, and above a 10,000-hour floor it thins further to 1.37%; concentration: the claim rests on 9 individually named operators, 2 of which run under 1,000 vehicle-hours a year (Alternativa de Transporte Integrado at 84.5% on 232 hours and 209 trips; Potomac and Rappahannock Transportation Commission at 69.2% on 40,140 hours and 22,303 trips; City of Culver City at 65.5% on 2,505 hours and 3,832 trips), and 1 of which fail the internal filing identity actual_hours - deadhead_hours == vrh. An agency reporting 36 vehicle-hours for a year is a rounding error, not an operation"
+    },
+    {
+      "id": "dr_cost_inflation_exceeds_bus",
+      "status": "rejected",
+      "claim": "Demand-response cost per revenue hour has inflated faster than fixed-route bus (58.5% vs 47.9% 2015-2024).",
+      "source": "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv; Mode=='DR' vs Mode=='MB'; Operating Expenses over Vehicle Revenue Hours; balanced panels 2015 and 2024",
+      "numbers": {
+        "dr_cost_per_hour_change_pct": 58.5,
+        "mb_cost_per_hour_change_pct": 47.9,
+        "aggregate_gap_points": 10.6,
+        "dr_per_agency_median_change_pct": 55.1,
+        "mb_per_agency_median_change_pct": 51.4,
+        "per_agency_median_gap_points": 3.7,
+        "dr_real_change_pct": 19.7,
+        "mb_real_change_pct": 11.7
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "both panels drawn from the mode-tagged by-mode file on their own Mode codes; agrees with the mode-tagged DR total for 100.0% of 1606 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "pass",
+          "detail": "|+10.6%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "unbalanced +10.9% vs balanced panel (n=1606) +10.6%; sign held, magnitude retained 97% (floor 50%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "FAIL",
+          "detail": "the gap is +10.6 points on volume-weighted aggregates but only +3.7 points on per-agency medians (55.1% vs 51.4%). The typical demand-response operator's hourly cost inflation is barely distinguishable from the typical bus operator's; the aggregate gap is a weighting effect, not an industry difference"
+        },
+        {
+          "check": "inflation",
+          "verdict": "pass",
+          "detail": "nominal +10.6%; CPI-U 2015->2024 deflator 1.3235 (237.017->313.689); REAL +8.0%; source: BLS CPI-U, US city average, all items, annual average (series CUUR0000SA0)"
+        }
+      ],
+      "rejected_because": "concentration: the gap is +10.6 points on volume-weighted aggregates but only +3.7 points on per-agency medians (55.1% vs 51.4%). The typical demand-response operator's hourly cost inflation is barely distinguishable from the typical bus operator's; the aggregate gap is a weighting effect, not an industry difference"
+    },
+    {
+      "id": "dr_deadhead_predicts_cost_per_trip",
+      "status": "rejected",
+      "claim": "Deadhead share is where demand-response money leaks, so an operator's empty-hour percentage predicts its cost per trip.",
+      "source": "business/ntd/agency_economics.csv; report_year==2024; Spearman rank correlation of deadhead_pct_hours against cost_per_trip over 406 operators; quartiles of deadhead_pct_hours",
+      "numbers": {
+        "n_operators": 406,
+        "spearman_deadhead_vs_cost_per_trip": 0.024,
+        "spearman_deadhead_vs_trips_per_vrh": 0.083,
+        "spearman_cost_per_hour_vs_cost_per_trip": 0.738,
+        "median_cost_per_trip_by_deadhead_quartile_usd": {
+          "q1": 48.53,
+          "q2": 53.34,
+          "q3": 52.3,
+          "q4": 54.09
+        }
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "deadhead, cost and productivity columns are all DR-scoped (see dr_deadhead_level_2024); agrees with the mode-tagged DR total for 100.0% of 406 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "FAIL",
+          "detail": "Spearman +0.024 over 406 operators; a rank correlation this close to zero is no relationship. Median cost per trip runs $48.53 in the LOWEST deadhead quartile against $54.09 in the highest -- the wrong way round to matter and far too small to lead with. By contrast cost per revenue HOUR ranks against cost per trip at +0.738"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "single-year cross-section over all 2024 deadhead filers; no endpoint selection is possible"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "rank correlation and quartile medians, both unweighted by size"
+        }
+      ],
+      "rejected_because": "effect_size: Spearman +0.024 over 406 operators; a rank correlation this close to zero is no relationship. Median cost per trip runs $48.53 in the LOWEST deadhead quartile against $54.09 in the highest -- the wrong way round to matter and far too small to lead with. By contrast cost per revenue HOUR ranks against cost per trip at +0.738"
+    },
+    {
+      "id": "dr_cost_dispersion_is_widening",
+      "status": "rejected",
+      "claim": "The gap between the cheapest and most expensive demand-response operators is widening, so the sector is pulling apart.",
+      "source": "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv; Mode=='DR'; cost per trip = Operating Expenses / Unlinked Passenger Trips; p90/p10 ratio in 2015 vs 2024",
+      "numbers": {
+        "p90_over_p10_2015": 5.08,
+        "p90_over_p10_2024": 5.03,
+        "change_pct": -1.1,
+        "n_2015": 1797,
+        "n_2024": 1920,
+        "balanced_p90_over_p10_2015": 5.09,
+        "balanced_p90_over_p10_2024": 4.85,
+        "balanced_change_pct": -4.7,
+        "n_balanced": 1606
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed on Mode=='DR' rows of the mode-tagged by-mode file; agrees with the mode-tagged DR total for 100.0% of 1606 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "FAIL",
+          "detail": "|-1.1%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "unbalanced -1.1% vs balanced panel (n=1606) -4.7%; sign held, magnitude retained 436% (floor 50%)"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "quantile ratios, unweighted by operator size"
+        }
+      ],
+      "rejected_because": "effect_size: |-1.1%| vs MIN_EFFECT_PCT=5.0%"
+    },
+    {
+      "id": "dr_recovery_drives_productivity",
+      "status": "rejected",
+      "claim": "Operators that recovered their ridership also recovered their productivity (Spearman +0.43), so ridership recovery is the route to efficiency.",
+      "source": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv; Mode=='DR'; recovery = UPT2024/UPT2019, productivity change = (UPT/VRH)2024 / (UPT/VRH)2019, over 373 agencies with 12 months in both years",
+      "numbers": {
+        "n_agencies": 373,
+        "spearman_recovery_vs_productivity": 0.426,
+        "spearman_recovery_vs_hours_change": 0.803
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed directly on Mode=='DR' rows of the mode-tagged monthly file; agrees with the mode-tagged DR total for 100.0% of 373 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "FAIL",
+          "detail": "MECHANICALLY COUPLED, not a finding. Recovery is UPT24/UPT19 and the productivity ratio is (UPT24/VRH24)/(UPT19/VRH19) -- the same two UPT terms appear in both, in the same direction, so a positive Spearman (+0.426) is guaranteed by the arithmetic before any operator does anything. The variable that is actually free is the hours change, which ranks against recovery at +0.803. Quoting the +0.43 as a causal result to anyone who has built an NTD panel would be a very short conversation"
+        },
+        {
+          "check": "composition",
+          "verdict": "pass",
+          "detail": "same agencies at both endpoints by construction"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "rank correlation, unweighted"
+        }
+      ],
+      "rejected_because": "effect_size: MECHANICALLY COUPLED, not a finding. Recovery is UPT24/UPT19 and the productivity ratio is (UPT24/VRH24)/(UPT19/VRH19) -- the same two UPT terms appear in both, in the same direction, so a positive Spearman (+0.426) is guaranteed by the arithmetic before any operator does anything. The variable that is actually free is the hours change, which ranks against recovery at +0.803. Quoting the +0.43 as a causal result to anyone who has built an NTD panel would be a very short conversation"
+    },
+    {
+      "id": "dr_pooling_efficiency_declined",
+      "status": "rejected",
+      "claim": "Demand-response trips got SHORTER while the vehicles drove further per trip (passenger miles per trip -4.6%, vehicle miles per trip +11.6%, 2015-2024), so the sector is pooling riders less effectively than it used to.",
+      "source": "data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv; Mode=='DR'; Passenger Miles Traveled and Vehicle Revenue Miles over Unlinked Passenger Trips; balanced 2015/2024",
+      "numbers": {
+        "n_balanced_with_passenger_miles": 363,
+        "n_balanced_with_vehicle_miles": 1607,
+        "coverage_pct": 22.6,
+        "passenger_miles_per_trip_2015": 9.29,
+        "passenger_miles_per_trip_2024": 8.86,
+        "passenger_miles_per_trip_change_pct": -4.6,
+        "vehicle_miles_per_trip_change_pct": 11.6
+      },
+      "checks": [
+        {
+          "check": "mode_provenance",
+          "verdict": "pass",
+          "detail": "computed on Mode=='DR' rows of the mode-tagged by-mode file; agrees with the mode-tagged DR total for 100.0% of 363 agencies (floor 95%)"
+        },
+        {
+          "check": "effect_size",
+          "verdict": "FAIL",
+          "detail": "|-4.6%| vs MIN_EFFECT_PCT=5.0%"
+        },
+        {
+          "check": "composition",
+          "verdict": "FAIL",
+          "detail": "only 363 of 1607 balanced-panel agencies (22.6%) file Passenger Miles Traveled at all -- it is a Full Reporter obligation, so the filers skew large and urban. The vehicle-miles-per-trip half of the claim rests on 1607 agencies and is solid; the passenger-miles half rests on a self-selected minority and cannot carry a sector claim about pooling"
+        },
+        {
+          "check": "concentration",
+          "verdict": "pass",
+          "detail": "aggregate -4.6%, per-agency median -3.3% (ratio 0.73); leave-one-out over top 10 spans -5.3%..-3.7%; largest single operator is 4.9% of the panel"
+        }
+      ],
+      "rejected_because": "effect_size: |-4.6%| vs MIN_EFFECT_PCT=5.0%; composition: only 363 of 1607 balanced-panel agencies (22.6%) file Passenger Miles Traveled at all -- it is a Full Reporter obligation, so the filers skew large and urban. The vehicle-miles-per-trip half of the claim rests on 1607 agencies and is solid; the passenger-miles half rests on a self-selected minority and cannot carry a sector claim about pooling"
+    }
+  ]
+}

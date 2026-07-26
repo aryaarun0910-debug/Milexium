@@ -1,13 +1,13 @@
 {
   "acceptance_threshold": "parquet opens; expected timestamp columns present.",
-  "canonical_contract": "packages.connect.tlc_trips maps these onto ServiceRequest (ADR-0011); packages.replay.teardown consumes them as VehicleSegments (ADR-0039).",
+  "canonical_contract": "app.connect.tlc_trips maps these onto ServiceRequest (ADR-0011); app.replay.teardown consumes them as VehicleSegments (ADR-0039).",
   "dataset_id": "realdata-nyc-tlc-trip-records",
   "decision_tasks_enabled": [
     "forecast.demand",
     "replay.deadhead_teardown"
   ],
   "derived_artifacts": [
-    "GOVERNANCE-ONLY MANIFEST (tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through packages.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
+    "GOVERNANCE-ONLY MANIFEST (platform/tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through app.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
     "already_present_at: realdata/raw_tlc/",
     "already_present_at: realdata/raw_tlc_taxi/"
   ],

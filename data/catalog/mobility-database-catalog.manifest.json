@@ -17,7 +17,7 @@
   "sensitive_fields": [],
   "update_frequency": "continuous upstream (community-maintained); re-pull on demand, not scheduled. source_checksum is null -- trust-on-first-use, the register changes as feeds are added and deprecated.",
   "source_checksum": null,
-  "canonical_contract": "none-yet -- a feed registry, not observational data. It is Connect-layer input that governs which feeds packages/connect/gtfs_realtime.py and the GTFS-static adapters can legitimately be pointed at, and which of those need a per-feed rights review first.",
+  "canonical_contract": "none-yet -- a feed registry, not observational data. It is Connect-layer input that governs which feeds app/connect/gtfs_realtime.py and the GTFS-static adapters can legitimately be pointed at, and which of those need a per-feed rights review first.",
   "quality_tests": [
     {
       "name": "header_has_data_type_and_authentication_type",

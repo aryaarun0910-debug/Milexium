@@ -1,0 +1,291 @@
+id: MX-A-LIFECYCLE-IMMUTABILITY-012
+status: completed
+completed_date: "2026-07-26"
+dispatched_date: "2026-07-26"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none
+
+objective: >
+  Close the two P0 defects an external audit found in the durable lifecycle
+  record -- the table Milexium presents as the answer to "what happened to this
+  trip, who decided, and when?" -- so that the claims already made in writing to
+  an industry contact are enforced by the DATABASE and the DEPLOYMENT CREDENTIAL
+  rather than by a coding convention. Program A.
+
+the_two_defects:
+  p0_1_transaction_time_was_a_caller_assertion: >
+    `record_lifecycle_transition` took BOTH `decided_at` and `recorded_at` as
+    required arguments, and the only database rule was
+    CHECK (recorded_at >= decided_at). The auditor inserted a transition whose
+    decided_at was 2020-01-01 and whose recorded_at was one second later; it was
+    accepted. The system proved that two CALLER assertions were ordered and
+    nothing whatever about when the row entered Milexium. ADR-0063's claim that
+    the record "refuses backdating" was therefore false as a general statement,
+    and its stated limitation ("we can prove a record was not back-written
+    relative to its own recording") was hollow, because that clock was
+    caller-controlled too.
+  p0_2_the_table_was_mutable_history: >
+    The schema called the table append-only because no application code issued
+    UPDATE or DELETE against it. The auditor wrote a valid denial, issued a
+    direct SQL UPDATE changing actor_id, committed it, and read the forged actor
+    back through the normal lifecycle API with no violation reported. There was
+    no hash chain, no immutability trigger and no privilege boundary. Reproduced
+    at the start of this packet under `milexium_app` on the container -- all
+    three probes (backdate, forge, delete) succeeded.
+
+the_irony_this_packet_records: >
+  ADR-0063's own commit message argued that "a guard living only in the
+  application is a guard a future direct-SQL path walks around" -- and then left
+  append-only as exactly that. The same sentence applies one layer down and is
+  why a trigger alone was not the fix: a table's OWNER can DROP TRIGGER, DISABLE
+  TRIGGER, and CREATE OR REPLACE the function a trigger calls, so a guard
+  installed by the application credential is removable by the application
+  credential.
+
+owned_paths:
+  - app/canonical/lifecycle.py                       # late-arrival vocabulary, lag, chain, hash
+  - app/canonical/lifecycle_verify.py                # NEW: the chain checker, separate from the writer
+  - app/canonical/transaction_clock.py               # NEW: the ONE clock the write path may read
+  - app/canonical/storage.py                         # SQLite store: stamp, chain, raw rows, verify
+  - app/canonical/postgres_storage.py                # Postgres store: same + the seal
+  - app/canonical/sql/schema_v0_1.sql                # 4 additive columns + 2 CHECKs on ONE table
+  - app/canonical/sql/lifecycle_immutability_sqlite.sql       # NEW
+  - app/canonical/sql/lifecycle_immutability_postgres.sql     # NEW (unprivileged fallback)
+  - app/canonical/__init__.py                        # exports
+  - platform/infra/compose/initdb/02-lifecycle-ledger-bootstrap.sql # NEW: the privileged, once-per-cluster step
+  - evidence/conformance/property-tests/test_lifecycle_immutability.py       # NEW
+  - evidence/conformance/property-tests/test_lifecycle_record.py
+  - evidence/conformance/property-tests/test_lifecycle_rls.py
+  - knowledge/workstreams/packets/MX-A-LIFECYCLE-IMMUTABILITY-012.yaml
+
+read_only_dependencies:
+  - MILEXIUM_INTERNAL_AUDIT_2026-07-26.md
+  - knowledge/architecture/decisions/0063-lifecycle-decision-record.md
+  - knowledge/architecture/decisions/0003-append-only-hash-chained-event-log.md
+  - knowledge/architecture/decisions/0006-dedicated-postgres-dev-role.md
+  - knowledge/architecture/decisions/0046-container-store-rls.md
+  - knowledge/architecture/decisions/0052-container-app-role.md
+  - app/verify/hash_chain_verifier.py
+  - platform/infra/compose/initdb/01-app-role.sh
+
+what_enforces_each_guarantee_and_at_what_layer:
+  transaction_time:
+    application: >
+      `record_transition` has NO `recorded_at` parameter and no **kwargs (both
+      asserted). The value comes from app/canonical/transaction_clock.py,
+      which is the only module in the canonical package that reads a wall clock --
+      so lifecycle.py, storage.py and postgres_storage.py stay literally
+      clock-free and the AST assertion protecting `decided_at` keeps its full
+      strength.
+    database_postgres: >
+      A `clock_timestamp()` DEFAULT on the column, PLUS a BEFORE INSERT trigger
+      that refuses any recorded_at more than 60s from clock_timestamp()
+      (SQLSTATE MX002). The trigger is the part that closes the audit finding: a
+      DEFAULT fires only when the column is OMITTED, and the auditor's insert
+      supplied it.
+    database_sqlite: >
+      The same 60s bound as a BEFORE INSERT trigger using julianday('now').
+      SQLite has no expression that renders the fixed-width six-fraction form,
+      so the WRITER stamps and the database bounds.
+    credential: "not applicable -- the bound is a data rule, not a permission"
+  late_arrival:
+    application: >
+      `ingest_lag_seconds` is measured, stored, re-derived on read from the two
+      timestamps (a disagreement raises), and surfaced on `OutcomeExplanation`.
+      Past 300s a row must name a `LateRecordingReason` from a CLOSED vocabulary
+      of five, and a row INSIDE the bound may not name one.
+    database: >
+      CHECK (ingest_lag_seconds <= 300 OR late_recording_reason IS NOT NULL) and
+      CHECK (late_recording_reason IN (...)), both in the portable DDL, both
+      proven against raw SQL. The 300 literal is pinned against the Python
+      constant by a conformance test.
+  immutability:
+    application: "no UPDATE/DELETE statement in app/canonical, asserted by source scan (unchanged)"
+    database: >
+      Four triggers owned by `milexium_ledger_owner`: reject UPDATE, reject
+      DELETE, reject TRUNCATE (SQLSTATE MX001), bound recorded_at (MX002). SQLite
+      gets the equivalent three.
+    credential: >
+      The table is OWNED by `milexium_ledger_owner` (NOLOGIN, NOSUPERUSER,
+      NOBYPASSRLS), which is a member of the application roles and never the
+      reverse -- so the ledger owner can reach a table the application created
+      and the application can never SET ROLE to the ledger owner. The deployment
+      credential holds exactly INSERT and SELECT, read out of
+      information_schema.table_privileges.
+  tamper_evidence:
+    application: >
+      prev_hash/hash per row, computed by the SAME normative `compute_hash`
+      ADR-0003 made canonical for the decision ledger, over a domain-separated
+      payload ("request_state_transition/v1"). `RequestTransition` recomputes and
+      refuses a row whose hash disagrees with its contents, so a tampered row
+      cannot be READ back as history. `lifecycle_verify.py` re-derives the chain
+      from RAW stored rows and reports rather than raises.
+    database: "CHECK ((sequence = 1) = (prev_hash IS NULL)) -- a chain cannot be silently re-rooted"
+    credential: "none -- see limitations: the chain is evidence, not authentication"
+
+adversarial_probes_run:
+  - "the audit's backdated insert (decided_at 2020-01-01, recorded_at +1s), raw SQL, as milexium_app -> REFUSED, SQLSTATE MX002 (was: accepted)"
+  - "the audit's forged-actor UPDATE, raw SQL, as milexium_app -> REFUSED, SQLSTATE 42501; stored actor unchanged; chain still verifies (was: accepted and read back)"
+  - "raw DELETE of a recorded denial -> REFUSED 42501 (was: accepted, row gone)"
+  - "raw TRUNCATE -> REFUSED 42501"
+  - "UPDATE erasing reason_codes to '[]' -> REFUSED; the denial keeps its grounds"
+  - "UPDATE backdating decided_at to 2020 -> REFUSED"
+  - "DROP TRIGGER milexium_lifecycle_reject_update -> REFUSED 42501, 4 guards still enabled"
+  - "ALTER TABLE ... DISABLE TRIGGER (named, and ALL) -> REFUSED 42501"
+  - "ALTER TABLE ... OWNER TO CURRENT_USER -> REFUSED 42501"
+  - "CREATE OR REPLACE of the guard function as a no-op -> REFUSED 42501"
+  - "ALTER TABLE ... NO FORCE / DISABLE ROW LEVEL SECURITY / DROP POLICY -> REFUSED 42501"
+  - "DROP TABLE request_state_transitions -> SUCCEEDED. A finding, not a pass: PostgreSQL allows DROP TABLE to the SCHEMA owner as well as the table owner, and the application credential owns the disposable schema. Recorded as the top residual risk and asserted by a test that documents the weakness rather than hiding it."
+  - "GRANT UPDATE ON the table TO CURRENT_USER -> SUCCEEDED WITH A WARNING and granted nothing. A second finding about test design: a GRANT without grant option is not an error in PostgreSQL, so a `pytest.raises` test here fails and reads as 'the credential CAN grant itself UPDATE', which is false. The assertion is on the resulting privilege set instead, which stays {INSERT, SELECT}."
+  - "pg_has_role(current_user, 'milexium_ledger_owner', 'USAGE') -> FALSE on both instances"
+  - "recorded_at 61s in the past and 61s in the future (one second past the bound) -> REFUSED MX002; 30s off -> ACCEPTED (positive control)"
+  - "raw INSERT omitting recorded_at entirely -> stamped by the server inside the window the insert happened in"
+  - "raw INSERT 3 days late with no declared reason -> CheckViolation; the same row with INTEGRATION_OUTAGE declared -> accepted"
+  - "SQLite: UPDATE, qualified DELETE, and UNQUALIFIED DELETE (the truncate-optimization shape) -> all IntegrityError"
+  - "SQLite: raw INSERT with a 2020 recorded_at -> IntegrityError from the clock-bound trigger"
+  - "chain: four fields mutated on raw rows (actor_id, to_state, reason_codes, decided_at) -> each detected"
+  - "chain: a well-formed forged row APPENDED after a terminal denial -> detected as a broken link AND a state discontinuity"
+  - "a row inserted with a wrong hash -> refused on READ (LifecycleChainError)"
+  - "an append at sequence 2 with a NULL prev_hash -> refused by the genesis CHECK before the verifier saw it, so a forger cannot omit the link"
+
+mutations_checked:
+  method: >
+    Each mutation was applied, the test that claims to cover it was run, and the
+    change was reverted. Where a mutation came back GREEN the MUTATION was
+    checked first, per the packet's instruction.
+  results:
+    - "M1  drop the append-only UPDATE trigger from the unprivileged fallback -> RED"
+    - "M1b disable the SQLite append-only UPDATE trigger (WHEN 0)              -> RED (see the_two_that_came_back_green_first)"
+    - "M3  give record_transition a `recorded_at` parameter again              -> RED"
+    - "M6  remove the late-arrival CHECK from the portable schema              -> RED"
+    - "M7  raise the Python threshold without changing the SQL                 -> RED"
+    - "M8  drop actor_id from the hashed payload                               -> RED"
+    - "M9  make the chain verifier ignore prev_hash linkage                    -> RED"
+    - "M10 make the seal a no-op that still reports success                    -> RED"
+    - "M11 stamp recorded_at from decided_at instead of the clock              -> RED"
+    - "M12 revert the fixed-width timestamp format to isoformat                -> RED (see the_two_that_came_back_green_first)"
+    - "M13 let the read path skip the stored-hash check                        -> RED"
+  the_two_that_came_back_green_first:
+    M1b_the_mutation_was_wrong: >
+      The first M1b renamed the SQLite trigger rather than removing it, so the
+      trigger still existed and still fired -- the mutation did not remove the
+      guard it claimed to. Re-run as `WHEN 0` on the same trigger (a real
+      disable): RED. The TEST was sound; the mutation was not.
+    M12_the_test_was_wrong_and_it_was_this_packet_that_broke_it: >
+      M12 reverts `iso_fixed_utc` to `.isoformat()`, which is the collation defect
+      MX-A-LIFECYCLE-RECORD-010 was built to survive. It came back GREEN. The
+      mutation was checked first and was correct -- so the TEST had stopped
+      covering it, and this packet is what stopped it.
+
+      The trap only bites when the two timestamps share a SECOND: that is when the
+      comparison reaches the punctuation the collation weighs wrongly. The
+      original test used a fixed `decided_at` and a caller-supplied `recorded_at`
+      a fraction later. When `recorded_at` became the stamped NOW, the pair became
+      2026-07-01 vs 2026-07-26 -- strings that differ in the DATE, decided long
+      before any fraction. The test still passed, and would have kept passing with
+      the format reverted and the CHECK constraint quietly unsound.
+
+      Rewritten to build the pair from ONE instant: `recorded_at` is a real stamped
+      time and `decided_at` is that same instant with its microseconds cleared, so
+      they share a second by construction, and the row goes in by raw SQL so both
+      sides are controlled. M12 is now RED, and the test asserts the same-second
+      property explicitly so a future edit cannot silently un-cover it again.
+
+      This is the ninth vacuous-test near-miss this repository has recorded, and
+      the first one introduced BY a repair rather than found in existing work.
+
+test_counts:
+  the_four_lifecycle_suites: "186 passed, 0 skipped, 0 failed, in 74s"
+  breakdown: >
+    test_lifecycle_immutability.py (NEW, 76: 38 x 2 PostgreSQL credentials where
+    parametrised, plus the SQLite and pure-chain cases), test_lifecycle_record.py
+    (88, updated), test_lifecycle_rls.py (16, updated), test_state_machine_anchors.py
+    (6, untouched). PostgreSQL RAN on BOTH instances -- native 17.10 as
+    milexium_dev and the container 16.4 as milexium_app -- with zero skips.
+  repository_suite: >
+    2539 passed, 1 skipped, 735s for `pytest app/ evidence/conformance/` with three
+    files ignored (see the concurrency note). One failure appeared and was traced
+    to ANOTHER agent renaming test_panel_findings.py mid-collection: the run
+    collected `test_the_agency_operating_for_the_opted_out_county_is_parked` and
+    the file on disk now defines `..._is_never_contactable`. Re-run against the
+    current tree: 1 passed. Nothing in it touches an owned path.
+
+tests_fixed_because_they_only_passed_under_the_weak_guarantee:
+  - "test_the_decision_time_is_a_required_argument_with_no_default was parametrised over BOTH clocks. The `recorded_at` half asserted the defect: that a caller must supply transaction time. It now covers `decided_at` only, and a new test asserts `recorded_at` is not a parameter AT ALL (and that there is no **kwargs to smuggle it through)."
+  - "test_the_decided_at_column_carries_no_default_in_the_live_database asserted `recorded_at` had NO database default. That was the defect stated as a guarantee. It now asserts the column HAS a clock_timestamp() default, with the decided_at half unchanged."
+  - "test_the_stored_decision_time_is_the_callers_and_is_not_the_write_time passed a recorded_at of 2 July and asserted it round-tripped -- i.e. it proved the store stores what it is given, which is exactly what the audit exploited. It now asserts the stamped value falls inside the window the write actually happened in."
+  - "test_a_write_recorded_before_it_was_decided_is_refused could only be reached by passing an earlier recorded_at. Renamed and re-aimed: the reachable case is now a decision claimed in the FUTURE, and the positive control asserts a prompt row is accepted with NO late reason."
+  - "test_the_check_constraint_accepts_ordinary_rows_across_the_fractional_second_boundary was WEAKENED BY THIS PACKET before being fixed by it. Making recorded_at the stamped NOW moved the two timestamps into different DATES, so the collation trap the test exists to guard was no longer reachable and mutation M12 came back GREEN. Rebuilt so the pair shares a second by construction; M12 is RED and the same-second property is now asserted in the test itself."
+  - "test_a_delete_cannot_reach_another_tenants_transitions asserted an unqualified DELETE removed only the ACTING tenant's rows -- true, and an admission that the credential could destroy an operator's denial history as long as it was the right operator's. It now asserts the DELETE fails and BOTH tenants' rows survive."
+  - "test_the_acting_role_owns_the_lifecycle_table asserted the acting role OWNED the table. Ownership by the application credential is the defect this packet removed, so it now asserts the opposite, and the FORCE-collapse demonstration moved to an explicitly unsealed schema with a companion test proving the sealed credential cannot lift FORCE."
+  - "The engine-comparison test excluded only transition_id. It now excludes the transaction-time fields and the hashes -- and ASSERTS the two engines' recorded_at values DIFFER, because equality there would mean one engine was copying a value rather than reading its own clock."
+
+design_calls_recorded:
+  - "A BOUNDING TRIGGER, NOT ONLY A SERVER DEFAULT. The packet asked for a trusted server-side default; a default alone would not have closed the finding, because a DEFAULT fires only when the column is omitted and the auditor's insert supplied it. The column has the default AND a BEFORE INSERT trigger that refuses any value far from the server clock. This also keeps recorded_at inside the hash chain: a trigger that OVERWROTE the value would force the writer to hash a value it cannot know until after the insert."
+  - "THE LATE-ARRIVAL REASON IS A CLOSED VOCABULARY, not free text with a length rule. The audit's P1 on data governance found exactly that failure mode -- a rights assertion accepted because it was over 40 characters and contained the word 'commercial'. Five members, none of them meaning 'test' or 'unknown', because a vocabulary member that exists to let a caller past the rule is the rule not existing."
+  - "A PROMPT ROW MAY NOT DECLARE A LATE REASON. Without the complement, the rule would be satisfiable by declaring BATCH_IMPORT on everything, and the field would stop carrying information."
+  - "THE LAG IS RE-DERIVED ON READ rather than trusted. A stored measurement that can disagree with the two values it was measured from is a place to hide an edit."
+  - "MEMBERSHIP RUNS ONE WAY. milexium_ledger_owner is granted membership IN the application roles so it can take ownership of a table they created; the reverse grant would hand the application the owner's powers and make the whole separation cosmetic. pg_has_role is asserted FALSE in the direction that would break it."
+  - "THE SEAL IS A SECURITY DEFINER FUNCTION the unprivileged store calls on its own schema. Its reach is the ledger owner's reach -- the union of the application roles' own rights -- and its only effect is to REMOVE the caller's ability to mutate a table it owned."
+  - "AN UNSEALED FALLBACK EXISTS AND IS REPORTED AS WEAKER. On a cluster where nobody has run the privileged bootstrap, the store installs the same triggers as the acting role and records `lifecycle_immutability == 'trigger_only'`. The conformance suite asserts the SEALED properties rather than accepting what it finds, so a machine without the bootstrap fails loudly instead of passing at a lower standard."
+  - "DOUBLE PRECISION, NOT REAL, for ingest_lag_seconds -- caught in smoke testing. PostgreSQL's REAL is float4, so a lag of 2158626.005228s came back as 2158626.0 and the row could no longer be read. SQLite's REAL is already 8-byte, so the defect existed on ONE engine only: exactly the class ADR-0004's mirrored contract exists to catch."
+  - "transition_payload MUST NOT ASSUME VALID INPUTS -- it runs before the model validates, so reading .value off a free-text reason code turned an intended ValidationError into an AttributeError from inside the hasher. Caught by an existing test, which is what that test is for."
+  - "PYDANTIC WRAPS VALIDATOR EXCEPTIONS, so a rule that needs its own error TYPE at the API boundary cannot live only in the model. UndeclaredLateRecordError is raised by next_transition (before the model) and LifecycleChainError by the store's read path (before reconstruction); the model keeps both as second nets for records built outside a store. Without that, 'this record has been altered since it was written' would reach a caller as a generic ValidationError, indistinguishable from a bad enum."
+  - "THE UNSEALED FIXTURE MUST STILL INSTALL THE FALLBACK TRIGGERS. A first version of `_leave_lifecycle_unsealed` skipped immutability entirely, which made the trigger tests pass vacuously against a table that had no trigger at all -- the ninth vacuous test this repository has caught. The flag now chooses between the two REAL configurations, and a test asserts the fixture is genuinely the weaker one."
+
+status_claim:
+  label: Demonstrated
+  why_not_validated: >
+    Validated requires consented operator data and none exists in this
+    repository. Every fixture here is synthetic. Nothing in this packet is
+    Validated and nothing should be described as such -- what is demonstrated is
+    the mechanism, on two engines and two real deployment credentials, not that
+    any agency's history is protected, because no agency's history is here.
+
+what_a_determined_attacker_with_the_application_credential_can_still_do:
+  - "APPEND A WELL-FORMED FORGED TRANSITION. INSERT is granted, by design, because appending is the credential's job. There is no secret in the hash, so an attacker with this source code can compute a valid one. Appending to a request whose chain is already terminal, or with a from_state that does not continue it, IS detected by the verifier -- but a plausible transition appended to an IN-FLIGHT request (a denial on a request currently negotiated) is indistinguishable from a real one. Preventing that needs authentication -- signed rows, or checkpoint roots anchored outside this database -- and this repository has neither."
+  - "DESTROY THE RECORD WHOLESALE -- `DROP TABLE request_state_transitions` SUCCEEDS, and so does `DROP SCHEMA ... CASCADE`. Found while writing the conformance suite, not predicted: PostgreSQL permits DROP TABLE to the table's owner OR to the owner of the SCHEMA containing it, and the disposable per-run schema is created by, and therefore owned by, the application credential. There is a test asserting this weakness explicitly (test_the_credential_CAN_still_destroy_the_table_and_this_is_the_residual_risk) so that no future reader mistakes 'immutable' for 'indestructible'. The credential cannot alter one field of one row; it CAN delete the whole table, loudly. The deployment fix -- schema owned by a migration role, application granted USAGE only -- is Specified and NOT implemented, and the per-run disposable schema this test harness depends on is what stands in the way."
+  - "LIE ABOUT decided_at. Unchanged from ADR-0063 and still the largest honest limit. What is enforced is that MILEXIUM did not invent the decision time; nothing enforces that the caller told the truth about it. The new ingest-lag machinery narrows this -- a decision claimed in the future is refused, and a gap from the transaction time must be declared -- but a caller who states a plausible recent decision time is believed."
+  - "WRITE A ROW THAT IS ILLEGAL AS A HISTORY BUT LEGAL AS SQL. Only the timestamp ordering, the lag/reason implication, the vocabulary CHECKs and the genesis-link rule are enforced by the database. Transition legality and chain continuity are enforced in Python and re-checked on read, so raw SQL can insert an illegal transition; it simply cannot be read back through the store, and the verifier reports it. An analyst querying the table directly in SQL would see it."
+  - "SEE ITS OWN TENANT'S ENTIRE REFUSAL HISTORY. RLS is tenant isolation, not need-to-know. Nothing here restricts which rows within a tenant the credential may read."
+  - "STAMP recorded_at ANYWHERE INSIDE A 60-SECOND WINDOW of the true instant, by controlling the writer's clock. The database bounds the value; it does not force it. The window is RECORDED_AT_TOLERANCE_SECONDS and it exists to absorb host clock skew."
+  - "ON SQLITE, EVERYTHING. Any process that can open the file can drop the triggers; there are no roles. The credential boundary is a PostgreSQL claim only, and SQLite (ADR-0004's dev/demo engine) must never be cited as evidence for it."
+
+limitations:
+  - "NOTHING WRITES TO THIS TABLE IN PRODUCTION CODE YET. Unchanged from MX-A-LIFECYCLE-RECORD-010 and it still bounds every claim above: app/decide, app/connect and app/api do not call record_transition. What is now immutable is a record nothing populates."
+  - "THE VERIFIER SHARES A PACKAGE WITH THE WRITER. lifecycle_verify.py is a separate module and does not use the store's reconstruction path, but it is not the organizationally separate verifier app/verify is, and app/verify is not an owned path. The independent-verifier story does not yet cover the lifecycle chain."
+  - "NO EXTERNAL ANCHOR. The audit's required repair says: if hostile or evidentiary timestamping matters, anchor signed checkpoint roots outside the database. This packet does not do that. Both clocks are still local, the chain is unsigned, and 'tamper-evident' must not be read as 'authenticated'."
+  - "THE POSTGIS OBSERVATION STORE CREATES THIS TABLE UNSEALED. PostgisObservationStore applies the portable schema (so the table exists in its disposable schemas) and was deliberately NOT modified -- its RLS conformance test is another agent's owned path. It never writes lifecycle rows, but the table it creates has no guards."
+  - "THE PRIVILEGED BOOTSTRAP IS NOT RUN BY ANYTHING AUTOMATIC ON AN EXISTING DATABASE. /docker-entrypoint-initdb.d runs only on an empty data directory and the native instance has no hook, so both were bootstrapped by hand for this packet (the same caveat ADR-0052 records). A checkout on a new machine gets `trigger_only` until someone runs it -- and the conformance suite FAILS there rather than skipping, which is deliberate."
+  - "NO MIGRATION PATH. Four columns were added to an existing table and Program A still has no migration mechanism; both stores CREATE the schema at construction, so any database created before this packet needs a hand-written ALTER."
+  - "NOT IN THE GENERATED CONTRACT. platform/contracts/generate.py is not an owned path and was not run, so the new fields do not appear in the JSON Schema, OpenAPI or proto surfaces and no TypeScript or Rust client can see them."
+  - "THE 60s AND 300s CONSTANTS ARE JUDGEMENTS, not measurements. No operator integration has been observed to calibrate either."
+  - "CONCURRENCY IS STILL UNTESTED. The head read, the hash computation and the INSERT are separate statements; UNIQUE (tenant_id, request_id, sequence) makes the loser of a race fail rather than corrupt the chain, but the error is still a raw IntegrityError/UniqueViolation and no test exercises it."
+
+forbidden_interface_changes_observed:
+  - "additive only in schema_v0_1.sql: 4 columns and 2 CHECKs on ONE table; ingest_lag_seconds is DOUBLE PRECISION, which SQLite takes as REAL affinity, so the portable file still executes unmodified on a bare sqlite3 connection (asserted)"
+  - "no existing policy in rls_postgres.sql modified"
+  - "record_transition's signature CHANGED deliberately -- `recorded_at` removed, `late_reason` added. Grepped first: no caller exists outside app/canonical and the lifecycle conformance tests, all of which are owned paths"
+  - "app/canonical/observation_store.py deliberately NOT touched (its conformance test is another agent's path)"
+  - "no ADR written; no git add/commit/push; knowledge/docs/**, research/** and test_realdata_governance.py untouched"
+
+notes: >
+  BASELINE: the three audit probes were re-run against the unmodified code as
+  `milexium_app` on the container before any change, and all three succeeded --
+  the backdated insert was accepted, the forged actor read back through the
+  normal API, and the delete removed the row. That is the state this packet
+  changed.
+
+  The privileged bootstrap was applied by hand to BOTH local instances (native
+  PostgreSQL 17.10 as `postgres`, containerized PostgreSQL 16.4 as its bootstrap
+  superuser), because neither picks up an initdb hook on an existing data
+  directory. No credential was printed, logged or committed.
+
+  CONCURRENCY NOTE FOR THE INTEGRATOR, because it affects one reported number. A
+  full `pytest app/ evidence/conformance/` run could not be completed from this
+  packet: two sessions belonging to ANOTHER agent's concurrent work deadlocked on
+  `ontology_facts` (one holding `UPDATE ontology_facts` idle-in-transaction, one
+  blocked on `DROP TRIGGER ... ON ontology_facts`), and any run that reaches
+  evidence/conformance/property-tests/test_ontology_store.py stalls behind that lock. The
+  suite was therefore run with the three ontology/decision-snapshot files ignored.
+  Nothing in that deadlock touches `request_state_transitions` or any owned path
+  here, and the four lifecycle suites were run in full separately.

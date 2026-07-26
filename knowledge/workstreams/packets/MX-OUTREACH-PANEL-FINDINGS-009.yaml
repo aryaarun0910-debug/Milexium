@@ -1,0 +1,158 @@
+id: MX-OUTREACH-PANEL-FINDINGS-009
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+adr: none — this packet writes no ADR. It adds an outreach artifact and its
+  gate; it introduces no platform mechanism, no contract and no runtime
+  behaviour. The limitations recorded here are the input to an ADR the
+  orchestrator may choose to write.
+objective: >
+  Answer a domain expert's question — "has your work revealed any definitive
+  conclusions or items the industry has so far overlooked?" — with sector-level
+  findings about the whole US demand-response panel rather than one agency's
+  rank, and put every candidate through a gate strictly harder than the peer
+  engine's. Reproduce the four already-established findings as regressions, go
+  beyond them, and treat the REJECTED findings as a first-class deliverable:
+  they are the evidence the gate does anything at all.
+owned_paths:
+  - business/outreach/build_panel_findings.py            # the engine
+  - business/outreach/panel_findings.json                # generated, committed as evidence
+  - business/outreach/generate_expert_emails.py          # the expert-segment generator
+  - business/outreach/generate_v3_emails.py              # holds added, mechanism unchanged
+  - business/outreach/contact_research_worksheet.csv     # three `status` cells only
+  - business/outreach/README.md
+  - evidence/conformance/property-tests/test_panel_findings.py
+  - knowledge/workstreams/packets/MX-OUTREACH-PANEL-FINDINGS-009.yaml
+read_only_dependencies:
+  - data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv
+  - data/raw/public/ntd-service-opex-by-mode-timeseries.e6e821f63751d429.csv
+  - business/ntd/agency_economics.csv
+  - business/outreach/craft_notes.md                (copy rules applied, not amended)
+  - business/outreach/design_partner_pitch.md       (sending discipline)
+  - business/outreach/research/christian_kent_brief.md  (read; NOT edited by this packet)
+  - business/outreach/targets_consultancies.csv     (read by the generator; not edited)
+  - app/**                            (NOT touched — four agents concurrent)
+normative_contracts:
+  - business/outreach/README.md — "never send to a shared inbox when a named human is
+    available"; `do_not_contact` is permanent and structural, a column not a
+    status string
+  - business/outreach/craft_notes.md — subject lowercase/2-4 words/<=33 chars; body
+    55-80 words; ONE interest-based CTA; plain text, zero links
+  - status vocabulary Exists / Specified / Demonstrated / Validated /
+    Production. This is public data with no holdout and no counterfactual, so
+    the artifact is Demonstrated and can never be Validated.
+required_outputs:
+  - business/outreach/build_panel_findings.py emitting business/outreach/panel_findings.json with
+    every number traceable to a named source file, column and filter
+  - a gate requiring mode_provenance + composition + concentration on EVERY
+    finding, plus inflation on money-over-years and control_mode on
+    DR-specificity claims; missing checks reject structurally
+  - a populated `rejected` list carrying the numbers that killed each candidate
+  - business/outreach/generate_expert_emails.py
+  - evidence/conformance/property-tests/test_panel_findings.py
+acceptance_commands:
+  - "py -3 business/outreach/build_panel_findings.py  # survived 9, rejected 8"
+  - "py -3 business/outreach/generate_expert_emails.py  # 16 drafts, 72-76 words each"
+  - "py -3 -m pytest evidence/conformance/property-tests/test_panel_findings.py -q  # 75 passed"
+security_and_privacy_invariants:
+  - "No email sent, no draft created in any mail client. Files on disk only; a
+    human reads and sends."
+  - "No personal data. NTD is agency-level aggregate reporting; the only named
+    individuals are business contacts already in the committed worksheets."
+  - "do_not_contact is never written by this packet. Anne Arundel County's
+    opt-out is asserted intact by a test. Three new holds are recorded in the
+    `status` column, which is reversible, precisely so a sequencing decision
+    cannot be laundered into a permanent structural opt-out."
+  - "app/** untouched. The tests import the two outreach scripts by path
+    via importlib rather than adding business/outreach/__init__.py, which would change
+    how the rest of the repo sees that directory."
+failure_injections:
+  - "21 mutations applied to the source one at a time; 21 caught. Every gate
+    check was individually neutered (sign-flip detection, magnitude retention,
+    leave-one-out, per-agency median, provenance floor, inflation floor,
+    control direction), the required-check list was shortened, missing and
+    failing checks were made to pass silently, numeric traceability and the
+    framing guard were no-oped, the word budget was downgraded to a warning,
+    the rejected-finding lock was opened, both relationship holds were removed,
+    the competitor block was emptied, and a temporary hold was rewritten as a
+    permanent opt-out."
+  - "Two mutations initially escaped and both exposed real test weakness, now
+    fixed: (a) the hold test matched a SUBSTRING of the firm name, so renaming
+    the key to 'UNHELD <firm>' still passed while disabling the hold — it now
+    resolves the firm from targets_consultancies.csv and requires that exact
+    string to be a key, with the mirror property that every hold key matches a
+    real row; (b) the volatility-myth test asserted only that the claim was
+    rejected, which the failing control_mode check delivered anyway — it now
+    asserts the PERMANENT kill text specifically, with a separate test for the
+    control check, so neither mechanism can be removed silently."
+  - "The month-completeness filter counted monthly ROWS. Agencies running
+    demand response under two types of service file two rows per month, so the
+    filter silently excluded every multi-contract operator and moved the
+    headline decline from -11.4% to -15.7%. Fixed to a distinct-month count;
+    a test asserts months can never exceed 12."
+  - "Fresh clone: raw NTD extracts are gitignored, so the re-derivation tests
+    skip cleanly while the 69 artifact, gate and copy tests still run."
+compatibility_matrix:
+  - "17 candidate findings run through one gate: 9 survived, 8 rejected."
+  - "All four previously-established findings reproduce: productivity 2.02 ->
+    1.79 trips/VRH (-11.4%, per-agency median -11.0%, 63.5% of agencies worse,
+    n=263 balanced); recovery median 87.4% / p10 60.8% / p90 152.2% (2.5x);
+    deadhead 406 operators, median 15.1%, p90 25.5%; and the killed volatility
+    claim stays killed."
+  - "16 expert drafts generated at 72-76 words against an 80-word hard ceiling;
+    subjects 11-21 chars against a 33-char ceiling."
+evidence_to_emit:
+  - "NEW findings that survived: average speed flat 15.35 -> 15.32 vehicle
+    miles per revenue hour 2015-2024 while vehicle miles per trip rose 11.6%,
+    so the productivity loss is neither congestion nor longer rides; cost per
+    trip $29.19 -> $51.70 (+77.2% nominal, +33.9% real), attributable ~81% to
+    the price of an hour and ~19% to lost productivity; cost per trip varies
+    5.0x across 1,920 operators with the log-variance split almost exactly
+    50/50 between input price and productivity; median operator runs 94.3% of
+    2019 vehicle hours on 87.4% of 2019 trips, with 57 of 373 operators now
+    running MORE hours than 2019 for fewer riders; 96 of 263 operators (36.5%)
+    are more productive than in 2005 and 70 (26.6%) grew productivity AND
+    volume; demand-response demand is measurably MORE stable than bus
+    (median CV 7.8% vs 10.2%, amplitude 27% vs 35%)."
+  - "REJECTED, with the measurement that killed each: the volatility myth
+    (permanently, DR CV 7.8% < bus 10.2%); the dramatic deadhead tail (9 of 406
+    filers above 40% collapses to 1 of 45 among DR-dominant agencies — the tail
+    is agencies whose paratransit arm is a sliver of a fixed-route operation);
+    DR cost inflation exceeding bus (+10.6 points on aggregates, +3.7 on
+    per-agency medians); deadhead predicting cost per trip (Spearman +0.024
+    over 406 operators, against +0.738 for cost per hour); cost dispersion
+    widening (p90/p10 5.08 -> 5.03, no effect); recovery driving productivity
+    (Spearman +0.427 but mechanically coupled through shared UPT terms); the
+    pooling-efficiency story (passenger miles per trip -4.6%, and only 363 of
+    1,607 balanced agencies file passenger miles at all); fleet utilisation
+    diverging from bus (DR -3.9% against a 5% floor)."
+  - "A contested data question settled from the bytes: business/ntd/agency_economics.csv
+    is DEMAND-RESPONSE scoped, not all-modes. Its trips/vrh/opex equal the
+    mode-tagged DR-only totals for 100.0%/100.0%/99.8% of 1,920 agencies and
+    the all-mode totals for only ~50% (exactly the single-mode agencies), and
+    actual_hours - deadhead_hours == vrh for 86.5% of deadhead filers, which
+    carries that scope onto the deadhead columns. Re-derived on every run."
+  - "test counts: 75 passed in the new file; 21/21 mutations caught."
+upstream_blockers: []
+downstream_consumers:
+  - The reply to Christian Kent (written by a human, not generated)
+  - The consultancy/expert outreach tranche
+  - Any future claim about the US demand-response sector made in a deck, a
+    landing page or a proposal — panel_findings.json is the place those numbers
+    must come from, and the `rejected` list is the record of what may not be
+    said
+notes: >
+  Deliberately NOT done, and why. No ADR (this packet writes none). No git
+  operations. No email sent and no draft created in any mail client. No edit to
+  app/, contracts, CI, IMPLEMENTATION_STATUS or JOURNAL. No edit to
+  business/outreach/research/christian_kent_brief.md, which is read-only input. The RTA
+  (Transit Management of Central Maryland) row was NOT resolved either way: it
+  is parked with a HOLD naming the Anne Arundel relationship and stating that
+  it needs the founder's decision, because an agent deciding that question in
+  either direction is the error. Deadhead by mode and deadhead over time are
+  NOT approximated — the by-mode file carries no total-hours column, so there
+  is no deadhead numerator in it, and every deadhead figure here is labelled a
+  2024 cross-section. CPI-U is the one constant in the engine not drawn from a
+  governed dataset; it is declared in the open with its BLS series id and
+  flagged in the artifact as external, rather than smuggled in as a magic
+  number.

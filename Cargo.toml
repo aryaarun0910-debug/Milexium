@@ -7,8 +7,8 @@
 # (canonical, evidence, connectors) can be added as sibling crates without
 # restructuring.
 #
-# The Python verifier in packages/verify remains the normative reference;
+# The Python verifier in app/verify remains the normative reference;
 # this workspace exists to *differential-test* against it, not to replace it.
 [workspace]
 resolver = "2"
-members = ["crates/verifier"]
+members = ["_legacy/crates/verifier"]

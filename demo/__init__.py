@@ -7,7 +7,7 @@ each step and writing independently-verifiable artifacts.
 
     py -3 -m demo.golden_path
 
-This package IMPORTS the shipped packages (packages/connect, forecast, decide,
+This package IMPORTS the shipped packages (app/connect, forecast, decide,
 sdk, evidence, replay, core, canonical) and adds no new domain logic -- it is a
 composition/demonstration layer. Every claim it prints is labelled Demonstrated,
 never Validated; it makes the real-vs-synthetic boundary visible in its own

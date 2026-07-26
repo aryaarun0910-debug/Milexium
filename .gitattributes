@@ -1,8 +1,8 @@
 # Generated contract artifacts are always LF so the CI contract-drift check
 # (regenerate + git diff) is stable across Windows/Linux (ADR-0027).
-contracts/jsonschema/*.json text eol=lf
-contracts/openapi/*.json    text eol=lf
-contracts/generate.py       text eol=lf
+platform/contracts/jsonschema/*.json text eol=lf
+platform/contracts/openapi/*.json    text eol=lf
+platform/contracts/generate.py       text eol=lf
 
 # Committed data panels are treated as binary -- git must never
 # line-ending-convert them, so their recorded sha256 (realdata/manifests/) is

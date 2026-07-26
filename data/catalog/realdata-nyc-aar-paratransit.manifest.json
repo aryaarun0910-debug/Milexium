@@ -1,12 +1,12 @@
 {
   "acceptance_threshold": "non-empty; date column parses; no duplicate (date, borough) rows.",
-  "canonical_contract": "none-yet -- an aggregate demand panel, training and backtest input rather than a canonical entity. It is the target of the AAR booster in docs/MODEL_CARDS.md.",
+  "canonical_contract": "none-yet -- an aggregate demand panel, training and backtest input rather than a canonical entity. It is the target of the AAR booster in knowledge/docs/MODEL_CARDS.md.",
   "dataset_id": "realdata-nyc-aar-paratransit",
   "decision_tasks_enabled": [
     "forecast.demand"
   ],
   "derived_artifacts": [
-    "GOVERNANCE-ONLY MANIFEST (tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through packages.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
+    "GOVERNANCE-ONLY MANIFEST (platform/tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through app.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
     "already_present_at: realdata/panels/aar_daily.csv",
     "already_present_at: realdata/panels/aar_hourly_borough.csv.gz"
   ],

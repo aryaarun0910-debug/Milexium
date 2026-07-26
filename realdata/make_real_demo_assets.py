@@ -1,8 +1,8 @@
 """Render demo assets from REAL data, replacing the two synthetic-pipeline
 assets that are honestly rebuildable with what we actually have.
 
-Of the five original artifacts/demo-assets/*.png (from
-reference_agency/make_demo_assets.py),
+Of the five original evidence/artifacts/demo-assets/*.png (from
+business/reference_agency/make_demo_assets.py),
 only two are pure demand-FORECASTING visualizations: why_this_forecast.png
 (a SHAP explanation) and demand_curve.png (predicted vs actual). Those get
 real-data replacements here, sourced from realdata/explanations_aar.json
@@ -12,11 +12,11 @@ AAR model on real bookings, not synthetic ones.
 The other three (why_this_trip, capacity_alert, fleet_timeline) depend on
 individual-trip-level SCHEDULING decisions. No public paratransit dataset
 provides trip-level records, so those stay on the synthetic pipeline until
-real pilot data exists -- see reference_agency/README.md honesty note 5. Do not
+real pilot data exists -- see business/reference_agency/README.md honesty note 5. Do not
 try to force those to "real" here; that would mean fabricating fake trip
 records, which is worse than being honest about the gap.
 
-Output: artifacts/demo-assets/why_this_forecast_real.png, demand_curve_real.png
+Output: evidence/artifacts/demo-assets/why_this_forecast_real.png, demand_curve_real.png
 (new files, not overwriting the synthetic originals, so both the
 forecasting-only real assets and the full synthetic five-asset set stay
 available side by side until the scheduler has a real trip stream too).
@@ -32,7 +32,7 @@ import pandas as pd
 from matplotlib.patches import FancyBboxPatch
 
 HERE = Path(__file__).parent
-ASSETS = HERE.parent / "artifacts" / "demo-assets"
+ASSETS = HERE.parent / "evidence" / "artifacts" / "demo-assets"
 ASSETS.mkdir(parents=True, exist_ok=True)
 
 SURFACE, INK, INK2, MUTED = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984"

@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "periodic BTS republication (NTAD seasonal refresh). source_checksum is null -- trust-on-first-use.",
   "source_checksum": null,
-  "canonical_contract": "none-yet. The nearest canonical neighbours are the scheduling family -- packages.canonical.entities.Block and RunPiece -- which are per-vehicle work assignments, not route definitions; Milexium has no canonical Route entity, exactly as it has no canonical Stop entity. Recorded as a gap, not mapped speculatively.",
+  "canonical_contract": "none-yet. The nearest canonical neighbours are the scheduling family -- app.canonical.entities.Block and RunPiece -- which are per-vehicle work assignments, not route definitions; Milexium has no canonical Route entity, exactly as it has no canonical Stop entity. Recorded as a gap, not mapped speculatively.",
   "quality_tests": [
     {
       "name": "header_has_ntd_id_and_route_type",

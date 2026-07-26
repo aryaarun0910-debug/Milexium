@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use, because the statewide assembly is rebuilt nightly and republished monthly, so no stable digest is publishable ahead of the pull. The digest actually retained is recorded in calitp-gtfs-trips.acquired.json.",
   "source_checksum": null,
-  "canonical_contract": "packages.canonical.entities.Block and packages.canonical.entities.DeadheadSegment (Program A, ADR-0047). trips.block_id maps to Block.block_ref and DeadheadSegment.block_ref; trips.service_id maps to Block.service_ref. Both are SOURCE refs and stay plain strings, exactly as those entities require -- they name an external agency's entities, never a Milexium aggregate.",
+  "canonical_contract": "app.canonical.entities.Block and app.canonical.entities.DeadheadSegment (Program A, ADR-0047). trips.block_id maps to Block.block_ref and DeadheadSegment.block_ref; trips.service_id maps to Block.service_ref. Both are SOURCE refs and stay plain strings, exactly as those entities require -- they name an external agency's entities, never a Milexium aggregate.",
   "quality_tests": [
     {
       "name": "header_carries_base64_url_and_block_id",
@@ -32,7 +32,7 @@
   "derived_artifacts": [
     "data/catalog/calitp-scheduled-deadhead.summary.json",
     "data/catalog/calitp-scheduled-deadhead.md",
-    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with tools/derive_scheduled_deadhead.py)"
+    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with platform/tools/derive_scheduled_deadhead.py)"
   ],
   "zone": "raw/public"
 }

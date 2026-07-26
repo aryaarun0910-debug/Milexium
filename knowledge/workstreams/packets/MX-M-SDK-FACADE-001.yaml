@@ -1,0 +1,40 @@
+id: MX-M-SDK-FACADE-001
+status: completed
+completed_date: "2026-07-23"
+objective: >
+  Ship a v0.1 Python SDK facade (MilexiumClient) so an external developer can
+  drive the whole ingest->decide->override->evidence loop from one import with
+  zero external infra -- the first slice of the integration surface that makes
+  "other software integrates Milexium" real.
+owned_paths:
+  - app/sdk/
+  - knowledge/architecture/decisions/0015-milexium-sdk-facade.md
+read_only_dependencies:
+  - app/canonical/ (SqliteCanonicalStore, entities, vocab)
+  - app/connect/adapter.py (parse_batch, SourceAdapter -- generic only)
+  - app/evidence/ (build_evidence_packet)
+  - app/verify/ (verify_chain)
+normative_contracts:
+  - blueprint/08-sdk-api-and-developer-experience.md
+  - blueprint/14-execution-roadmap.md, Program M
+required_outputs:
+  - app/sdk/{__init__,client,example}.py
+  - evidence/conformance/fixtures/test_sdk_facade.py
+  - evidence/conformance/property-tests/test_sdk_loop.py
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/fixtures/test_sdk_facade.py evidence/conformance/property-tests/test_sdk_loop.py -v"
+  - "py -3 -m app.sdk.example"
+performance_budget: {}
+security_and_privacy_invariants:
+  - "SDK core imports only the generic parse_batch, never a concrete adapter -- decoupled"
+  - "evidence_for surfaces the real integrity_verified result, tamper visible through the facade"
+failure_injections:
+  - "tampered chain -> integrity_verified=False surfaced through client.evidence_for"
+  - "unknown aggregate -> ValueError"
+compatibility_matrix: []
+evidence_to_emit:
+  - "8 new tests; runnable quickstart executes end-to-end"
+forbidden_interface_changes: []
+upstream_blockers: []
+downstream_consumers:
+  - External developers/partners; future HTTP API, CLI, TS/Rust SDKs (all Specified)

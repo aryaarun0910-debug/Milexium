@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "monthly (portal Update Frequency R/P1M). source_checksum is null: the table grows by one month each release, so the sha256 recorded at acquisition is provenance for THIS vintage, not a reproducibility guarantee.",
   "source_checksum": null,
-  "canonical_contract": "none-yet -- an aggregate agency-mode-month demand panel. It is training and backtest input to the Program E forecasters that emit packages.canonical.entities.ForecastVintage; it is not itself an instance of any canonical entity, because Milexium's canonical model is trip-level (ServiceRequest / Outcome / VehicleObservation) and has no aggregate-ridership entity today. That gap is real and is recorded here rather than papered over.",
+  "canonical_contract": "none-yet -- an aggregate agency-mode-month demand panel. It is training and backtest input to the Program E forecasters that emit app.canonical.entities.ForecastVintage; it is not itself an instance of any canonical entity, because Milexium's canonical model is trip-level (ServiceRequest / Outcome / VehicleObservation) and has no aggregate-ridership entity today. That gap is real and is recorded here rather than papered over.",
   "quality_tests": [
     {
       "name": "header_has_upt_and_ntd_id",

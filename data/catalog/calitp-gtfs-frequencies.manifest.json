@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use.",
   "source_checksum": null,
-  "canonical_contract": "none-yet -- a negative filter, not data Milexium maps onto any canonical entity. Its whole job is to keep rows OUT of packages.canonical.entities.DeadheadSegment.",
+  "canonical_contract": "none-yet -- a negative filter, not data Milexium maps onto any canonical entity. Its whole job is to keep rows OUT of app.canonical.entities.DeadheadSegment.",
   "quality_tests": [
     {
       "name": "header_carries_trip_key_and_headway",

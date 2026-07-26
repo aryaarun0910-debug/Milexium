@@ -19,8 +19,8 @@ dist/
 # Data and models (large artifacts stay out of git)
 *.pkl
 *.zip
-reference_agency/raw/
-reference_agency/output/
+business/reference_agency/raw/
+business/reference_agency/output/
 realdata/raw_tlc/
 realdata/raw_tlc_taxi/
 realdata/output/
@@ -54,12 +54,12 @@ realdata/panels/chicago_tnp_zone_hour.csv.gz
 realdata/panels/nyc_fhvhv_zone_hour.parquet
 
 # Generated artifact working state. Curated snapshots may still be committed.
-artifacts/knowledge-graph/**/cache/
-artifacts/knowledge-graph/**/.obsidian/
-artifacts/audit/
+evidence/artifacts/knowledge-graph/**/cache/
+evidence/artifacts/knowledge-graph/**/.obsidian/
+evidence/artifacts/audit/
 # Golden-path demo output: regenerated with fresh UUIDs/timestamps each run
 # (py -3 -m demo.golden_path). The demo code is committed; its output is not.
-artifacts/golden-path/
+evidence/artifacts/golden-path/
 
 # Environment
 .env
@@ -73,7 +73,7 @@ artifacts/golden-path/
 Thumbs.db
 .vscode/
 .idea/
-outreach/drafts/
+business/outreach/drafts/
 
 # R&D derived panels and API caches (MX-RND-HYPOTHESIS-MINING-011).
 # Regenerate with research/build_dr_panel.py; the hypothesis RESULT jsons are

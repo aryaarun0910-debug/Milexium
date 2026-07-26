@@ -263,7 +263,7 @@ Rights: **"No restrictions on public use."** Same version caveat as item 3.
   **tens of MB**, not GB. This is a small, surgical pull.
 
 **What it lets Milexium do that it cannot today.** The estate has
-`ntd/census_latent_demand.csv` from the ACS *profile* endpoint — a coarse slice.
+`business/ntd/census_latent_demand.csv` from the ACS *profile* endpoint — a coarse slice.
 Disability, senior geography, and zero-vehicle households at tract level are the
 denominators of demand-response demand. Today, if an operator asks *"what
 should our DRT demand be in this new service zone"*, Milexium has no answer

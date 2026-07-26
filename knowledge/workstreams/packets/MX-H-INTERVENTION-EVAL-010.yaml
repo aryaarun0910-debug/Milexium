@@ -1,0 +1,125 @@
+id: MX-H-INTERVENTION-EVAL-010
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+result: >
+  73 new tests (test_intervention_eval.py 64, test_intervention_ntd.py 9), 0
+  skipped locally; 20/20 mutations caught. Demonstrated on the REAL FTA NTD
+  monthly demand-response panel with the single most useful negative result this
+  program has produced: on a PLACEBO cut (2016-01, where NTD records no
+  intervention of any kind), the uncontrolled before/after correctly declines to
+  call a +0.047 trips/vehicle-revenue-hour movement (p=0.195), while
+  difference-in-differences against 34 real peer agencies -- the STRONGER design
+  -- returns +0.129 at p=0.0072. The controlled estimate is bigger and more
+  "significant" for an intervention that did not happen, because the treated
+  agency was reverting to its own long-run mean while its peers drifted down.
+  The evaluator refuses to attribute either, and the refusal comes from the
+  regression-to-the-mean confounder rather than from the p-value.
+objective: >
+  A senior paratransit consultant working on newly-installed AI scheduling
+  systems wrote: "there is insufficient new data to support any conclusion that
+  the new software has done any better, but I am persuaded that they are on the
+  right track" -- while also reporting those systems "yielded improved on-time
+  performance; reduction in cost due to greater efficiency". Both halves are true
+  at once and the gap between them is the product. Build an HONEST before/after
+  intervention evaluation: a pre-registered pre/post comparison over an
+  operational metric, difference-in-differences where a peer control exists, and
+  -- the substance -- every confounder named in a structured field with a status
+  vocabulary that has no "ruled out" value, so the artifact states what it cannot
+  support instead of burying it.
+owned_paths:
+  - app/replay/intervention.py            # new
+  - app/replay/intervention_demo.py       # new: real-NTD demonstration harness
+  - app/replay/__init__.py                # additive exports only
+  - evidence/conformance/property-tests/test_intervention_eval.py
+  - evidence/conformance/property-tests/test_intervention_ntd.py
+  - knowledge/workstreams/packets/MX-H-INTERVENTION-EVAL-010.yaml
+read_only_dependencies:
+  - app/replay/teardown.py (NOT MODIFIED -- ADR-0056 pins its bytes; DataProvenance / InputRecord / MethodStep imported)
+  - app/replay/comparison.py (MODELLED_COMPARISON_NOTE, REPLAY_VERSION imported; the discipline is reused, not restated)
+  - app/canonical/time.py (UtcDateTime), app/canonical/events.py (canonical_json)
+  - realdata/panels/ntd_monthly_dr.csv.gz (real public FTA NTD panel; read-only)
+  - data/catalog/ntd-monthly-ridership-all-modes.manifest.json (governance/licence record for that panel)
+normative_contracts:
+  - blueprint/01-north-star-and-boundaries.md ("modelled comparison, not causal proof of savings")
+  - blueprint/06-simulate-and-replay.md
+  - ADR-0019 (replay + baseline comparison; modelled-not-causal wording is binding)
+  - ADR-0039 (deadhead teardown: no is_guaranteed_saving, no default avoidable_share, no "operator" provenance value)
+  - ADR-0049 (serve-time drift: the runtime withdraws a guarantee it cannot support; number and caveat are inseparable)
+  - ADR-0056 (teardown.py was measured, not modified -- and stays that way)
+required_outputs:
+  - app/replay/intervention.py
+  - evidence/conformance/property-tests/test_intervention_eval.py
+  - evidence/conformance/property-tests/test_intervention_ntd.py
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_intervention_eval.py -q   # 64 passed"
+  - "py -3 -m pytest evidence/conformance/property-tests/test_intervention_ntd.py -q    # 9 passed (skips cleanly without the NTD panel)"
+  - "py -3 -m pytest evidence/conformance/property-tests/test_replay_comparison.py evidence/conformance/property-tests/test_teardown.py evidence/conformance/property-tests/test_teardown_evidence.py evidence/conformance/property-tests/test_teardown_scale.py -q  # unchanged, still green"
+  - "py -3 -m app.replay.intervention_demo   # the real NTD demonstration"
+what_it_must_answer:
+  - "IS THE COMPARISON PRE-REGISTERED? pre_register / pre_register_family fix the metric, the windows, the expected DIRECTION and the family size, and hash them into a registration_sha256 publishable before the post period exists. registration_timing is derived from registered_at vs post_window.starts_at and re-checked by a validator, so a registration written after the answer was visible cannot call itself prospective."
+  - "ARE THE CONFOUNDERS NAMED? Seven mandatory confounders -- seasonality, concurrent_service_change, demand_mix_shift, fleet_change, regression_to_the_mean, secular_trend_and_external_shocks, measurement_definition_change -- appear in EVERY evaluation; a model_validator raises if one is missing. Unresolved ones are lifted to a top-level unresolved_confounders that cannot disagree with the detail, and summary() renders them on the same line as the estimate."
+  - "HOW MUCH IS REGRESSION TO THE MEAN? ReversionDiagnostic states the agency's OWN long-run mean, how far the pre window sat below it (absolute and z), what change a do-nothing return to that mean predicts, and share_of_observed_change_explained_by_reversion. At or above 1.0 the whole improvement is inside mean-reversion."
+  - "WHAT DOES IT REFUSE? No value of AttributionVerdict, EvidenceStrength, ComparisonDesign, ConfounderStatus or ParallelTrendsCheck means caused / proven / experiment / ruled out. causal_proof=True raises; is_randomised_experiment=True raises; the strongest attribution verdict raises unless the design is difference-in-differences AND no confounder is unresolved."
+security_and_privacy_invariants:
+  - "NO CAUSAL CLAIM IS CONSTRUCTIBLE FROM AN UNCONTROLLED BEFORE/AFTER. InterventionEvaluation._refusals_are_structural raises when attribution_verdict='association_only_confounders_addressed' under design='uncontrolled_pre_post', and again when any confounder is unresolved. evidence_strength='stronger_controlled_association' raises without a control block. The strongest verdict is reachable (a DiD run with every confounder answered reaches it in test) so the guard is not vacuous."
+  - "NO CONFOUNDER CAN BE MARKED RULED OUT. ConfounderStatus has five values and none of them is 'ruled_out' or 'controlled'. 'declared_absent_unverified' records that the party being evaluated said no; 'quantified_not_removed' records that a number was put on it and left with the reader."
+  - "SILENCE IS UNFAVOURABLE. known_service_changes=None, demand_mix=None, absent fleet_size and metric_measured_by='unknown' all resolve to cannot_rule_out. There is no argument that switches a confounder off, and no keyword named ignore_* / skip_* exists on evaluate_intervention (asserted against its code object)."
+  - "REGRESSION TO THE MEAN IS COMPUTED, NOT DECLARED. It is derived from the supplied pre-window history and cannot be resolved by any caller argument; procurement_followed_adverse_period=True can only make it WORSE, never better."
+  - "NO MONEY. Unlike the teardown, this module derives no monetary figure at all -- a field-name scan over eight models rejects saving/payback/roi/dollar/usd/money/profit/avoidable."
+  - "NO OPERATOR DATA. DataProvenance is imported from teardown.py precisely because it has no 'operator' value; a series claiming that provenance fails to construct."
+  - "THE ESTIMATE CANNOT TRAVEL ALONE. summary() is the only renderer and emits the point estimate, the design, the attribution verdict, the unresolved confounders and the reversion share on one line (ADR-0049 discipline)."
+  - "teardown.py is byte-identical -- ADR-0056's benchmark numbers are pinned to it."
+failure_injections:
+  - "a registration edited after publication -> registration_sha256 mismatch raises"
+  - "a late registration forged as prospective -> raises; a registration stamped at the exact post-window boundary is still prospective, one second later is not"
+  - "family_size forged smaller than family_metrics -> raises (the correction would understate the chances taken)"
+  - "a metric outside the registered family -> InterventionError at registration time"
+  - "evaluating a different metric than registered / a control against an uncontrolled registration / a DiD registration with no control -> InterventionError"
+  - "fewer than 3 periods on one side -> no estimate, no interval, insufficient_data (not a mean of two points with an interval attached)"
+  - "a flat series -> no_detectable_change; a metric moving AGAINST the registered direction -> moved_against_pre_registered_direction and insufficient_to_attribute"
+  - "an autocorrelated series -> the discounted p-value is the one acted on, not the optimistic one"
+  - "a series with two values for one period -> raises"
+  - "misaligned calendar months -> seasonality cannot_rule_out; aligned months -> partially_addressed_by_design and no more"
+  - "a control series missing three post months -> counted as treated_periods_without_control and dropped, never interpolated"
+  - "a 3-month pre window under DiD -> parallel_trends='insufficient_pre_periods'"
+  - "a treated series drifting away from its control in the PRE period -> parallel_trends='contradicted_in_pre_period'"
+  - "every mandatory confounder deleted in turn from a valid result -> construction raises, once per confounder"
+  - "unresolved_confounders emptied while the detail still says otherwise -> raises"
+compatibility_matrix:
+  - "REAL PUBLIC DATA, labelled in-artifact: FTA NTD Complete Monthly Ridership, demand-response slice (realdata/panels/ntd_monthly_dr.csv.gz, sha256 72a97da33256f212e9edd2202e505d6286235f1e8999f6e543628b72002cb8ba), public domain 17 U.S.C. Sec. 105, commercial use permitted. Metric = trips per vehicle revenue hour (UPT/VRH), with VRH as exposure and VOMS as fleet size."
+  - "The demonstration case (Suffolk County NY, NTD 20072, purchased transportation, 108 monthly filings 2008-01..2016-12) was selected by a deterministic scan for the most adverse pre window. THAT SELECTION IS RETROSPECTIVE SHOPPING, done deliberately and in the open; scan_for_reversion_candidates is public so it can be re-run and disputed. These are method figures, not a finding about that agency."
+  - "SYNTHETIC fixtures are labelled synthetic and carry no seed -- the wobble patterns are deterministic, so every assertion is reproducible without a random seed."
+evidence_to_emit:
+  - "73 tests (64 + 9), 0 skipped locally; the 9 NTD tests skip cleanly without the panel"
+  - "20/20 mutations caught -- including the reversion sign flip, both halves of the attribution gate, the mandatory-confounder guard, the Bonferroni correction, the conservative-p selection, the registration-timing derivation, the registration-hash re-check, the DiD difference-series construction, the unweighted-mean estimand, and the window boundary"
+  - "REAL placebo result: Suffolk County (NY), placebo cut 2016-01. Long-run mean 1.6408 trips/VRH (72 months), pre window 1.5327 (z=-1.84), post 1.5794. Uncontrolled: +0.04668, 95% CI [-0.0281, 0.1215], p=0.1953 (rho=0.486, autocorrelation-discounted), verdict no_detectable_change. DiD vs 34 peers: +0.12884, 95% CI [0.0439, 0.2138], p=0.0072, verdict moved_in_pre_registered_direction -- because the peer panel FELL 0.0822. Reversion alone predicts 232% of the raw change."
+  - "Both arms still report attribution_verdict=association_only_confounded with regression_to_the_mean present_uncontrolled, direction_of_bias=would_flatter_the_intervention"
+upstream_blockers: []
+downstream_consumers:
+  - "outreach: the design-partner conversation about whether a scheduling change worked -- this is the artifact that answers it without overclaiming"
+  - "Program I evidence packs, once a real operator intervention with a real date exists"
+  - "app/replay/teardown.py (a teardown of the pre and post periods is the natural companion; not wired, deliberately)"
+limitations:
+  - "STATUS IS DEMONSTRATED, NEVER VALIDATED. There is no consented operator data and no real, dated scheduling intervention anywhere in this repo. Every cut date in the demonstration is a PLACEBO. Public NTD panels support method claims only."
+  - "THE HEADLINE FINDING IS A NEGATIVE ONE AND IT CUTS BOTH WAYS. On a placebo cut, difference-in-differences returned a larger, more significant estimate than the uncontrolled arm. That is Ashenfelter's dip: peers did not share the treated agency's bad period, so its rebound survived the subtraction. A stronger design is not a safer one when treatment assignment is triggered by the transitory shock -- which is exactly how scheduling-software procurement works. The module says so in DIFFERENCE_IN_DIFFERENCES_NOTE and blocks the strongest verdict, but it cannot correct for it."
+  - "REGRESSION TO THE MEAN IS DIAGNOSED, NOT REMOVED. share_of_observed_change_explained_by_reversion is a first-order diagnostic against the agency's own unconditional mean. It assumes the long-run mean is stationary over the history supplied, does not model a trend, and a genuinely improving agency will be penalised by it. No shrinkage estimator, no Bayesian prior, no synthetic control."
+  - "PARALLEL TRENDS CANNOT BE VERIFIED, ONLY NOT CONTRADICTED. The pre-period slope test has low power on 12 monthly points; failing to reject is weak evidence. The assumption that matters is about the POST period and is untestable by construction."
+  - "THE STANDARD ERRORS ARE OPTIMISTIC EVEN AFTER THE DISCOUNT. The lag-1 effective-sample-size correction is a crude fix for serial correlation; the Bertrand-Duflo-Mullainathan critique of DiD inference (serially correlated outcomes badly understate DiD standard errors) is not fully addressed. No clustering, no block bootstrap, no Newey-West."
+  - "PERIOD MEANS ONLY. The comparison is two window means. There is no interrupted-time-series model, no level-plus-slope decomposition, no seasonal decomposition, no event study, and no dose-response for a phased rollout. A gradual improvement and a step change look the same here."
+  - "SEASONALITY IS HANDLED BY CALENDAR ALIGNMENT, NOT BY ADJUSTMENT. Matching the set of calendar months does not address a year in which one season was unusually severe, and the module says so rather than deseasonalising."
+  - "DEMAND MIX AND SERVICE CHANGES ARE CALLER-DECLARED AND UNVERIFIABLE. 'declared_absent_unverified' is a statement by the party being evaluated. Nothing in this repo checks it."
+  - "MEASUREMENT-DEFINITION CHANGE IS THE CONFOUNDER WITH THE LEAST DATA BEHIND IT. When the new system also computes on-time performance, a changed definition moves the number with no change in service. The module flags it and can do nothing else -- detecting a definition change needs both systems' raw event streams over an overlap window, which no operator has yet supplied."
+  - "NO POWER ANALYSIS. The pre-registration does not fix a minimum detectable effect, so an underpowered comparison reports 'no_detectable_change' without saying how large an effect it could have detected. That is the most obvious next increment."
+  - "MULTIPLICITY IS BONFERRONI ACROSS A DECLARED FAMILY. It corrects for metrics registered together; it does not correct for the choice of intervention date, of window length, of peer rule, or of agency -- and the demonstration itself shows how much the last of those is worth."
+  - "NTD IS MONTHLY, SELF-REPORTED, AND REVISED. Trips per vehicle revenue hour is a productivity ratio, not on-time performance or cost per trip; NTD publishes no OTP at all. The monthly stamps are the agency's own calendar wearing a UTC label, the same caveat ADR-0039 recorded for the TLC hour buckets."
+  - "THE PEER PANEL IS AN UNWEIGHTED MEAN OF AGENCIES, NOT A SYNTHETIC CONTROL. It is not fitted to match the treated agency's pre-period path, and a single-peer or badly matched panel would be worse than none. No donor-pool weighting, no matching on anything but type of service, size band and completeness."
+notes: >
+  app/replay/teardown.py is BYTE-IDENTICAL (ADR-0056 pins it). Did not
+  touch app/canonical, app/decide, app/evidence, app/core,
+  app/api, business/outreach/, data/, realdata/ (read-only), pyproject, CI,
+  IMPLEMENTATION_STATUS, JOURNAL, any ADR, or git. No new dependencies: the
+  Student-t distribution is computed directly (regularized incomplete beta via
+  Lentz's continued fraction, matched against scipy to ~1e-15 during
+  development), following the app/core/drift.py precedent of not adding
+  scipy. No ADR written -- one is warranted and is left to the orchestrator.

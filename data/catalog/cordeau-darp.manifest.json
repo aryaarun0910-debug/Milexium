@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "static (a fixed, decades-stable academic benchmark set)",
   "source_checksum": "2def4d810f14fdcab73c52a90403839d2d37a3d0287bb65e24e20290c90d5f91",
-  "canonical_contract": "packages.decide.darp_ir.DarpInstance (parsed by packages.decide.darp_loader); benchmarked by benchmarks/quality/darp_benchmark.py against published best-known/optimal values",
+  "canonical_contract": "app.decide.darp_ir.DarpInstance (parsed by app.decide.darp_loader); benchmarked by evidence/benchmarks/quality/darp_benchmark.py against published best-known/optimal values",
   "quality_tests": [
     {
       "name": "valid_zip",
@@ -30,8 +30,8 @@
   "acceptance_threshold": "downloads, sha256 matches the recorded checksum, is a readable zip containing 24 Cordeau-format instance files that parse cleanly",
   "retention_and_deletion": "retain as part of the solver-quality benchmark corpus; cheaply reproducible (re-fetchable from the upstream mirror) so evictable first",
   "derived_artifacts": [
-    "benchmarks/quality/darp_results.json",
-    "benchmarks/quality/darp_summary.md"
+    "evidence/benchmarks/quality/darp_results.json",
+    "evidence/benchmarks/quality/darp_summary.md"
   ],
   "zone": "benchmarks"
 }

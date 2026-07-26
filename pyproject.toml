@@ -2,7 +2,7 @@
 name = "milexium"
 version = "0.1.0"
 description = "Milexium: explainable demand forecasting and scheduling evidence for paratransit and NEMT operators."
-# 3.14 because packages/canonical uses the stdlib uuid.uuid7() added there;
+# 3.14 because app/canonical uses the stdlib uuid.uuid7() added there;
 # this repo's scripts already run under `py -3` -> 3.14 (see __pycache__ tags).
 requires-python = ">=3.14"
 dependencies = [
@@ -14,7 +14,7 @@ dependencies = [
     "jsonschema==4.26.0",
     "fastapi==0.136.3",
     "matplotlib==3.10.8",
-    # GTFS-Realtime adapter (packages/connect/gtfs_realtime.py): Google's official
+    # GTFS-Realtime adapter (app/connect/gtfs_realtime.py): Google's official
     # protobuf bindings for the FeedMessage schema, plus its protobuf runtime.
     "gtfs-realtime-bindings==2.1.0",
     "protobuf==6.33.5",
@@ -25,7 +25,7 @@ dev = [
     "pytest==9.0.2",
 ]
 # Added only when Program C actually connects to the installed PostgreSQL
-# instance (see architecture/decisions/0004-sqlite-now-postgres-production.md);
+# instance (see knowledge/architecture/decisions/0004-sqlite-now-postgres-production.md);
 # not installed yet, listed here so the intended pin is visible.
 postgres = [
     "psycopg[binary]>=3.2,<3.3",
@@ -39,13 +39,13 @@ postgres = [
 solver = [
     "ortools>=9.15,<10",
 ]
-# S3-compatible object storage (packages/estate/object_store.py, ADR-0032):
-# the dev MinIO container from infra/compose. Optional -- the object-store test
+# S3-compatible object storage (app/estate/object_store.py, ADR-0032):
+# the dev MinIO container from platform/infra/compose. Optional -- the object-store test
 # skips when it's absent, so CI (which doesn't install this extra) stays green.
 objectstore = [
     "minio>=7,<8",
 ]
-# Formal methods (Program G, architecture/formal/): the free z3 SMT solver used
+# Formal methods (Program G, knowledge/architecture/formal/): the free z3 SMT solver used
 # to machine-check the ServiceRequest state-machine and hash-chain invariants
 # (ADR-0033). The conformance test importorskip's z3 so a machine without it
 # skips cleanly; CI installs this extra so the proofs actually RUN there.
@@ -54,8 +54,21 @@ formal = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["packages", "conformance", "realdata", "ntd", "reference_agency", "tools"]
+# "." makes `app.*` (and the `demo`/`research` scripts) importable, as before the
+# MX-REPO-REORG-014 layout change. The other two entries keep the module NAMES of
+# the two non-app trees stable across that move rather than renaming 45 imports:
+#   evidence/  -> `conformance.*` (evidence/conformance/__init__.py)
+#   platform/  -> `tools.*`       (evidence/conformance imports two tool modules)
+# `platform.tools` is not an option: `platform` is a stdlib MODULE, so it can
+# never be a package prefix. A bare `platform/` directory does not shadow it
+# (a directory without __init__.py is only a namespace portion, and a real
+# module found later on sys.path still wins), but `import platform.tools` would
+# always fail with "'platform' is not a package".
+pythonpath = [".", "evidence", "platform"]
+testpaths = [
+    "app", "evidence/conformance", "realdata",
+    "business/ntd", "business/reference_agency", "platform/tools",
+]
 python_files = ["test_*.py", "*_test.py"]
 
 [build-system]
@@ -63,4 +76,4 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["packages*"]
+include = ["app*"]

@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "monthly (CKAN accrualPeriodicity R/P1M). source_checksum is null -- trust-on-first-use.",
   "source_checksum": null,
-  "canonical_contract": "packages.canonical.entities.DeadheadSegment.from_stop_ref / to_stop_ref (Program A, ADR-0047) -- source stop identifiers only. No canonical Stop entity exists in this repo, and this manifest does not invent one; the coordinates are used for the layover-vs-movement split and are not stored on any canonical row.",
+  "canonical_contract": "app.canonical.entities.DeadheadSegment.from_stop_ref / to_stop_ref (Program A, ADR-0047) -- source stop identifiers only. No canonical Stop entity exists in this repo, and this manifest does not invent one; the coordinates are used for the layover-vs-movement split and are not stored on any canonical row.",
   "quality_tests": [
     {
       "name": "header_carries_stop_key_and_coordinates",
@@ -32,7 +32,7 @@
   "derived_artifacts": [
     "data/catalog/calitp-scheduled-deadhead.summary.json",
     "data/catalog/calitp-scheduled-deadhead.md",
-    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with tools/derive_scheduled_deadhead.py)"
+    "data/canonical/calitp-scheduled-deadhead-segments.jsonl (gitignored; regenerate with platform/tools/derive_scheduled_deadhead.py)"
   ],
   "zone": "raw/public"
 }

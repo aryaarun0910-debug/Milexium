@@ -1,0 +1,56 @@
+id: MX-G-FORMAL-SMT-002
+status: completed
+dispatched_date: "2026-07-24"
+completed_date: "2026-07-24"
+adr: knowledge/architecture/decisions/0033-formal-smt-invariants.md
+result: "10 tests; S1-S4 (state machine) + H1 (hash chain) all z3-proved; consistency + 2 negative controls green; runner prints ALL GREEN"
+objective: >
+  Phase-3 gate item G. Two machine-checked formal invariants on load-bearing
+  properties, proved with the free z3-solver (already installed, z3 5.0.0):
+  (1) the ServiceRequest state machine has no illegal reachable transition, and
+  (2) the append-only hash chain is tamper-evident. Real proofs, not asserts.
+owned_paths:
+  - knowledge/architecture/formal/README.md
+  - knowledge/architecture/formal/state_machine_smt.py
+  - knowledge/architecture/formal/hash_chain_smt.py
+  - app/verify/formal.py
+  - evidence/conformance/property-tests/test_formal_smt.py
+read_only_dependencies:
+  - app/canonical/state_machine.py (SERVICE_REQUEST_TRANSITIONS — for the consistency check ONLY)
+  - app/canonical/events.py (hash-chain rules — for the consistency check ONLY)
+  - knowledge/architecture/decisions/0003-append-only-hash-chained-event-log.md
+normative_contracts:
+  - blueprint/07-explain-replay-evidence.md
+  - ADR-0028 (verifier independence: the prover reasons over its OWN transcription of the spec)
+required_outputs:
+  - knowledge/architecture/formal/state_machine_smt.py  (Z3 model + proofs)
+  - knowledge/architecture/formal/hash_chain_smt.py      (Z3 model + tamper-evidence theorem)
+  - app/verify/formal.py                  (prove_all() -> per-invariant result; + spec-consistency check)
+  - evidence/conformance/property-tests/test_formal_smt.py
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_formal_smt.py -q"
+  - "py -3 -m app.verify.formal   # prints each invariant + proved/refuted"
+security_and_privacy_invariants:
+  - "INDEPENDENCE (ADR-0028): the SMT model is an INDEPENDENT transcription of the spec (transition table / chain rules) written from the ADRs, NOT imported from the code under proof. A SEPARATE consistency test asserts the transcribed transition table == SERVICE_REQUEST_TRANSITIONS exactly, so drift in either fails loudly — this ties the proof to the real code without the prover importing the generator."
+  - "HONESTY: the hash-chain theorem is proved RELATIVE TO an explicitly-stated collision-freeness axiom on H (H injective). Do NOT claim to prove SHA-256 collision resistance — state the axiom in the model and the README. No proof may be faked or stubbed; a proof result must come from z3 returning unsat (for the negated property) / a checked model, not a Python assert."
+state_machine_invariants_to_prove:
+  - "S1 terminal states (COMPLETED, DENIED, CANCELLED, NO_SHOW) are sinks: no outgoing transition"
+  - "S2 irreflexive: no self-loop transition (the idempotency property check_transition relies on)"
+  - "S3 acyclic: no state can reach itself via >=1 transitions (the lifecycle is a strict progression — no replay loop)"
+  - "S4 no non-terminal dead-end: every non-terminal state can reach some terminal state"
+hash_chain_invariants_to_prove:
+  - "H1 tamper-evidence / chain determinism: two valid chains of equal length with the same genesis (prev_hash=NIL at index 0) and the same final hash must have identical content at every index — i.e. you cannot alter any content[k] and still match the published final hash (under the H-injectivity axiom). Model hash as an uninterpreted function; prove by z3 unsat of the negation."
+failure_injections:
+  - "flip one allowed transition in the transcription -> the consistency test FAILS (proves the tie to real code is load-bearing)"
+  - "drop the collision-freeness axiom -> the tamper-evidence theorem is no longer unsat (documented, shows the axiom is doing the work honestly)"
+compatibility_matrix:
+  - "conformance test importorskip('z3') so a machine without z3 skips cleanly; the orchestrator wires z3-solver into CI so it RUNS there"
+evidence_to_emit:
+  - "each invariant name + z3 result (unsat==proved); the consistency-check result; test count"
+upstream_blockers: []
+downstream_consumers: [knowledge/architecture/formal/ future invariants; the verifiability moat]
+notes: >
+  Do NOT touch pyproject or CI (the orchestrator adds z3-solver centrally). Do
+  NOT edit shared docs or write ADRs/commit. app/verify must stay
+  independent of what it checks (ADR-0028). Keep the models small and readable —
+  <= 8 states, bounded chains (length up to ~6 suffices for H1 with uninterpreted H).

@@ -13,14 +13,14 @@ One command drives the entire Milexium loop and prints each step:
   4. RECORD   -- a system recommendation + a human override recorded through the
                 MilexiumClient facade onto the append-only, hash-chained ledger.
   5. EVIDENCE -- a portable EvidencePack built, re-verified independently, and
-                written to artifacts/golden-path/evidence_pack.json.
+                written to evidence/artifacts/golden-path/evidence_pack.json.
   6. REPLAY   -- a baseline-vs-Milexium modelled comparison over the same request
                 set, with the per-metric deltas.
-  7. MANIFEST -- a machine-readable artifacts/golden-path/run_manifest.json a
+  7. MANIFEST -- a machine-readable evidence/artifacts/golden-path/run_manifest.json a
                 reviewer can use to verify what was real, what was synthetic, and
                 every load-bearing hash.
 
-HONESTY (labelled at every step, per architecture/decisions/0001):
+HONESTY (labelled at every step, per knowledge/architecture/decisions/0001):
   * The DEMAND/BOOKING data is REAL (NYC TLC FHVHV trips -- every Uber/Lyft/Via/
     Juno ride in NYC, published by the NYC Taxi & Limousine Commission).
   * The FORECAST runs on a REAL model trained on REAL aggregate paratransit
@@ -50,7 +50,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from packages.canonical import (
+from app.canonical import (
     ModelVersion,
     ModelVersionId,
     Outcome,
@@ -61,10 +61,10 @@ from packages.canonical import (
     VehicleId,
     new_id,
 )
-from packages.canonical.vocab import ScheduleRunStatus
-from packages.connect import TlcTripsAdapter
-from packages.core import ModelRegistry
-from packages.decide import (
+from app.canonical.vocab import ScheduleRunStatus
+from app.connect import TlcTripsAdapter
+from app.core import ModelRegistry
+from app.decide import (
     DecisionPolicy,
     DecisionProblem,
     DecisionVehicle,
@@ -72,16 +72,16 @@ from packages.decide import (
     check_feasibility,
     solve,
 )
-from packages.evidence import verify_evidence_pack
-from packages.replay import ScheduleOutcomeSet, compare_schedules
-from packages.sdk import MilexiumClient
+from app.evidence import verify_evidence_pack
+from app.replay import ScheduleOutcomeSet, compare_schedules
+from app.sdk import MilexiumClient
 
 # --- repository locations -------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _REAL_AAR_MODEL = _REPO_ROOT / "realdata" / "output" / "aar_model.json"
 _RAW_TLC_DIR = _REPO_ROOT / "realdata" / "raw_tlc"
-_DEFAULT_OUTPUT_DIR = _REPO_ROOT / "artifacts" / "golden-path"
+_DEFAULT_OUTPUT_DIR = _REPO_ROOT / "evidence" / "artifacts" / "golden-path"
 
 # --- synthetic decision-problem assumptions (ALL labelled synthetic) ------
 #
@@ -100,7 +100,7 @@ _VEHICLE_WHEELCHAIR_CAP = 1       # synthetic per-vehicle wheelchair positions
 _N_READ = 8                       # real TLC rows read from the head of the file
 _N_DECIDE = 6                     # real ingested requests used in the decision problem
 
-_AAR_INTERVAL_HALF_WIDTH = 20.12  # declared model interval (~ AAR validation MAE, docs/MODEL_CARDS.md)
+_AAR_INTERVAL_HALF_WIDTH = 20.12  # declared model interval (~ AAR validation MAE, knowledge/docs/MODEL_CARDS.md)
 
 _RULE = "=" * 74
 
@@ -437,7 +437,7 @@ def run_golden_path(
         f"denied {len(milexium_solution.unserved)}")
 
     violations = check_feasibility(milexium_problem, milexium_solution)
-    say(f"INDEPENDENT feasibility check (packages.decide.feasibility, which never")
+    say(f"INDEPENDENT feasibility check (app.decide.feasibility, which never")
     say(f"  imports the solver): {len(violations)} violations -> "
         f"{'PASS' if not violations else 'FAIL'}")
     for a in milexium_solution.assignments:

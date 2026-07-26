@@ -29,7 +29,7 @@ jobs:
           # themselves skip cleanly when the DB/data/artifacts are absent).
           pip install "psycopg[binary]" httpx duckdb
           # Program G formal-methods extra (z3): installed so the machine-checked
-          # state-machine + hash-chain proofs (conformance/property-tests/
+          # state-machine + hash-chain proofs (evidence/conformance/property-tests/
           # test_formal_smt.py) RUN on CI rather than importorskip-skipping.
           pip install -e ".[formal]"
           # Program F CP-SAT extra (ortools, ADR-0060): same reasoning as z3.
@@ -38,12 +38,12 @@ jobs:
           # whole point of the packet. ortools 9.15 publishes a cp314 wheel.
           pip install -e ".[solver]"
       - name: Test (platform suite)
-        run: python -m pytest packages/ conformance/ -q
+        run: python -m pytest app/ evidence/conformance/ -q
       - name: Contract drift check
         run: |
-          python contracts/generate.py
-          git diff --exit-code -- contracts/ \
-            || (echo "::error::contracts/ is stale -- run 'py -3 contracts/generate.py' and commit" && exit 1)
+          python platform/contracts/generate.py
+          git diff --exit-code -- platform/contracts/ \
+            || (echo "::error::platform/contracts/ is stale -- run 'py -3 platform/contracts/generate.py' and commit" && exit 1)
 
   rust:
     name: Rust (fmt/clippy/test)
@@ -74,13 +74,13 @@ jobs:
         run: npm run typecheck -w @milexium/sdk
       - name: Test
         run: npm test -w @milexium/sdk
-      # The generated client is derived from contracts/openapi, exactly as the
-      # Python-side artifacts are derived from packages/canonical -- but until
+      # The generated client is derived from platform/contracts/openapi, exactly as the
+      # Python-side artifacts are derived from app/canonical -- but until
       # now nothing checked it. It silently went 835 lines stale while two new
       # endpoints landed (ADR-0042), which is precisely the failure the Python
       # contract-drift check exists to prevent. Same gate, other language.
       - name: SDK type drift check
         run: |
           npm run generate -w @milexium/sdk
-          git diff --exit-code -- packages/sdk-typescript/src/generated/ \
+          git diff --exit-code -- app/sdk-typescript/src/generated/ \
             || (echo "::error::generated TS types are stale -- run 'npm run generate -w @milexium/sdk' and commit" && exit 1)

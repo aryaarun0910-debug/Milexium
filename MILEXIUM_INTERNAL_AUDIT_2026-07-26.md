@@ -24,7 +24,7 @@ The fastest credible path is to stop broadening the platform, repair the trust s
 - Read the repository structure, package surfaces, current status documents, active commercial language, SQL, CI, demo, data manifests, benchmark artifacts, and all 68 ADRs.
 - Ran the full local suite: **2,337 passed, 1 skipped, 4 warnings in 755.87 seconds**. The skip is a missing generated GTFS scheduled-deadhead narrative, not an infrastructure failure.
 - Ran the main walkthrough from a clean `git archive`: it completed successfully in 2.8 seconds and re-derived 76 quantities with zero mismatches.
-- Re-ran `outreach/build_panel_findings.py`: **9 findings survived and 8 were rejected**; the output was substantively unchanged.
+- Re-ran `business/outreach/build_panel_findings.py`: **9 findings survived and 8 were rejected**; the output was substantively unchanged.
 - Re-ran all 11 research scripts. Ten reproduced their committed substantive results. `h3_weather.py` did not reproduce byte-for-byte: the rerun lost one agency and changed from 1,994 to 1,886 complete observations. The finding stayed null, but this is a research provenance defect.
 - Ran the repository data audit: it passed its own checks over approximately 58 GB of local raw TLC files and the committed/ignored panels.
 - Performed controlled adversarial probes and restored every tracked mutation.
@@ -35,7 +35,7 @@ Green tests are real evidence of considerable engineering work. They are not evi
 
 ### P0 — the lifecycle “bitemporal” record does not establish transaction time
 
-[`LifecycleTransition`](C:/Users/aryaa/Documents/Milexium/packages/canonical/lifecycle.py:170) accepts both `decided_at` and `recorded_at`; [`record_lifecycle_transition`](C:/Users/aryaa/Documents/Milexium/packages/canonical/storage.py:693) passes both caller values into storage; and the SQL provides no trusted default. Its only database constraint is [`recorded_at >= decided_at`](C:/Users/aryaa/Documents/Milexium/packages/canonical/sql/schema_v0_1.sql:374).
+[`LifecycleTransition`](C:/Users/aryaa/Documents/Milexium/app/canonical/lifecycle.py:170) accepts both `decided_at` and `recorded_at`; [`record_lifecycle_transition`](C:/Users/aryaa/Documents/Milexium/app/canonical/storage.py:693) passes both caller values into storage; and the SQL provides no trusted default. Its only database constraint is [`recorded_at >= decided_at`](C:/Users/aryaa/Documents/Milexium/app/canonical/sql/schema_v0_1.sql:374).
 
 I inserted a transition today whose `decided_at` was `2020-01-01T00:00:00Z` and whose `recorded_at` was one second later. It was accepted. The system proves only that two assertions are ordered. It does not prove when the row entered Milexium or that the decision was recorded contemporaneously.
 
@@ -45,7 +45,7 @@ This makes “refuses backdating” false. It also means `recorded_at` is not tr
 
 ### P0 — the lifecycle table is mutable history
 
-The SQL calls the table append-only because application code contains no update/delete path ([schema comment](C:/Users/aryaa/Documents/Milexium/packages/canonical/sql/schema_v0_1.sql:321)). That is a coding convention, not a database invariant.
+The SQL calls the table append-only because application code contains no update/delete path ([schema comment](C:/Users/aryaa/Documents/Milexium/app/canonical/sql/schema_v0_1.sql:321)). That is a coding convention, not a database invariant.
 
 I wrote a valid denial, issued a direct SQL `UPDATE` changing `actor_id`, committed it, and read the forged actor back through the normal lifecycle API. No violation was reported. The table has no hash chain, immutability trigger, or privilege boundary preventing `UPDATE`/`DELETE`.
 
@@ -55,11 +55,11 @@ This is the highest-severity defect because this record is presented as the answ
 
 ### P1 — active claim language violates Milexium's own status contract
 
-The active YC draft says the model is “validated on real ridership data” and “validated on 26.3 million real ... bookings” ([draft](C:/Users/aryaa/Documents/Milexium/docs/yc/application-draft.md:30)). It also says the architecture has already been validated across cities/modalities ([line 101](C:/Users/aryaa/Documents/Milexium/docs/yc/application-draft.md:101)). [`COMPETITIVE_POSITIONING.md`](C:/Users/aryaa/Documents/Milexium/docs/COMPETITIVE_POSITIONING.md:78) instructs the team to say “validated demand forecasting.”
+The active YC draft says the model is “validated on real ridership data” and “validated on 26.3 million real ... bookings” ([draft](C:/Users/aryaa/Documents/Milexium/knowledge/docs/yc/application-draft.md:30)). It also says the architecture has already been validated across cities/modalities ([line 101](C:/Users/aryaa/Documents/Milexium/knowledge/docs/yc/application-draft.md:101)). [`COMPETITIVE_POSITIONING.md`](C:/Users/aryaa/Documents/Milexium/knowledge/docs/COMPETITIVE_POSITIONING.md:78) instructs the team to say “validated demand forecasting.”
 
 These are direct violations of ADR-0001. Public aggregate data can demonstrate an aggregate forecasting task. It cannot validate operator capacity planning, scheduling, denial explanation, or economic impact.
 
-“Production model recommendation” in the root [`README`](C:/Users/aryaa/Documents/Milexium/README.md:9), “production model” across `realdata/`, and the four “validated as the right objective” labels in [`MODEL_CARDS.md`](C:/Users/aryaa/Documents/Milexium/docs/MODEL_CARDS.md:13) should become:
+“Production model recommendation” in the root [`README`](C:/Users/aryaa/Documents/Milexium/README.md:9), “production model” across `realdata/`, and the four “validated as the right objective” labels in [`MODEL_CARDS.md`](C:/Users/aryaa/Documents/Milexium/knowledge/docs/MODEL_CARDS.md:13) should become:
 
 - “selected in the objective bakeoff” for Poisson/XGBoost;
 - “Demonstrated on public aggregate data” for the forecast;
@@ -70,7 +70,7 @@ The draft's “every assignment and every denial” language is also too broad. 
 
 ### P1 — the $94M deadhead opportunity is not supported
 
-The YC draft turns a 17.3% annual deadhead accounting share into a $94M opportunity from a hypothetical 10% reduction ([draft](C:/Users/aryaa/Documents/Milexium/docs/yc/application-draft.md:40)). The current research finds virtually no association between deadhead share and cost per trip:
+The YC draft turns a 17.3% annual deadhead accounting share into a $94M opportunity from a hypothetical 10% reduction ([draft](C:/Users/aryaa/Documents/Milexium/knowledge/docs/yc/application-draft.md:40)). The current research finds virtually no association between deadhead share and cost per trip:
 
 - Pearson with log cost/trip: **+0.017**
 - Spearman with cost/trip: **+0.021**
@@ -82,9 +82,9 @@ Delete the aggregate $94M claim. Sell the auditable diagnosis and scenario model
 
 ### P1 — legacy data governance tests permit false records
 
-[`test_realdata_governance.py`](C:/Users/aryaa/Documents/Milexium/conformance/property-tests/test_realdata_governance.py:72) skips existence checks for ignored paths. Its closing assertion accepts the case where all named paths are untracked. I changed the Chicago manifest from a real local directory to a definitely nonexistent ignored directory; the targeted test still passed.
+[`test_realdata_governance.py`](C:/Users/aryaa/Documents/Milexium/evidence/conformance/property-tests/test_realdata_governance.py:72) skips existence checks for ignored paths. Its closing assertion accepts the case where all named paths are untracked. I changed the Chicago manifest from a real local directory to a definitely nonexistent ignored directory; the targeted test still passed.
 
-The rights test requires only more than 40 characters, no short placeholder word, and the word “commercial” ([lines 43–50](C:/Users/aryaa/Documents/Milexium/conformance/property-tests/test_realdata_governance.py:43)). I replaced the Chicago rights field with:
+The rights test requires only more than 40 characters, no short placeholder word, and the word “commercial” ([lines 43–50](C:/Users/aryaa/Documents/Milexium/evidence/conformance/property-tests/test_realdata_governance.py:43)). I replaced the Chicago rights field with:
 
 > Fabricated audit assertion: commercial use is permitted because this sentence says so, without any source or legal terms.
 
@@ -98,7 +98,7 @@ These five legacy manifests also have `source_checksum: null` and empty `quality
 
 The decision-event ledger is hash-chained and re-verifiable. The newer lifecycle record is not. The walkthrough can truthfully say its three decision events are hash-chained; that should not bleed into the implication that the request lifecycle history has the same property.
 
-The standalone evidence verifier is a strong reproducibility artifact, but [`pack_file.py`](C:/Users/aryaa/Documents/Milexium/packages/evidence/pack_file.py:95) correctly admits what it does not attest. An embedded verifier cannot authenticate itself: an attacker who replaces the pack, claims, and embedded verifier together can create a self-consistent forgery. This needs an external verifier hash/signature, a separately distributed implementation, and anchored signed roots before “independent” is allowed to imply authenticity rather than self-contained recomputation.
+The standalone evidence verifier is a strong reproducibility artifact, but [`pack_file.py`](C:/Users/aryaa/Documents/Milexium/app/evidence/pack_file.py:95) correctly admits what it does not attest. An embedded verifier cannot authenticate itself: an attacker who replaces the pack, claims, and embedded verifier together can create a self-consistent forgery. This needs an external verifier hash/signature, a separately distributed implementation, and anchored signed roots before “independent” is allowed to imply authenticity rather than self-contained recomputation.
 
 ### P1 — the canonical model still cannot drive its own teardown
 
@@ -114,7 +114,7 @@ Research artifacts need immutable input snapshots or content hashes, source retr
 
 ### P2 — the clean CI signal is narrower than the status language
 
-The main Python CI installs formal and solver extras, then runs `python -m pytest packages/ conformance/ -q` ([workflow](C:/Users/aryaa/Documents/Milexium/.github/workflows/ci.yml:41)). It does not provision Postgres/PostGIS/MinIO, so service-backed tests are designed to skip in a clean runner. It also does not run the demo, research reproduction, repository data audit, Python lint/type checking, dependency audit, migration upgrade paths, or mutation tests.
+The main Python CI installs formal and solver extras, then runs `python -m pytest app/ evidence/conformance/ -q` ([workflow](C:/Users/aryaa/Documents/Milexium/.github/workflows/ci.yml:41)). It does not provision Postgres/PostGIS/MinIO, so service-backed tests are designed to skip in a clean runner. It also does not run the demo, research reproduction, repository data audit, Python lint/type checking, dependency audit, migration upgrade paths, or mutation tests.
 
 The local 2,337-pass result is meaningful, but it was obtained on the founder's provisioned machine with ignored model/data artifacts and live databases. “CI green” does not mean the multi-service deployment was exercised.
 
@@ -145,11 +145,11 @@ Those probes verify the P0 defects independently of whether any existing test pa
 
 ## Stale — documentation that cannot be trusted as current
 
-- [`docs/HANDOFF.md`](C:/Users/aryaa/Documents/Milexium/docs/HANDOFF.md:7) says the six priorities were killed/incomplete, cites old HEADs, and lists completed work as in flight. Its header tells readers to use it first. Archive it or replace it with a generated current handoff.
+- [`knowledge/docs/HANDOFF.md`](C:/Users/aryaa/Documents/Milexium/knowledge/docs/HANDOFF.md:7) says the six priorities were killed/incomplete, cites old HEADs, and lists completed work as in flight. Its header tells readers to use it first. Archive it or replace it with a generated current handoff.
 - [`IMPLEMENTATION_STATUS.md`](C:/Users/aryaa/Documents/Milexium/IMPLEMENTATION_STATUS.md:441) still lists closed items as open, including teardown latency, generated TypeScript drift, ModelRegistry persistence, and container RLS. It is designated as the living source of truth and currently is not one.
 - [`README.md`](C:/Users/aryaa/Documents/Milexium/README.md:43) calls `data/` a “Governed 250 GB estate.” The local audit found roughly 58 GB of large raw TLC data plus panels, much of it outside the governed acquisition path. The 250 GB figure is a design target, not current governed volume.
-- [`packages/README.md`](C:/Users/aryaa/Documents/Milexium/packages/README.md:19), [`research/README.md`](C:/Users/aryaa/Documents/Milexium/research/README.md:22), and [`benchmarks/README.md`](C:/Users/aryaa/Documents/Milexium/benchmarks/README.md:19) materially understate or misdescribe what now exists.
-- [`docs/MASTER_ROADMAP.md`](C:/Users/aryaa/Documents/Milexium/docs/MASTER_ROADMAP.md) is still presented as active/canonical while carrying completed CP-SAT and other work as unchecked backlog.
+- [`app/README.md`](C:/Users/aryaa/Documents/Milexium/app/README.md:19), [`research/README.md`](C:/Users/aryaa/Documents/Milexium/research/README.md:22), and [`evidence/benchmarks/README.md`](C:/Users/aryaa/Documents/Milexium/evidence/benchmarks/README.md:19) materially understate or misdescribe what now exists.
+- [`knowledge/docs/MASTER_ROADMAP.md`](C:/Users/aryaa/Documents/Milexium/knowledge/docs/MASTER_ROADMAP.md) is still presented as active/canonical while carrying completed CP-SAT and other work as unchecked backlog.
 - Historical ADRs are generally admirably explicit about limitations and later corrections. The principal ADR problem is not hidden contradiction; it is that active summaries failed to absorb the later ADRs.
 
 The fix is not another narrative sweep. Generate capability/status tables from a small machine-readable registry, require each status claim to name its evidence and limitation, and expire handoff documents automatically.

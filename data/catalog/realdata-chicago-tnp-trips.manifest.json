@@ -6,7 +6,7 @@
     "forecast.demand"
   ],
   "derived_artifacts": [
-    "GOVERNANCE-ONLY MANIFEST (tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through packages.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
+    "GOVERNANCE-ONLY MANIFEST (platform/tools/build_realdata_manifests.py). These bytes were hand-acquired before the governed estate existed and live at the paths below. Nothing was moved, copied or re-downloaded, and NO .acquired.json record is written -- this dataset did not go through app.estate.acquire, and claiming it did would forge the provenance the estate exists to make trustworthy.",
     "already_present_at: realdata/panels/chicago_monthly/"
   ],
   "expected_download_gb": 0.0,

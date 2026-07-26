@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "spec revisions (versioned via git tags upstream)",
   "source_checksum": null,
-  "canonical_contract": "packages.canonical.entities.ServiceRequest (TIDES trips -> ServiceRequest is a future Connect adapter, MX-B-TIDES-ADAPTER)",
+  "canonical_contract": "app.canonical.entities.ServiceRequest (TIDES trips -> ServiceRequest is a future Connect adapter, MX-B-TIDES-ADAPTER)",
   "quality_tests": [
     {
       "name": "non_empty",

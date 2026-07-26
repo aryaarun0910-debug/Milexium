@@ -1,0 +1,49 @@
+id: MX-C-DATA-ESTATE-GOVERNANCE-001
+status: completed
+completed_date: "2026-07-23"
+objective: >
+  Stand up the governed data estate (blueprint 17): zone layout, a
+  manifest-gated acquisition pipeline (free-space guard, quarantine,
+  checksum, content-addressed promotion, catalog), and prove it end-to-end
+  on real rights-clean data -- without bulk-downloading the 250 GB or the
+  152 dossier technologies.
+owned_paths:
+  - data/
+  - app/estate/
+  - _legacy/third_party/VENDORING_PROCESS.md
+  - knowledge/architecture/decisions/0013-governed-data-estate.md
+read_only_dependencies:
+  - app/canonical/entities.py (ServiceRequest -- the canonical_contract target for standards data)
+normative_contracts:
+  - blueprint/17-data-and-storage-readiness.md (expansion plan)
+  - blueprint/20-dossier-coverage-ledger.md (no-blind-vendoring rule)
+inputs_and_fixtures:
+  - data/catalog/tides-sample.manifest.json
+  - data/catalog/osm-dc.manifest.json
+required_outputs:
+  - app/estate/{manifest,acquire,catalog}.py
+  - data/ zone layout + data/README.md
+  - evidence/conformance/property-tests/test_estate_acquisition.py
+  - _legacy/third_party/VENDORING_PROCESS.md
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_estate_acquisition.py -v"
+  - "py -3 -c \"from app.estate import free_space_report; import json; print(json.dumps(free_space_report()))\""
+performance_budget: {}
+security_and_privacy_invariants:
+  - "a manifest with undeclared/unknown rights is unacquirable"
+  - "a checksum mismatch leaves the object in quarantine, never the trusted zone"
+  - "free space is checked and reported before any download starts"
+failure_injections:
+  - "undeclared rights -> ManifestError"
+  - "missing governance field -> ManifestError"
+  - "oversized acquisition vs free-space floor -> FreeSpaceError, downloader never called"
+  - "checksum mismatch -> AcquisitionError, object stays in quarantine, zone stays empty"
+compatibility_matrix: []
+evidence_to_emit:
+  - "5 passing governance tests; 2 real datasets acquired end-to-end (TIDES sample -> standards/, DC OSM 20.9MB -> networks/); free-space reported 335.33 -> 335.31 GB"
+forbidden_interface_changes: []
+upstream_blockers: []
+downstream_consumers:
+  - MX-B-TIDES-ADAPTER (standards data -> ServiceRequest, next tranche)
+  - MX-B-GTFS-FLEX-ADAPTER (next tranche)
+  - Future Program F/H routing-graph derivation from networks/ OSM

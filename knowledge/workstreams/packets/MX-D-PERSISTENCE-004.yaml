@@ -1,0 +1,120 @@
+id: MX-D-PERSISTENCE-004
+status: completed
+dispatched_date: "2026-07-25"
+completed_date: "2026-07-25"
+adr: null  # ADR is the orchestrator's to write; this packet does not author one.
+result: "57 tests (27 parametrised [sqlite]/[postgres] + 3 structural), PostgreSQL half RAN (milexium_dev reachable); leakage guarantee re-proved through the persistent path on the real AAR panel, including in-place corruption of stored rows; whole suite 838 passed (781 baseline + 57)"
+objective: >
+  Close the gap ADR-0034 left open. Program D's adaptive-memory slice shipped as
+  IN-MEMORY reference backends only, so a design partner's feature values,
+  promotion decisions and rollback history did not survive a process restart --
+  the first thing a real pilot hits. Add persistent backends for the
+  point-in-time feature store and the promotion ledger, over a portable SQL
+  schema, following this repository's own established store pattern rather than
+  inventing one. The leakage guarantee must survive persistence and be proved to,
+  not asserted.
+owned_paths:
+  - app/core/feature_store.py
+  - app/core/promotion.py
+  - app/core/sql/core_v0_1.sql
+  - evidence/conformance/property-tests/test_core_persistence.py
+  - knowledge/workstreams/packets/MX-D-PERSISTENCE-004.yaml
+read_only_dependencies:
+  - app/core/model_registry.py (composed read-only; a concurrent packet owns it)
+  - app/core/drift.py (untouched)
+  - app/canonical/storage.py + postgres_storage.py (the store pattern being followed; is_reachable reused)
+  - app/canonical/sql/schema_v0_1.sql (the portable-DDL discipline; NOT modified -- a concurrent packet owns it)
+  - app/canonical/time.py, app/canonical/ids.py, app/canonical/entities.py
+  - realdata/panels/aar_daily.csv (real aggregate panel, read-only, for the demonstration)
+normative_contracts:
+  - ADR-0002 (portable canonical schema: no Postgres-only constructs; must run unmodified on SQLite)
+  - ADR-0004 (SQLite now / PostgreSQL production; one contract, two engines)
+  - ADR-0006 (connect only as the non-superuser milexium_dev role; password read from the user profile at runtime)
+  - ADR-0034 (the in-memory adaptive-memory slice this persists)
+  - blueprint/05-core-model-runtime-and-forecast.md (feature store, champion/challenger, memory tiers)
+required_outputs:
+  - app/core/sql/core_v0_1.sql (new, portable)
+  - app/core/feature_store.py :: CoreDatabase, PersistentFeatureStore
+  - app/core/promotion.py :: PersistentPromotionController
+  - evidence/conformance/property-tests/test_core_persistence.py
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_core_persistence.py -q  # 57 passed"
+  - "py -3 -m pytest app/ evidence/conformance/ -q  # whole suite still green (838 = 781 baseline + 57)"
+security_and_privacy_invariants:
+  - "THE LEAKAGE GUARANTEE SURVIVES PERSISTENCE: an as-of read at label time t returns only values whose knowledge_time is STRICTLY < t. The strict `<` is a SQL predicate over fixed-width canonical ISO-8601 UTC text, so a future row is never fetched and then filtered in Python -- it is never fetched. Proved with the ADR-0034 / realdata/leakage_audit.py future-corruption discipline on the real AAR panel, at three cutoffs, plus a control proving a post-cutoff read does change."
+  - "No raw PII: features keyed by opaque entity ids only (mirrors ServiceRequest.rider_ref tokenization). The schema stores the id as opaque TEXT and neither parses nor validates its structure."
+  - "Append-only: no UPDATE and no DELETE is issued against feature_values or promotion_decisions / promotion_rollbacks anywhere in app/core. A correction is a new row at a later (or equal) knowledge time."
+  - "PostgreSQL access is as the non-superuser milexium_dev role only (ADR-0006); the password is read from %USERPROFILE%\\.milexium_pg_app_password.txt at connection time, never hardcoded, committed, or logged."
+failure_injections:
+  - "as-of read at t must NOT see a value stamped exactly at t or later, through the database (test_asof_read_excludes_a_value_stamped_exactly_at_t)"
+  - "future rows corrupted IN PLACE in the stored table, connection dropped and reopened: every past as-of read still bit-identical (test_real_panel_stored_rows_corrupted_in_place_leave_past_bit_identical)"
+  - "a challenger cannot become champion without passing the evaluated gate; an unregistered challenger cannot be gated at all and records no decision"
+  - "canary traffic fraction outside [0, 1) is refused by the controller AND by a CHECK constraint, so a writer that bypassed the controller still cannot store one"
+  - "rollback with no prior champion raises and records nothing"
+  - "naive (non-UTC) timestamps are rejected before any row is written"
+compatibility_matrix:
+  - "core_v0_1.sql runs UNMODIFIED on SQLite (on-disk file) and PostgreSQL 17 (native, port 5432, role/db milexium_dev)"
+  - "every behavioural test is parametrised [sqlite]/[postgres]; the PostgreSQL parameter skips cleanly (never fails) when the instance is unreachable, so CI stays green where milexium_dev was never provisioned"
+  - "on this run the PostgreSQL half RAN -- it was not skipped"
+  - "leakage demonstration uses the REAL aggregate panel realdata/panels/aar_daily.csv (NYC Access-A-Ride daily scheduled trips), labelled REAL DATA in-test; controller fixtures are labelled SYNTHETIC"
+evidence_to_emit:
+  - "test counts and which engine parameters ran vs skipped"
+  - "differential tests proving the persistent backends behave identically to the in-memory references, not merely expose the same signatures"
+upstream_blockers: []
+downstream_consumers:
+  - "app/forecast runtime (champion resolution surviving a restart)"
+  - "a future serve-time drift monitor reading persisted features"
+  - "a future reconciliation of the controller's roles with ADR-0010's registry pointer"
+notes: >
+  DESIGN DEVIATION, STATED DELIBERATELY. app/canonical ships one contract as
+  TWO classes (SqliteCanonicalStore / PostgresCanonicalStore) because its
+  PostgreSQL half carries row-level security the SQLite half cannot have
+  (ADR-0018), so the two genuinely diverge. Program D's stores have no tenant
+  dimension and therefore no RLS: the only engine difference is the DB-API
+  placeholder and how a connection is opened. The store logic therefore exists
+  ONCE over an engine-parametrised `CoreDatabase` adapter
+  (`CoreDatabase.sqlite(...)` / `CoreDatabase.postgres(...)`), rather than as two
+  copies of the same SQL. What the canonical pattern asserts -- one contract, two
+  engines, proved by [sqlite]/[postgres]-parametrised conformance -- is preserved;
+  what is dropped is a duplicate that could only drift.
+
+  `CoreDatabase` and `_iso_utc` live in feature_store.py, imported by
+  promotion.py, because this packet owns exactly those two modules; a
+  `app/core/persistence.py` is the natural home once a third persistent
+  Program D store exists.
+
+  `PromotionController.evaluate_and_maybe_promote`'s verdict logic was extracted
+  into a module-level pure `_evaluate_gate` (and the registry check into
+  `_require_registered_for_task`) so the in-memory and persistent controllers
+  cannot disagree about what the gate decides -- behaviour-preserving, verified by
+  the pre-existing 22 promotion tests before the persistent class was written.
+
+  HONEST LIMITS (v0.1, Demonstrated -- never operator-Validated):
+  - Persistence only. NOT concurrency: application-assigned sequence columns are
+    computed read-then-insert, which is correct for one writer and racy for
+    several. Single-writer is the v0.1 contract, as it is for the canonical
+    stores' `sequence`.
+  - No tenant column and no RLS on the Program D tables. They carry no
+    rider-linked data, but multi-tenant Program D state is a later slice, not
+    something this schema is already ready for.
+  - The persistent controller composes ModelRegistry, which is still in-memory
+    (owned by a concurrent packet): roles survive a restart, the model catalog
+    does not, so a caller must re-register its ModelVersions on startup before a
+    restored controller can validate them. Named, not hidden.
+  - ADR-0034's coexistence stands: the controller still does NOT sync the
+    registry's ADR-0010 single-pointer champion.
+  - drift.py is unchanged and remains in-memory / stateless by design.
+  - The real-panel leakage tests window the AAR panel to its first 300 observed
+    days so the PostgreSQL parameter runs in seconds; the invariant is
+    per-(entity, feature) and holds pointwise, so the window exercises it exactly
+    as the full panel does, just fewer times.
+  - Timestamps are stored as fixed-width ISO-8601 UTC TEXT; ordering therefore
+    depends on that canonical form, which `_iso_utc` is the single producer of.
+  - core_v0_1.sql is loaded by path relative to the module, so it resolves in a
+    source checkout (which is how everything in this repo runs) but is not
+    declared as setuptools package-data -- exactly the same pre-existing
+    exposure app/canonical/sql/schema_v0_1.sql has. Fixing it means editing
+    pyproject, which this packet does not own.
+  - Do NOT edit model_registry.py or drift.py, app/canonical/**, pyproject,
+    CI, IMPLEMENTATION_STATUS, JOURNAL, any ADR, or git -- the orchestrator and
+    concurrent packets own those.

@@ -16,7 +16,7 @@
   "sensitive_fields": [],
   "update_frequency": "spec revisions (versioned via git upstream)",
   "source_checksum": null,
-  "canonical_contract": "packages.canonical.entities.ServiceRequest (GTFS-Flex booking rules -> ServiceRequest is a future Connect adapter, MX-B-GTFS-FLEX-ADAPTER)",
+  "canonical_contract": "app.canonical.entities.ServiceRequest (GTFS-Flex booking rules -> ServiceRequest is a future Connect adapter, MX-B-GTFS-FLEX-ADAPTER)",
   "quality_tests": [
     {
       "name": "valid_zip",

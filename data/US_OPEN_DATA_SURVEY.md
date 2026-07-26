@@ -114,7 +114,7 @@ or an API key (out of scope for this packet by hard constraint).
 
 ### 3.1 National Transit Database (FTA) — **PD** — ACQUIRED
 
-Repo already held only a *slice*: `ntd/raw/{metrics,service}_dr.csv` (2022–24,
+Repo already held only a *slice*: `business/ntd/raw/{metrics,service}_dr.csv` (2022–24,
 demand-response modes only) and `realdata/panels/ntd_monthly_dr.csv.gz`
 (monthly, DR/DT only). The full published tables are far larger.
 
@@ -257,7 +257,7 @@ behaviour, not any agency's ridership over time. Milexium's models forecast
 demand time series for a named agency; a national survey with no agency
 identity and no time index cannot enter that feature space without heavy
 assumption-making. Useful for market sizing (which the repo already does in
-`ntd/market_sizing.md`), not for forecasting. **Skipped.**
+`business/ntd/market_sizing.md`), not for forecasting. **Skipped.**
 
 ### 3.11 Census LODES / ACS journey-to-work — **PD**
 
@@ -265,7 +265,7 @@ LODES8 per-state files at `lehd.ces.census.gov/data/lodes/LODES8/<st>/`:
 OD `main` is 92.0 MB for CA, 39.8 MB for NY, 28.0 MB for IL; RAC 5.9 MB and
 WAC 2.5 MB for NY. Across 51 states × 3 file types × ~20 vintages the full
 LODES corpus is **well over 100 GB**. Public domain (Census Bureau / LEHD).
-ACS journey-to-work is already partly used — `ntd/census_latent_demand.csv`
+ACS journey-to-work is already partly used — `business/ntd/census_latent_demand.csv`
 comes from `api.census.gov/data/{year}/acs/acs5/profile`.
 
 **Honest assessment: real but limited value, and large.** LODES gives
@@ -303,7 +303,7 @@ databases).
 
 **Honest assessment:** the full US extract is the single largest item that
 would fit this packet's 15 GB budget, and it is the clearest example of volume
-without current value. `third_party/VENDORING_PROCESS.md` records that no
+without current value. `_legacy/third_party/VENDORING_PROCESS.md` records that no
 routing engine (OSRM/Valhalla) has cleared the vendoring gate, so 11.5 GB of
 road network would sit inert. The DC extract already proves the `networks/`
 zone path end-to-end. **Deliberately skipped** — pull a metro extract when a
@@ -314,7 +314,7 @@ concrete routing capability needs it, per the blueprint's own
 
 ## 4. What was acquired
 
-All six went through `packages/estate/acquire.py` — manifest → free-space guard
+All six went through `app/estate/acquire.py` — manifest → free-space guard
 → quarantine → sha256 → content-addressed promotion → catalog record — with
 `back_with_object_store=True`, so every object is also mirrored into the local
 MinIO (`milexium-artifacts`) under a key equal to its sha256.
@@ -337,7 +337,7 @@ Two objects (`ntm-stops-national`, `ntm-routes-national`) are promoted with a
 `.bin` extension because their download URLs carry a query string and
 `acquire()` derives the suffix from the URL path. The bytes are plain CSV and
 the sha256 content address is authoritative; this is recorded in their
-manifests rather than worked around by modifying `packages/estate`.
+manifests rather than worked around by modifying `app/estate`.
 
 ---
 

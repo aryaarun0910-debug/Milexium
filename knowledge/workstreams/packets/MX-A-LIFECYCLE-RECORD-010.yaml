@@ -1,0 +1,312 @@
+id: MX-A-LIFECYCLE-RECORD-010
+status: completed
+completed_date: "2026-07-25"
+dispatched_date: "2026-07-25"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none
+result: >
+  112 tests, 0 skipped, 0 failed. PostgreSQL + RLS RAN against native PG17.10
+  (not skipped): ENABLE/FORCE read out of pg_class, exactly one policy read out
+  of pg_policy, the policy's own text read back and refused if written as an
+  IS NOT NULL guard, cross-tenant deny with positive control, the RESET /
+  EMPTY-STRING case, the never-set-GUC case on a separate connection, foreign
+  tenant write rejection, unqualified DELETE containment, and a FORCE-lifted
+  boundary collapse. 17 mutations run; 17 came back RED, one of them only after
+  the TEST was fixed (see mutation_findings). schema_v0_1.sql still executes
+  unmodified on a bare sqlite3 in-memory connection.
+
+objective: >
+  Make one sentence we have already put in writing to a former WMATA
+  accessibility chief literally and demonstrably true, end to end: that the
+  system "records why each trip received the outcome it did -- booked, offered,
+  negotiated, denied or late -- created at the moment of the decision rather
+  than reconstructed afterwards." Program A.
+
+owned_paths:
+  - app/canonical/lifecycle.py                 # NEW: the record, the chain rules, the explain view
+  - app/canonical/ids.py                       # RequestTransitionId
+  - app/canonical/state_machine.py             # two DERIVED anchors (initial state, terminal set)
+  - app/canonical/storage.py                   # SQLite store: 3 methods + shared row mapping
+  - app/canonical/postgres_storage.py          # Postgres store: same 3 methods, same signatures
+  - app/canonical/sql/schema_v0_1.sql          # 1 additive portable table
+  - app/canonical/sql/rls_postgres.sql         # 1 appended policy (ENABLE + FORCE)
+  - app/canonical/__init__.py                  # exports
+  - evidence/conformance/property-tests/test_lifecycle_record.py
+  - evidence/conformance/property-tests/test_lifecycle_rls.py
+  - evidence/conformance/property-tests/test_state_machine_anchors.py
+  - knowledge/workstreams/packets/MX-A-LIFECYCLE-RECORD-010.yaml
+
+read_only_dependencies:
+  - app/decide/ir.py                # Denial + ReasonCode shape, read only; NOT modified
+  - app/verify/state_verifier.py     # the in-memory verifier this record is NOT yet wired to
+  - knowledge/architecture/decisions/0043-runref-home-and-platform-tenant-deny-all.md   # the empty-string trap
+  - knowledge/architecture/decisions/0046-container-store-rls.md                        # superuser-before-force
+  - knowledge/architecture/decisions/0048-core-tenant-isolation.md                      # the Program D policy shape
+  - knowledge/architecture/decisions/0052-container-app-role.md
+  - knowledge/architecture/decisions/0055-core-migrations.md
+  - evidence/conformance/property-tests/test_core_tenant_isolation.py                  # the RLS test shape mirrored here
+  - evidence/conformance/property-tests/test_state_transitions.py                      # untouched
+
+normative_contracts:
+  - ADR-0002   # portable DDL: one file, SQLite and PostgreSQL 17, unmodified
+  - ADR-0003   # append-only; a correction is a new record, never a mutation
+  - ADR-0004   # both stores expose the same method contract
+  - ADR-0018   # RLS: ENABLE *and* FORCE, keyed on the milexium.tenant_id GUC
+  - ADR-0037   # a tenant-scoped table without a policy is a defect, not a to-do
+  - ADR-0043   # current_setting(name, true) returns '' after RESET, not NULL
+  - ADR-0046   # superuser/BYPASSRLS is checked BEFORE force -- assert the role first
+
+problem: >
+  VERIFIED BEFORE BUILDING, as instructed. `app/canonical/state_machine.py`
+  is a normative TABLE of legal transitions and `check_transition` is a
+  predicate over it. `app/verify/state_verifier.py` verifies a list of
+  statuses handed to it IN MEMORY. `schema_v0_1.sql` has a `service_requests`
+  table with a `status` column and a `version` -- and NO STORE METHOD ANYWHERE
+  IN app/ WRITES IT (confirmed by grep: `service_requests` appears in no
+  Python file outside the DDL). There was therefore no durable per-request
+  history of any kind: nothing recorded that request R moved
+  REQUESTED -> NEGOTIATED at 09:14:03 because the 08:00 window had no accessible
+  capacity, then NEGOTIATED -> SCHEDULED at 09:14:07. The sentence we sent was a
+  claim about a rulebook, described as if it were a record.
+
+what_existed_before:
+  - "SERVICE_REQUEST_TRANSITIONS + check_transition -- the normative contract, no history"
+  - "verify_state_sequence -- an independent checker over an IN-MEMORY list of statuses"
+  - "RequestTimes -- requested/negotiated/scheduled/predicted times kept separate, on an entity NOTHING PERSISTS"
+  - "Denial(request_id, reason_codes) in app/decide/ir.py -- produced by the solver, written nowhere"
+  - "service_requests table -- DDL only, zero writers, zero readers"
+  - "decision_events -- an append-only hash-chained ledger of generic events, NOT a state history (no from/to state, no decision-vs-record clock split)"
+
+what_was_built:
+  table: >
+    `request_state_transitions` in schema_v0_1.sql: transition_id, tenant_id,
+    request_id, sequence, from_state, to_state, decided_at, recorded_at,
+    actor_type, actor_id, reason_codes, and the four window-bound columns.
+    UNIQUE (tenant_id, request_id, sequence); CHECK (recorded_at >= decided_at);
+    NO DEFAULT on either timestamp column. Additive: no existing table or column
+    altered.
+  module: >
+    `app/canonical/lifecycle.py` -- TimeWindow, RequestTransition,
+    OutcomeExplanation, BackdatedRecordError, LifecycleOrderError, and the two
+    PURE functions `next_transition` (the chain rules) and `explain` (the view).
+    Both stores call those two functions, so the rules and the view are one
+    implementation with two callers rather than two implementations that drift.
+  store_methods: >
+    `record_transition`, `request_lifecycle`, `explain_outcome` on BOTH
+    SqliteCanonicalStore and PostgresCanonicalStore, with signatures asserted
+    equal by inspect.signature and ordering asserted identical.
+  state_machine_anchors: >
+    SERVICE_REQUEST_INITIAL_STATE and SERVICE_REQUEST_TERMINAL_STATES, DERIVED
+    from the transition table (the one state nothing transitions into; the states
+    with empty allowed sets) rather than declared beside it. A second declaration
+    would be a second place for the same fact to drift, and the drift would be
+    silent in the worst way -- every chain anchored at the wrong state while every
+    individual transition in it stayed legal.
+
+decision_time_capture__how_it_is_enforced_structurally:
+  - "1. NO DEFAULT IN THE SIGNATURE. `decided_at` and `recorded_at` are KEYWORD-ONLY arguments with no default on both stores. Not even `None` -- a `None` default invites `decided_at or now()` two lines later. Keyword-only so the two clocks can never be swapped by position. Asserted by inspect.signature for both engines and both arguments."
+  - "2. NO CLOCK ON THE WRITE PATH, asserted by AST over the actual parsed source of lifecycle.py, storage.py and postgres_storage.py: no call to now/utcnow/today/monotonic/time.time anywhere in any of the three. Deliberately module-wide rather than scoped to the three methods -- a helper that reads a clock is one refactor away from the write path, and 'no clock in this file at all' is checkable in a second."
+  - "3. NO DEFAULT IN THE SCHEMA. The `decided_at` column carries no SQL DEFAULT, so the DATABASE cannot stamp a row either. Asserted twice: parsed out of the DDL text, and read back out of the LIVE information_schema on PostgreSQL. Both assertions carry a POSITIVE CONTROL -- `reason_codes` DOES have a default and must come back WITH one, so a parse or a query that simply sees nothing cannot pass."
+  - "4. recorded_at < decided_at IS AN ERROR with its own type (BackdatedRecordError), refused in Python before any write AND by a CHECK constraint the database enforces against raw SQL that never reaches Python."
+  - "5. THE MODEL IS A SECOND NET. RequestTransition re-validates the clocks, the transition legality and the reason-code rules in its own validator, so a record built anywhere -- a fixture, a future importer, an evidence-pack reader -- cannot hold a self-stamping or illegal history either. This is also what makes the READ path a net: a row forced in by raw SQL cannot be read back as a valid record."
+
+design_calls_recorded:
+  - "THE CHAIN STARTS AT THE MACHINE'S ENTRY STATE, so `from_state` is mandatory on EVERY row and there is no nullable-genesis special case. A `from_state IS NULL` first row would be a row `check_transition` could not be applied to -- an escape hatch in the one place the packet says there must not be one. Instead the store requires the first transition to start at SERVICE_REQUEST_INITIAL_STATE (derived), and every row without exception is a real (from, to) pair the contract judges."
+  - "SEQUENCE IS ASSIGNED BY THE STORE FROM WHAT IS ALREADY STORED, never supplied by the caller. Two writers cannot both believe they are writing position 3. It is also what makes the numbering per-tenant: the head read is tenant-scoped (and on PostgreSQL policy-scoped), so two operators sharing a request_id each get their own 1, 2, 3 -- a globally-derived counter would collide on the UNIQUE constraint under RLS and would leak the other operator's activity through the gaps in one's own."
+  - "THE WINDOWS LIVE ON THE TRANSITION, not on a request row. `RequestTimes` is the natural home and NOTHING PERSISTS IT -- there is no writer for `service_requests`. Carrying the requested and negotiated windows on the negotiation transition is also the more honest shape for a decision-time record: it stores the offer as it stood AT THAT MOMENT, which is what the negotiated-vs-requested delta has to be computed from. TimeWindow is one object rather than two loose timestamps so a half-recorded window is impossible."
+  - "A NEGOTIATION MUST CARRY BOTH WINDOWS AND A REASON CODE. A negotiation is by definition 'you asked for X, we offer Y, because Z'. Without X the delta a rider actually experienced becomes uncomputable FOREVER, because nothing else in the schema records what was originally asked for at the moment the offer was made. This is a real constraint on callers and it is deliberate: `RideRequest` already carries a mandatory pickup window, so the value is always available in this system."
+  - "A DENIAL MUST CARRY A REASON CODE. 'Denied, reason unrecorded' is the single outcome this packet exists to make impossible. Mirrors Denial.reason_codes(min_length=1) in app/decide/ir.py rather than inventing a second rule."
+  - "DECISION TIMES DO NOT GO BACKWARDS along a chain (>= is allowed; an automated scheduler really does reach two conclusions in the same microsecond). Without this, a back-dated row could make a denial look as though it were decided before the negotiation that caused it -- a rewritten history composed entirely of individually-legal rows."
+  - "FIXED-WIDTH TIMESTAMPS FOR THIS TABLE ONLY, and this is a FINDING rather than a style choice. See collation_finding below."
+  - "TWO ERROR TYPES, not one. TransitionError means the CONTRACT forbids the move; LifecycleOrderError means the caller's view of where the request is disagrees with what is stored (a lost update, a replay, two writers racing). The remedies are different -- re-read the chain vs. re-model the machine -- so collapsing them would send callers to the wrong fix."
+  - "THE ACTOR VOCABULARY IS decision_events' ('system' | 'human'), not a new one. A third value would mean 'who decided' no longer means the same thing in the lifecycle record as in the decision ledger, and an evidence pack drawing on both would be silently comparing two vocabularies."
+  - "NO TAMPER HELPER. decision_events has a deliberate test-only `tamper_with_row` UPDATE. This table has none, so 'append-only' needs no exception clause -- asserted by a source scan over all of app/canonical for any UPDATE or DELETE naming the table."
+
+collation_finding:
+  what: >
+    `CHECK (recorded_at >= decided_at)` is a TEXT comparison, and on PostgreSQL a
+    TEXT comparison runs under the DATABASE COLLATION, not byte order. This
+    repository's dev instance runs `English_United Kingdom.1252`. Under it,
+    '2026-07-01T09:14:03.250000+00:00' >= '2026-07-01T09:14:03+00:00' evaluates
+    to FALSE -- the wrong way round -- because punctuation and digits are weighted
+    differently.
+  consequence_if_missed: >
+    The repository's everyday `datetime.isoformat()` rendering elides a zero
+    fraction. A perfectly ordinary row -- a whole-second decision time written
+    down a quarter of a second later, which is the COMMON shape because operator
+    exports state times to the second -- would have been REJECTED by the CHECK,
+    and a genuinely backdated row would have been ACCEPTED. Verified on the live
+    server, both directions.
+  fix: >
+    `lifecycle.py:iso_fixed_utc` always emits six fractional digits and the
+    literal `+00:00`, so every stored value has identical punctuation in
+    identical positions and the comparison reduces to a digit-by-digit one that
+    is correct under any collation. Applied ONLY to this table's timestamps -- no
+    existing column changes format.
+  pinned: >
+    `test_the_collation_would_break_a_naive_timestamp_format` asserts BOTH that
+    the fixed-width form compares correctly on the live server AND that the naive
+    form does not, so the format cannot be "simplified" back without the reasoning
+    being re-derived. Its failure mode is documented in the test itself: a failure
+    means the server's collation changed, not that the code broke.
+
+mutation_findings:
+  method: >
+    Each mutation was applied to the source, the specific test that claims to
+    cover it was run, and the source was restored. 17 mutations, all RED.
+  all_red:
+    - "M1  decided_at acquires a default                        -> RED"
+    - "M2  the write path reads a clock                          -> RED"
+    - "M3  legality not enforced when building the record        -> RED"
+    - "M3b the read layer no longer re-checks legality           -> RED"
+    - "M4  the SQL CHECK on the two clocks is removed            -> RED"
+    - "M5  timestamps revert to isoformat                        -> RED (only after the test was fixed -- see below)"
+    - "M6  decided_at gains a SQL DEFAULT                        -> RED (both the DDL and the live-database assertions)"
+    - "M7  RLS is ENABLE-only, no FORCE                          -> RED (3 tests)"
+    - "M8  the chain counter ignores the tenant                  -> RED"
+    - "M9  a negotiation no longer needs the requested window    -> RED"
+    - "M10 an absent window delta is reported as zero            -> RED"
+    - "M11 decision times may go backwards along a chain         -> RED"
+    - "M12 a denial no longer needs a reason code                -> RED"
+    - "M13 the first transition need not start at the entry state-> RED"
+    - "M14 the entry state is declared instead of derived        -> RED"
+    - "M15 the postgres write no longer scopes its session       -> RED"
+    - "M16 explain reports only the final transition's codes     -> RED"
+    - "M17 the explain view ignores the negotiated window        -> RED"
+  the_one_that_came_back_green_first: >
+    M5 initially came back GREEN. Per the packet's own instruction the MUTATION
+    was investigated first -- and it was correct. The TEST was wrong. Its
+    original version only exercised a pair where BOTH timestamps carry a non-zero
+    fraction ('...03.500000' vs '...03.750000'), and that is precisely the shape
+    the collation defect does NOT touch: two same-shaped strings compare
+    correctly even under the bad collation. The test was asserting the one case
+    the bug cannot reach. It is now parametrised over five shapes, three of which
+    have a whole-second `decided_at` (the common real-world shape), and M5 is
+    RED. This is recorded because it is the seventh near-miss of the class this
+    repository keeps finding -- a test that passes while proving nothing -- and it
+    was caught by the mutation discipline, not by review.
+
+required_outputs:
+  - "1 canonical module (lifecycle.py) + 1 typed UUIDv7 id + 2 derived state-machine anchors + exports"
+  - "1 additive portable table in sql/schema_v0_1.sql -- no existing table or column altered"
+  - "1 appended ENABLE + FORCE policy in sql/rls_postgres.sql -- no existing policy modified"
+  - "3 store methods on BOTH engines with identical signatures and identical ordering"
+  - "evidence/conformance/property-tests/test_lifecycle_record.py (92), test_lifecycle_rls.py (14), test_state_machine_anchors.py (6)"
+
+acceptance_commands:
+  - "py -3 -m pytest evidence/conformance/property-tests/test_lifecycle_record.py -q   # 92 passed, 0 skipped"
+  - "py -3 -m pytest evidence/conformance/property-tests/test_lifecycle_rls.py -q      # 14 passed, 0 skipped"
+  - "py -3 -m pytest evidence/conformance/property-tests/test_state_machine_anchors.py -q  # 6 passed"
+  - "py -3 -m pytest app/ evidence/conformance/ -q   # full suite"
+
+performance_budget:
+  note: >
+    No hot path introduced and NONE MEASURED. A write is one tenant-scoped SELECT
+    (the chain head, LIMIT 1) plus one INSERT; a read is one tenant-scoped SELECT
+    ordered by an INTEGER. The UNIQUE (tenant_id, request_id, sequence) index
+    serves the per-request read as a prefix. There is no index on decided_at, so
+    a cross-request query like "every denial in July" would seq-scan; no such
+    query exists yet. No benchmark was run and no latency budget is claimed.
+    test_lifecycle_record.py runs in ~25s and test_lifecycle_rls.py in ~9s, almost
+    entirely PostgreSQL schema setup/teardown (one disposable mx_<uuid> schema per
+    test, per ADR-0008).
+
+security_and_privacy_invariants:
+  - "tenant_id NOT NULL with a FOREIGN KEY to tenants, and ENABLE **and** FORCE row-level security with exactly ONE symmetric policy keyed on the milexium.tenant_id GUC -- the same shape ADR-0048/0055 use for Program D."
+  - "The acting role is asserted NON-SUPERUSER and NON-BYPASSRLS *and* table owner BEFORE any isolation result in the file is read as evidence (ADR-0046/0052). PostgreSQL checks both attributes before ownership and before FORCE, so a privileged credential would make every policy decoration."
+  - "FORCE is proved load-bearing by LIFTING it, watching the boundary collapse, and restoring it -- not by asserting the bit the file sets."
+  - "The deny-all default is proved for the case that ACTUALLY OCCURS: after RESET the GUC reads back as the EMPTY STRING (asserted explicitly, value == '' and is_null is False) and still returns zero rows. The never-set case is proved separately on a SEPARATE connection, because the fixture's connection has necessarily had the GUC set during seeding."
+  - "The policy's OWN TEXT is read back out of pg_policy and refused if it is written as an IS NOT NULL guard -- ADR-0043's trap, checked at the shape level so a future 'fix' cannot reintroduce it."
+  - "WHAT IS SENSITIVE HERE is not obvious and is stated in the SQL: this is a per-rider record of REFUSALS. A row saying request R was DENIED for NO_ACCESSIBLE_CAPACITY, or negotiated ninety minutes from what the rider asked for, decided by dispatcher token 7, is exactly the material an agency would be examined on in a civil-rights complaint, and request_id ties it to a tokenised rider."
+  - "actor_id follows rider_ref's rule: a tokenised reference, never a raw name (blueprint 10). Enforced only as non-empty -- see limitations."
+  - "PostgreSQL-dependent tests skip cleanly when the instance is absent so CI stays green -- but they RAN here (0 skipped)."
+
+failure_injections:
+  - "every illegal (from, to) pair, exhaustively -- 54 of the 64, from a real chain head in each of the 8 states -> TransitionError at the STORE, both engines, with the stored history asserted unchanged after each refusal"
+  - "any transition appended after any of the four terminal states -> TransitionError, both engines"
+  - "a first transition that does not start at the derived entry state -> LifecycleOrderError"
+  - "a transition whose from_state disagrees with the stored head -> LifecycleOrderError, nothing written"
+  - "a decision time earlier than the decision it follows -> LifecycleOrderError (equal is accepted -- positive control)"
+  - "recorded_at before decided_at -> BackdatedRecordError in Python, CheckViolation/IntegrityError in the database via raw SQL (with a positive control that the same statement succeeds the right way round)"
+  - "a whole-second decided_at with a sub-second recorded_at -> ACCEPTED (this is the case a naive timestamp format makes the database reject)"
+  - "a denial with no reason code / a negotiation with no reason code / a negotiation missing either window -> refused, nothing written"
+  - "free text in place of a reason code, and an extra 'note' field -> refused"
+  - "an unrecognised actor_type, and an empty actor_id -> refused"
+  - "a reversed TimeWindow -> refused (equal bounds accepted)"
+  - "an illegal pair forced in by raw SQL past the vocabulary CHECKs -> cannot be READ BACK as a record"
+  - "cross-tenant raw scan with NO WHERE clause -> zero foreign rows (with positive control)"
+  - "the store's own read with only its tenant filter deleted -> zero foreign rows (with positive control)"
+  - "RESET milexium.tenant_id (GUC reads as EMPTY STRING) -> zero rows"
+  - "a connection that never set the GUC -> zero rows"
+  - "raw INSERT stamped with a foreign tenant -> psycopg InsufficientPrivilege, and the victim's record stays empty"
+  - "unqualified DELETE FROM request_state_transitions as tenant B -> tenant A's rows survive"
+  - "ALTER TABLE ... NO FORCE ROW LEVEL SECURITY -> the boundary collapses, then is restored"
+
+compatibility_matrix:
+  - "SQLite and PostgreSQL expose the same 3 methods -- names, signatures (inspect.signature equality) and ORDER BY, so both engines return the same SEQUENCE, not merely the same set"
+  - "the two engines produce an IDENTICAL OutcomeExplanation for an identical history, compared whole (model_dump), not field by field"
+  - "schema_v0_1.sql: one file, executed unmodified by both stores and by a bare sqlite3 connection"
+  - "additive only: every table that existed before this packet still exists, asserted"
+  - "no existing policy in rls_postgres.sql modified -- appended only"
+
+status_claim:
+  label: Demonstrated
+  why_not_validated: >
+    Validated requires consented operator data and none exists in this
+    repository. Every fixture here is synthetic. Nothing in this packet is
+    Validated and nothing should be described as such.
+  what_demonstrated_means_here: >
+    The RECORD exists, is durable on both engines, is tenant-isolated by a
+    database policy, refuses illegal and self-stamping writes, and answers the
+    explain question from stored rows. It does NOT mean a running pipeline
+    populates it -- see limitations.
+
+limitations:
+  - "NOTHING WRITES TO IT YET. This is the largest limitation and it bounds every other claim. No production code path calls `record_transition`: `app/decide` produces Denials that are written nowhere, `app/connect` ingests operator trips without any state history, and `app/api` exposes no lifecycle endpoint. All three are other agents' owned paths and were deliberately not touched. So the sentence is now true of the STORE -- 'what we have built records...' -- and is NOT yet true of any running system. If the WMATA contact asks to see this, what can honestly be shown is the store, the conformance suite and a synthetic worked example, not a live feed."
+  - "`service_requests` STILL HAS NO WRITER. Confirmed by grep: the table appears in no Python file in app/ outside the DDL. Consequently `request_state_transitions.request_id` is plain TEXT with NO `REFERENCES service_requests` -- a transition can name a request that has no aggregate row, and the record cannot today be joined to rider, zone or mobility-device context. Adding the FK would break every write until a request writer exists."
+  - "'LATE' IS NOT A STATE, and the sentence names it. ServiceRequestState has no LATE member; lateness lives in `outcomes.on_time` and `RequestTimes.actual_pickup_at`, neither of which this record touches. `explain_outcome` on a trip that ran forty minutes late returns COMPLETED with no reason codes. Four of the sentence's five outcomes are covered (booked/offered/negotiated/denied); the fifth is not, and no part of this packet claims it is."
+  - "THE 'REQUESTED WINDOW' IS NOT IN THE CANONICAL TIME MODEL. `RequestTimes` has `requested_at` (an instant) and negotiated window bounds, but no requested WINDOW; the requested pickup window exists only on `app/decide.RideRequest`. This packet carries it on the transition instead. So the canonical time model and the lifecycle record currently disagree about what 'requested' means, and nothing reconciles them. If a `service_requests` writer lands later, its window figures and this record's could differ with no mechanism to detect it."
+  - "NO HASH CHAIN AND NO TAMPER EVIDENCE. `decision_events` is hash-chained (prev_hash/hash) with an independent verifier; this table is not. It is append-only by discipline (no UPDATE/DELETE in app/canonical, asserted by a source scan) and protected by RLS, but a party with direct database access can UPDATE a stored row and NOTHING WILL DETECT IT. For a record intended as evidence this is a real gap versus the ledger next to it, and it should be closed before anyone is invited to rely on the record adversarially."
+  - "THE INDEPENDENT VERIFIER DOES NOT READ IT. `app/verify/state_verifier.py` still takes an in-memory list of statuses; nothing feeds the stored chain into it. The 'independently verified' story therefore does not yet cover the lifecycle record. app/verify is not an owned path."
+  - "decided_at IS STILL THE CALLER'S ASSERTION. What is enforced structurally is that THIS SYSTEM did not invent it -- no default, no clock on the write path, no SQL default. It is NOT enforced that the value is true. A caller can pass a fabricated instant. The honest claim is 'the record was not stamped by the writer', not 'the decision time is correct', and the difference is exactly what an expert will probe."
+  - "NO IDEMPOTENCY KEY. `append_event` has one; `record_transition` does not. A retried command (a timeout, an at-least-once queue) that re-issues the same transition is refused by the chain-continuity rule -- so it fails loudly rather than double-writing, which is safe -- but there is no way to make the retry a no-op returning the original row. Callers must treat LifecycleOrderError as 'possibly already applied' and re-read."
+  - "NO CONCURRENCY CONTROL, AND NO CONCURRENCY TEST. The head read and the INSERT are two statements, not one locked transaction. Two writers for the same request both read head N and both build N+1; UNIQUE (tenant_id, request_id, sequence) makes the loser fail rather than corrupting the chain (verified by hand on SQLite: the second write raises IntegrityError and one row survives). But the error surfaced is a raw sqlite3.IntegrityError / psycopg UniqueViolation, NOT a typed LifecycleOrderError, and no test in this packet exercises the concurrent case."
+  - "ONLY ONE RULE IS ENFORCED BY THE DATABASE. `recorded_at >= decided_at` is a CHECK; transition legality, chain continuity, decided_at monotonicity and the reason-code rules are Python-only, with a read-time re-validation as a second net. Raw SQL CAN insert an illegal transition -- it simply cannot be read back through the store. A consumer querying the table directly in SQL (a BI tool, an analyst) would see it."
+  - "THE COLLATION FIX IS TESTED ON ONE COLLATION AND ONE SERVER. Correct under `English_United Kingdom.1252` (asserted live) and under byte order by construction. NOT tested under ICU, `C.UTF-8`, or any PostgreSQL other than 17.10. `test_the_collation_would_break_a_naive_timestamp_format` will FAIL loudly on a server where the naive format happens to compare correctly -- deliberate, with the reason in the test body, but it means the suite is not collation-portable in the strict sense and CI on a differently-configured cluster will need that test re-derived."
+  - "NOT IN THE GENERATED CONTRACT. `platform/contracts/generate.py` is not an owned path and was NOT run, so RequestTransition and OutcomeExplanation do not appear in platform/contracts/jsonschema/canonical-v0.1.json, the OpenAPI surface, or the proto seed. No TypeScript or Rust client can see this entity, and the contract-drift CI gate does not cover it."
+  - "NO MIGRATION PATH. Program A has no migration mechanism (Program D has core_schema_migrations.sql; ADR-0055). Both canonical stores CREATE the schema at construction, so an existing database created before this packet does not gain the table without being re-created. Any operator estate already carrying canonical data would need a hand-written ALTER."
+  - "actor_id IS UNVALIDATED FREE TEXT beyond being non-empty. The docstring says tokenised-never-a-name; nothing enforces it, so a caller can put a dispatcher's real name in it. The same limitation `rider_ref` already has, restated because this table is the one most likely to be exported in a complaint response."
+  - "REASON CODES ARE THE EXISTING SEVEN. No new code was added, so the vocabulary available to explain a denial is exactly what app/decide can already produce. Whether those seven are sufficient to explain a real ADA paratransit denial is an open question this packet does not answer and cannot answer without operator data."
+  - "THE EXPLAIN VIEW REPORTS THE LAST NEGOTIATION, not every one. A request negotiated twice reports the offer that finally stood; the earlier offer is in `transitions` but is not summarised. Deliberate (the rider experienced the final offer) and untested for the multi-negotiation case, because the state machine has no NEGOTIATED -> NEGOTIATED self-loop, so a second negotiation is not currently expressible at all."
+  - "NO PERFORMANCE MEASUREMENT of any kind. See performance_budget."
+
+forbidden_interface_changes_observed:
+  - "no existing table or column in schema_v0_1.sql altered -- additive only, asserted"
+  - "no existing policy in rls_postgres.sql modified -- appended only"
+  - "no existing store method signature changed"
+  - "check_transition, SERVICE_REQUEST_TRANSITIONS and ServiceRequestState unchanged -- only two DERIVED constants added beside them"
+  - "platform/contracts/ NOT regenerated; platform/contracts/generate.py NOT run"
+  - "app/decide, app/replay, app/evidence, app/core, app/connect, app/api, business/outreach/ untouched"
+  - "no ADR written; no git add/commit/push"
+
+upstream_blockers: []
+
+downstream_consumers:
+  - "Program F (Decide): a solver Denial now has a canonical home to be recorded into, with the reason codes it already produces -- wiring is a separate packet in app/decide"
+  - "Program I (Evidence): an evidence pack can cite a per-request lifecycle with decision times, rather than reconstructing one from decision_events payloads"
+  - "Program M (API): `explain_outcome` is the natural shape for a per-request explain endpoint"
+  - "Program G (Verify): the stored chain is what `verify_state_sequence` was always written to check, once something feeds it"
+
+notes: >
+  Disjoint from every concurrent packet. Deliberately NOT touched, as instructed:
+  app/decide, app/replay, app/evidence, app/core,
+  app/connect, app/api, business/outreach/, platform/contracts/ (generated -- generate.py
+  was NOT run), evidence/conformance/property-tests/test_state_transitions.py, every ADR,
+  and git. The ADR recording this decision, the IMPLEMENTATION_STATUS update and
+  the contract regeneration are the orchestrator's to make.
+
+  BASELINE NOTE for the integrator: when this packet started the repository had
+  1832 tests collected across app/ + evidence/conformance/ with a working tree
+  already carrying another packet's uncommitted US-open-data work
+  (evidence/conformance/property-tests/test_us_opendata_manifests.py,
+  app/connect/ingest_report.py and the data/catalog manifests). None of
+  those paths were touched here.
