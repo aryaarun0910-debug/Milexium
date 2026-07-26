@@ -2,6 +2,8 @@
 
 _Generated 2026-07-22 by tools/build_model_cards.py from the committed metrics artifacts. Every number here traces to a JSON in realdata/. Regenerate after any retrain._
 
+**Status: Demonstrated, never Validated.** Every model below is trained and evaluated on public data. Under ADR-0001, *Validated* requires consented operator data against a declared baseline and Milexium has none, so no result here validates any operator's capacity planning, scheduling, or dispatch. See the status contract in `docs/COMPETITIVE_POSITIONING.md`.
+
 All models share one protocol: strict temporal holdout, a seasonal-naive baseline reported next to every result, and a mechanical point-in-time leakage audit (**PASS - no leakage detected**). None is an AI wrapper; each is trained from raw public data we ingest and aggregate ourselves.
 
 ## Zone-hour demand models
@@ -10,7 +12,7 @@ All models share one protocol: strict temporal holdout, a seasonal-naive baselin
 
 - **Role:** **PRODUCT TARGET** (real paratransit demand)
 - **Task:** forecast next-hour demand per borough, hourly granularity, day-ahead.
-- **Model:** XGBoost, count:poisson (validated as the right objective, see
+- **Model:** XGBoost, count:poisson (selected in the objective bakeoff, see
   OBJECTIVE_BAKEOFF_RESULTS.md), GPU-trained.
 - **Data / split:** train 2024-01-01 to 2025-09-03 | tune 2025-09-03 to 2025-12-02 |
   cal 2025-12-02 to 2026-03-02 | valid 2026-03-02 to 2026-05-31 (10,800 rows).
@@ -33,7 +35,7 @@ All models share one protocol: strict temporal holdout, a seasonal-naive baselin
 
 - **Role:** generalization evidence (not the product target)
 - **Task:** forecast next-hour demand per community area, hourly granularity, day-ahead.
-- **Model:** XGBoost, count:poisson (validated as the right objective, see
+- **Model:** XGBoost, count:poisson (selected in the objective bakeoff, see
   OBJECTIVE_BAKEOFF_RESULTS.md), GPU-trained.
 - **Data / split:** train 2018-11-01 to 2025-09-03 | tune 2025-09-03 to 2025-12-02 |
   cal 2025-12-02 to 2026-03-02 | valid 2026-03-02 to 2026-05-31 (166,320 rows).
@@ -56,7 +58,7 @@ All models share one protocol: strict temporal holdout, a seasonal-naive baselin
 
 - **Role:** generalization evidence (not the product target)
 - **Task:** forecast next-hour demand per route, hourly granularity, day-ahead.
-- **Model:** XGBoost, count:poisson (validated as the right objective, see
+- **Model:** XGBoost, count:poisson (selected in the objective bakeoff, see
   OBJECTIVE_BAKEOFF_RESULTS.md), GPU-trained.
 - **Data / split:** train 2020-01-01 to 2025-10-17 | tune 2025-10-17 to 2026-01-15 |
   cal 2026-01-15 to 2026-04-15 | valid 2026-04-15 to 2026-07-14 (946,080 rows).
@@ -79,7 +81,7 @@ All models share one protocol: strict temporal holdout, a seasonal-naive baselin
 
 - **Role:** generalization evidence (not the product target)
 - **Task:** forecast next-hour demand per station, hourly granularity, day-ahead.
-- **Model:** XGBoost, count:poisson (validated as the right objective, see
+- **Model:** XGBoost, count:poisson (selected in the objective bakeoff, see
   OBJECTIVE_BAKEOFF_RESULTS.md), GPU-trained.
 - **Data / split:** train 2020-01-01 to 2025-10-11 | tune 2025-10-11 to 2026-01-09 |
   cal 2026-01-09 to 2026-04-09 | valid 2026-04-09 to 2026-07-08 (924,480 rows).
@@ -113,4 +115,4 @@ All models share one protocol: strict temporal holdout, a seasonal-naive baselin
 
 ## Not shipped
 
-The pretrain-then-finetune transformer (kaggle/) was run on real GPUs and **lost to XGBoost** on AAR (0.933 vs 0.986); it is R&D evidence, not a production model. See kaggle/results/. We ship the simpler model on purpose.
+The pretrain-then-finetune transformer (kaggle/) was run on real GPUs and **lost to XGBoost** on AAR (0.933 vs 0.986); it is R&D evidence and is not shipped. See kaggle/results/. We ship the simpler model on purpose — as a local reference implementation, not a production model: nothing here is deployed to or running for an operator.

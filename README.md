@@ -6,10 +6,20 @@ built around a simple operational promise: every forecast, scheduling
 recommendation, rejection, and human override should be reviewable after the
 fact.
 
-The production model recommendation is deliberately conventional: XGBoost beat
-the experimental transformer on the same real Access-A-Ride holdout, so the tree
-model remains the reference implementation. See [realdata/README.md](realdata/README.md)
-for the full comparison and limitations.
+The model recommendation is deliberately conventional: XGBoost beat the
+experimental transformer on the same real Access-A-Ride holdout, so the tree
+model remains the **local reference implementation** — nothing here is deployed
+to or running for an operator. See [realdata/README.md](realdata/README.md) for
+the full comparison and limitations.
+
+**Status:** every capability in this repository is at most **Demonstrated**.
+Under [ADR-0001](architecture/decisions/0001-adopt-expansion-blueprint-and-control-plane.md)
+the status **Validated** requires consented operator data against a declared
+baseline, and Milexium has none — no customers, no pilots, no operator data.
+Public aggregate data can demonstrate a forecasting task; it cannot validate
+operator capacity planning, scheduling, denial explanation, or economic impact.
+The binding rule for anything outward-facing is in
+[docs/COMPETITIVE_POSITIONING.md](docs/COMPETITIVE_POSITIONING.md).
 
 ## Repository map
 
@@ -40,7 +50,7 @@ Exists vs. Specified in each program.
 | `packages/` | One package per program: `canonical` (A), `connect` (B), `estate` (C data layer), `core` (D), `forecast` (E), `verify` (G), `evidence` (I), `sdk` (M) |
 | `architecture/` | ADRs (`decisions/`), normative contracts, threat models, formal specs |
 | `conformance/` | Executable proof: fixtures, property tests, adversarial tests (the evidence behind every "Exists"/"Demonstrated" claim) |
-| `data/` | Governed 250 GB estate — `catalog/` (committed manifests + rights) with gitignored raw/derived zones; acquire via `packages/estate` |
+| `data/` | Governed data estate — `catalog/` (committed manifests + rights) with gitignored raw/derived zones; acquire via `packages/estate`. 250 GB is the *design target* for this estate, not its current governed volume |
 | `workstreams/` | Work packets + the `DOSSIER_COVERAGE.md` 80-tech/72-project ledger |
 | `benchmarks/`, `research/`, `third_party/`, `ops/` | Perf/quality benchmarks, experiment records, the vendoring gate, and ops readiness |
 | `IMPLEMENTATION_STATUS.md` | Living Exists/Specified/Demonstrated/Validated/Production status across programs A–M |

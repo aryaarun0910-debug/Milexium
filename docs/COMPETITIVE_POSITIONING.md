@@ -1,8 +1,11 @@
 # Competitive positioning: decision evidence for paratransit
 
-Research checked 22 July 2026. This is a public-material comparison, not a product
-teardown. A blank capability means "not established in the cited public material,"
-not "the vendor cannot do it." Validate every competitive claim in buyer calls.
+Research checked 22 July 2026; status contract added 26 July 2026. This is a
+public-material comparison, not a product teardown. A blank capability means
+"not established in the cited public material," not "the vendor cannot do it."
+Check every competitive claim in buyer calls.
+
+**Before writing any outward-facing copy, read "The status contract" below.**
 
 ## Market reality
 
@@ -70,16 +73,69 @@ comparison -> controlled optimization after the agency validates policy encoding
 | Vendor-neutral import | Stable canonical schema plus provenance and reject reports | Enables an incumbent-adjacent land motion |
 | Evidence export | Redacted case file and period summary with manifest and hashes | Turns technical lineage into a buyer-visible artifact |
 
+## The status contract — read this before writing any outward-facing copy
+
+This repository has exactly one status vocabulary, fixed by ADR-0001, and it
+governs every document, deck, email, application, README, and docstring:
+
+> **Exists → Specified → Demonstrated → Validated → Production**
+
+**Validated requires consented operator data against a declared baseline.
+Milexium has none — zero customers, zero pilots, zero operator data. Therefore
+nothing Milexium does is Validated, and no sentence we publish may say it is.**
+
+Public aggregate data (NTD, TLC, MTA, Chicago, GTFS) can **demonstrate** an
+aggregate forecasting task. It can never **validate** operator capacity planning,
+scheduling, denial explanation, or economic impact. The ceiling is set by the
+data, not by how well the code works or how many tests pass.
+
+Three rules that follow, and that keep getting relearned the expensive way:
+
+1. **Never write "validated," "proven," "guaranteed," or "production model"**
+   about a Milexium capability. The honest words are *demonstrated*, *measured*,
+   *reproduced*, *re-derived*, *reference implementation*. They are also the
+   words that survive contact with a domain expert, which the other set does not.
+2. **Never publish a savings, ROI, or "opportunity" figure.** We have no operator
+   cost split, so we cannot separate avoidable cost from fixed cost. The
+   teardown code already refuses to emit a savings envelope without one; copy
+   does not get a lower standard than code. An arithmetic percentage of a real
+   total is still an invented claim if nothing establishes the lever works —
+   this is exactly how the $94M deadhead figure got written, and it was deleted
+   on 2026-07-26 once the association it assumed was measured: Pearson +0.017
+   against log cost per trip and OLS R² 0.0003 over 405 operators
+   (`research/h5b_structure_vs_cost.json`). The findings gate had already
+   rejected the same claim independently at Spearman +0.024 over 406 operators
+   (ADR-0058, `outreach/panel_findings.json`).
+3. **Every number must name its artifact.** `outreach/panel_findings.json` (gate
+   passed), `research/*.json`, a benchmark artifact under `benchmarks/`, an ADR,
+   or `realdata/metrics_real.json`. If a claim cannot name one, delete it — do
+   not soften it into something vaguer and unfalsifiable.
+
+Earning **Validated** takes a prospective shadow evaluation on one operator's
+consented data against their declared incumbent baseline, with the metric
+pre-registered. When that happens it promotes exactly that task, population,
+baseline, and period — never the platform.
+
 ## Claims discipline
 
 - Say "tamper-evident hash chain," not "immutable blockchain."
 - Say "designed to support review," not "litigation-ready" or "guarantees ADA compliance."
 - Say "counterfactual replay on a fictional reference agency," not "proven savings."
-- Say "validated demand forecasting on real aggregate paratransit data," not
-  "validated trip-level scheduling."
+- Say "demand forecasting demonstrated on real aggregate public data, with no
+  operator pilot," not "validated demand forecasting" and never "validated
+  trip-level scheduling." The forecast is aggregate; dispatch is not validated at
+  any grain.
+- Say "selected in the objective bakeoff" for a modelling choice, not "validated
+  as the right objective."
+- Say "reference implementation" or "the model we ship," not "production model."
 - Say "works alongside incumbent systems" until replacement demand is proven.
 - Treat absence from a marketing page as unknown, never as proof that a competitor
   lacks a capability.
+- Where an operator made the decision, say the reason is **unknown**. We can
+  produce an exact constraint code for a decision our own solver made and carry
+  the alternatives it probed; we cannot explain a pre-existing operator decision,
+  and back-filling a plausible reason would be the worst thing this product
+  could do.
 
 ## Interview questions that can falsify the wedge
 
