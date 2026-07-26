@@ -1,0 +1,369 @@
+id: MX-ONT-DECISION-EPISODE-016
+status: completed
+completed_date: "2026-07-26"
+dispatched_date: "2026-07-26"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none.
+
+result: >
+  41 new tests, 0 skipped, closing ADR-0072's own central limitation ("not wired
+  into the solver, forecaster, evidence packs or API"). One complete decision
+  episode now flows end to end on synthetic data: a snapshot at T, a decision
+  taken from it, ASSIGN actions carrying the alternatives and what their
+  emptiness MEANS, TRIP_DENIED events carrying the binding constraint,
+  ASSIGNMENT_FORECLOSED_POOLING_WITH edges carrying probability weights read out
+  of ADR-0065's minimal-blocking-set search, and an ActionOutcome at +14 minutes
+  -- reconstructed from the action back to exactly the information set that
+  produced it, on SQLite AND on PostgreSQL 17 with RLS in force (RAN, not
+  skipped). 13 mutations applied and checked: 13 RED first time, 0 GREEN.
+  Ontology suite 188 passed (147 pre-existing, unchanged, plus 41).
+
+objective: >
+  Make ADR-0072's ontology carry traffic. Take one decision episode -- the
+  request that arrived, the vehicle expected free, the trips that were
+  compatible, the pooling opportunities the assignment consumed, the denial and
+  its binding constraint, and the pickup that was 14 minutes late -- from a
+  DecisionSnapshot through a decision to an ActionRecord to an ActionOutcome,
+  and prove it reconstructs. Build the metis/themis seam so that neither side
+  gains an import edge on the other.
+
+owned_paths:
+  - themis/ontology/episode.py                  # NEW: the seam, the writer, the reconstruction
+  - themis/ontology/vocab.py                    # + AlternativesProvenance (the third state ADR-0072 asked for)
+  - themis/ontology/actions.py                  # + ActionRecord.alternatives_provenance, resolve_alternatives_provenance
+  - themis/ontology/store.py                    # record_action carries the provenance; _row_columns follows
+  - themis/ontology/sql/ontology_v0_1.sql       # + alternatives_provenance column, CHECK, and the pairing CHECK
+  - themis/ontology/__init__.py                 # exports
+  - aletheia/conformance/property-tests/test_decision_episode.py   # 41 tests
+  - forge/knowledge/workstreams/packets/MX-ONT-DECISION-EPISODE-016.yaml
+
+read_only_dependencies:
+  - metis/decide/ir.py            # the SHAPE the seam accepts. READ, never imported by themis.
+  - metis/decide/exposure.py      # ADR-0065 CapacityAttribution -- wired in, not reimplemented
+  - metis/decide/capacity_value.py # ADR-0073 -- read; see limitations for why exposure was the one wired
+  - metis/decide/portfolio.py, cpsat.py   # ADR-0060's bounded optimality claim, carried as DERIVED facts
+  - themis/canonical/vocab.py     # ReasonCode + ScheduleRunStatus: the shared vocabulary IS the seam
+  - metis/**, argus/**, talos/**, themis/canonical/**, themis/core/**   # NOT MODIFIED (concurrent packets)
+  - aletheia/conformance/property-tests/test_layer_metis.py, test_layer_themis.py, test_dependency_direction.py  # NOT TOUCHED (concurrent packet)
+
+normative_contracts:
+  - ADR-0002   # portable DDL: the new column and both CHECKs run unmodified on SQLite and PostgreSQL 17
+  - ADR-0004   # the episode is exercised on BOTH engines, same assertions
+  - ADR-0034   # the strict `<` as-of read, inherited unchanged
+  - ADR-0060   # optimality is claimed only against a self-computed bound; carried, never re-derived
+  - ADR-0065   # capacity attribution is not a causal proof; the seam preserves the caveat
+  - ADR-0072   # the ontology this packet wires up
+
+problem: >
+  ADR-0072 shipped 10 modules, 9 tables and 147 tests and connected to nothing.
+  It was excellent scaffolding with no traffic through it, and scaffolding that
+  has never carried load is scaffolding whose defects are undiscovered. Two of
+  its own closing notes were the specific gaps: nothing wired it to the solver,
+  and `alternatives=()` could not distinguish "nothing was on the table" from
+  "the producing system does not tell us".
+
+the_chain_that_now_flows:
+  1_snapshot: >
+    `OntologyStore.take_snapshot(as_of=T, scope=...)` materialises the
+    information set under `receipt_time < T` and persists its content hash.
+  2_decision: >
+    A decision is made FROM THE SNAPSHOT ONLY. The ontology cannot verify that --
+    it did not make the decision -- but it makes the claim FALSIFIABLE: every
+    action cites the snapshot's id AND its content hash, and the reconstruction
+    re-derives and re-checks both.
+  3_action: >
+    `record_decision_episode` writes, per placement: an ASSIGNMENT object (the
+    thing the decision brought into existence, which by construction did not
+    exist at `as_of`), ASSIGNMENT_SERVES_REQUEST and VEHICLE_PERFORMS_ASSIGNMENT
+    edges, one ASSIGN `ActionRecord` carrying alternatives + provenance +
+    verifier verdict + policy version + authority, and the solver's optimality
+    claim as four DERIVED facts. Per denial: a TRIP_DENIED event carrying the
+    binding constraints and citing the snapshot. Per foreclosed opportunity: an
+    ASSIGNMENT_FORECLOSED_POOLING_WITH edge carrying its weight.
+  4_outcome: >
+    `record_outcome` writes a SEPARATE row at its own horizon, with its own
+    receipt time, necessarily later than the decision's.
+  5_reconstruction: >
+    `reconstruct_episode(store, action_id)` reads the action row, RE-DERIVES the
+    information set through `load_snapshot`, compares the re-derived content hash
+    against the one the ACTION pinned (a different claim from the one
+    `load_snapshot` already checked against the SNAPSHOT row), and gathers the
+    denials of the same decision, the foreclosed opportunities of the same
+    assignment, and the outcomes of the same action.
+
+the_seam:
+  constraint: >
+    `metis/` may import TYPES from `themis/` and never a store or a writer, and a
+    concurrent packet is about to enforce it. So the reverse edge must not exist
+    either: `themis/ontology` imports nothing from `metis`, holds no solver
+    reference, and knows nothing about CP-SAT.
+  how: >
+    What crosses is PLAIN DATA -- `DecisionResult` and its parts -- and two
+    STRUCTURAL adapters (`decision_result_from_solution`,
+    `foreclosures_from_attribution`) that read a producer's output by attribute
+    name. Neither side imports the other; an integration layer holding both calls
+    `record_decision_episode`. The two sides share `themis/canonical.vocab`'s
+    `ReasonCode` and `ScheduleRunStatus`, which both already depended on: the seam
+    is a vocabulary in the layer BENEATH both, not a type owned by one of them.
+  why_structural_and_not_a_protocol: >
+    A `typing.Protocol` documents the shape and checks nothing at runtime, and
+    the failure mode of a silently mismatched field is an episode recording the
+    wrong vehicle. The adapters read each attribute by name and raise
+    `DecisionSeamError` naming the missing one, so a producer that drifts from the
+    contract fails AT the seam. Pinned by a test that constructs a real
+    `metis.decide.ir.DecisionSolution` -- not a stub -- and reads it through.
+  asserted_by:
+    - "AST walk over every module in themis/ontology: zero imports of `metis`."
+    - "AST walk over every module in metis: zero imports of `themis.ontology`."
+    - "AST walk over episode.py's string constants: zero INSERT/UPDATE/DELETE/TRUNCATE/DROP/ALTER/CREATE. Every write goes through a typed OntologyStore method."
+    - "`OntologyStore` has no `reconstruct_episode` and no `load_action`: the store's pinned public surface is UNCHANGED by this packet."
+
+unknown_versus_empty_alternatives:
+  what_adr_0072_said: >
+    "whether their scheduler logs rejected candidates at all -- if not,
+    `alternatives=()` reads as 'nothing considered' when it means 'unknown',
+    which needs a third state before any backfill."
+  what_was_built: >
+    `AlternativesProvenance` with three members -- ENUMERATED, NONE_CONSIDERED,
+    NOT_RECORDED -- on `ActionRecord`, persisted as a column with a CHECK, and
+    resolved by ONE function (`resolve_alternatives_provenance`) shared by the
+    model's pre-validator and the store's write path so the persisted value and
+    the in-memory field cannot disagree.
+  the_default_claims_least: >
+    Omitted, a NON-EMPTY tuple deduces ENUMERATED (nothing else could have
+    produced it) and an EMPTY tuple falls to NOT_RECORDED. An empty tuple IS
+    absence of evidence; upgrading it to "the choice was forced" is an assertion
+    a caller must make under their own name. This CHANGES the reading of every
+    pre-existing empty tuple in the repository from "nothing was considered" to
+    "unknown", which is the safe direction and the point.
+  the_adapter_cannot_be_argued_with: >
+    `decision_result_from_solution` produces NOT_RECORDED whenever `considered`
+    is empty and there is NO PARAMETER through which a caller could turn that into
+    NONE_CONSIDERED -- pinned by `inspect.signature`, because the distinction
+    matters most during a backfill, where one default would assert "the choice was
+    forced" over an operator's entire history.
+  the_one_deduction_made_and_why: >
+    ENUMERATED is a claim about the RESULT, and an action needs the claim about
+    its own row. `DecisionResult.provenance_for` reads a request with NO listed
+    options inside an ENUMERATED result as NONE_CONSIDERED, not NOT_RECORDED --
+    a producer that enumerates would have listed them if there were any, so their
+    absence is evidence and the placement was forced. Reading it as unknown
+    instead would discard a real observation on every forced placement, which in
+    a fleet where most trips have one feasible accessible vehicle is most of them.
+    The cost, stated on the method: a producer that enumerates only SOME of its
+    decisions must send two results or send NOT_RECORDED for the batch.
+  enforced_three_ways:
+    - "pydantic: ENUMERATED requires a non-empty tuple; the other two require an empty one. Both directions."
+    - "SQL: `CHECK ((alternatives_provenance = 'enumerated') = (alternatives_json <> '[]'))`, attacked directly with raw SQL after dropping the append-only trigger -- because a rule only in pydantic is a rule a replay importer walks around."
+    - "round trip: all three states written, read back through `load_action` from the raw rows, and still three distinct states."
+
+leakage_probe:
+  probe: >
+    Two facts carrying a unique string and a unique number are written AFTER the
+    decision, into the same tenant, the same scope and the same subject. The
+    episode is then reconstructed and its information set, its `to_record()`
+    export, its `provenance_manifest()` and its `feature_vector()` are all
+    searched for both sentinels.
+  result: "Absent from all four, and the re-derived content hash still equals the one the action pinned."
+  two_positive_controls_because_the_assertion_alone_is_vacuous:
+    - "`store.fact_history(...)` MUST show the sentinel -- otherwise the poisoning write silently failed and every no-leak assertion was passing for the wrong reason."
+    - "a snapshot taken AFTERWARDS over the SAME SCOPE must ADMIT it -- which rules out the scope, the attribute name and the tenant as the thing that excluded it, leaving only the receipt boundary."
+  the_asymmetry_that_makes_an_episode_an_episode: >
+    The information set is cut at `as_of`; everything that followed is not. They
+    cannot be confused because they arrive by different routes -- the snapshot
+    through `load_snapshot`, which applies the boundary; the outcome through the
+    action, which is not a read path a snapshot holder has. Asserted directly:
+    the label is present in `episode.outcomes` and absent from the information
+    set and its feature vector at the same instant.
+  additional_refusals_proven:
+    - "a snapshot forged with `model_copy(update={'facts': later_facts})` -> ForgedSnapshotError from the episode write path"
+    - "a snapshot re-tenanted with `model_copy` -> refused before any write"
+    - "an admitted fact DELETED with the trigger dropped -> SnapshotDriftError, proving the reconstruction re-derives rather than caches"
+    - "the action's pinned hash FORGED with the trigger dropped -> EpisodeIntegrityError (and note that load_snapshot's own drift check does NOT fire, because the snapshot row is untouched -- which is why it is a separate step)"
+
+reused_not_reinvented:
+  - "ADR-0065 `exposure.CapacityAttribution` -> `foreclosures_from_attribution`. `participation` (the fraction of MINIMAL BLOCKING SETS a commitment appears in) becomes the relationship weight; `servable_in_isolation=False` produces NO edges, inheriting exposure's own refusal to blame a rider's trip for a structural gap in the service; `enumeration_complete` is carried into `asserted_by` as `/exhaustive` or `/bounded`, because a bounded search makes every weight a lower bound and a relationship row has nowhere else to say so."
+  - "ADR-0060's bounded optimality claim -> four DERIVED facts on the assignment (`solver_objective_value`, `solver_bound`, `solver_gap`, `solver_proven_optimal`). An unclaimed bound is stored as `MissingnessReason.NOT_APPLICABLE`, never as 0.0: a zero bound claims the objective cannot go below zero, an absent one refuses to claim anything, and a learner that cannot tell them apart reads every timeout as a proof. `DecisionResult` refuses `proven_optimal` with a non-zero gap or a non-OPTIMAL status."
+  - "`ScheduleRunStatus.TIMEOUT` -> `ReasonCode.SOLVER_TIMEOUT` on the action, using the closed scheduling vocabulary that already existed rather than a new one."
+  - "`themis/core/feature_store._iso_utc`, `themis/canonical/events.compute_hash`, `themis/canonical/vocab.ReasonCode` -- all inherited through the existing ontology modules, none re-implemented."
+
+mutations_checked:
+  method: >
+    13 single-point source mutations, applied one at a time to the shipped source
+    (including the .sql), with the four ontology test files re-run and the file
+    restored afterwards. Run twice: once with `-x`, once WITHOUT, so that the
+    test which catches each mutation could be identified rather than assumed.
+    Harness lived in the scratchpad, not the repo.
+  all_red_first_time:
+    - "M1  an empty alternatives tuple defaults to NONE_CONSIDERED    -> RED (test_the_action_record_refuses_the_same_contradiction)"
+    - "M2  the action-side content-hash comparison deleted            -> RED (test_reconstruction_refuses_an_action_whose_information_set_no_longer_matches)"
+    - "M3  denials no longer keyed on the decision's snapshot id      -> RED (test_the_denials_of_one_decision_are_not_the_denials_of_another)"
+    - "M4  outcomes no longer keyed on the action id                  -> RED (test_an_outcome_belongs_to_its_own_action_and_no_other, + both-engines)"
+    - "M5  proven_optimal no longer requires a closed gap             -> RED (test_a_proven_optimum_cannot_be_claimed_with_a_gap_that_did_not_close)"
+    - "M6  the SQL CHECK pairing provenance to the list removed       -> RED (test_the_database_refuses_the_contradiction_independently_of_the_model)"
+    - "M7  a structurally-unservable denial gets attributed anyway    -> RED (test_an_unattributable_denial_produces_no_foreclosure_edges)"
+    - "M8  an unresolvable subject is minted instead of refused       -> RED (test_the_episode_will_not_mint_an_identity_to_make_a_write_succeed)"
+    - "M9  ENUMERATED-with-an-empty-list check removed                -> RED (test_the_action_record_refuses_the_same_contradiction)"
+    - "M10 the row reader hardcodes NOT_RECORDED                      -> RED (2 tests)"
+    - "M11 the `receipt_time < ?` boundary removed from the facts query -> RED (the leakage probe, + 7 pre-existing)"
+    - "M12 a denial need not name its binding constraint              -> RED (test_a_denial_must_name_the_constraint_that_bound)"
+    - "M13 an ENUMERATED result's unlisted request reads as unknown    -> RED (test_the_three_states_survive_the_round_trip_through_the_database)"
+  came_back_green: []
+  note_on_M1: >
+    M1 is caught ONLY by the direct-`ActionRecord`-construction test, not by any
+    episode-level test, and that is correct rather than a gap:
+    `record_decision_episode` always passes an EXPLICIT provenance, so the default
+    rule is unreachable through the writer. The path that reaches it is the one
+    that matters -- an evidence-pack reader or replay importer constructing an
+    `ActionRecord` directly -- which is exactly the path ADR-0072's own M22 found
+    unexercised. It is covered here, in both directions.
+
+test_counts:
+  test_decision_episode.py: 41   # 39 engine-independent or sqlite, plus 1 test x [sqlite]/[postgres]
+  ontology_suite_total: 188      # 147 pre-existing (unchanged) + 41
+  skipped: 0
+  postgres_ran: true
+
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_decision_episode.py -q   # 41 passed, 0 skipped, PostgreSQL RAN"
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_decision_episode.py aletheia/conformance/property-tests/test_ontology_v1.py aletheia/conformance/property-tests/test_ontology_store.py aletheia/conformance/property-tests/test_decision_snapshot.py -q   # 188 passed"
+
+honest_limitations:
+  - claim: "NOTHING HERE IS VALIDATED."
+    detail: >
+      Every episode this module has carried is synthetic. The vignette's times,
+      references, weights and reason codes are invented. Status: Demonstrated.
+      In particular, no number here says anything about how any real scheduler
+      records rejections, how any real operator names a binding constraint, or
+      what any real fleet's foreclosure weights look like.
+  - claim: "`ActionKind` HAS NO 'DENY', SO A DENIAL IS AN EVENT AND NOT A PERMISSIONED ACTION."
+    detail: >
+      The eleven action kinds do not include one. Rather than borrow a near-miss
+      kind, denials are `EventKind.TRIP_DENIED` -- the vocabulary's own home for
+      them, carrying `reason_codes` -- with the snapshot id in the payload as the
+      episode key. But a denial IS a decision with a subject, an authority, an
+      information set and an appeal, and recording it as an event means it has no
+      `Authority` permission check, no verifier verdict and no alternatives. This
+      is a real gap in ADR-0072's vocabulary, not a design choice, and it should
+      be closed by adding a twelfth action kind + permission + CHECK member.
+  - claim: "THE EPISODE IS KEYED ON THE SNAPSHOT ID, WHICH ASSUMES ONE SNAPSHOT PER SOLVER RUN."
+    detail: >
+      Correct for a batch solve. An online scheduler that re-snapshots per arrival
+      produces one episode per arrival, which is right; but a solver that takes
+      two snapshots for one decision (e.g. a re-read after a slow feasibility
+      check) would split into two episodes with no link between them. There is no
+      `episode_id` and no `supersedes_action_id` on `ActionRecord` -- the override
+      in the vignette is linked by an `OVERRIDE_REPLACED_RECOMMENDATION` edge
+      between OBJECTS, which is the ontology's intended mechanism but is not
+      checkable from the action alone.
+  - claim: "ADR-0073's `capacity_value` IS READ BUT NOT WIRED; ADR-0065's `exposure` IS."
+    detail: >
+      `CapacityValue` reports a MEAN COUNT of foreclosed trips across scenario
+      draws with a standard error. It does not identify WHICH future trips, so it
+      cannot produce the per-opportunity edges
+      `ASSIGNMENT_FORECLOSED_POOLING_WITH` requires -- the per-scenario identity is
+      derivable from `CapacityLens.reach_matrix` but only by reaching into
+      internals this packet may not touch. `exposure.CapacityAttribution` DOES
+      name specific commitments, so it is the one wired. Consequence: the episode
+      currently carries RETROSPECTIVE attribution (which earlier commitment
+      consumed the capacity a denied trip needed) and not the DECISION-TIME
+      estimate (which likely future trips this placement forecloses). Closing that
+      needs either a per-scenario accessor on `capacity_value` or a small
+      aggregation helper in metis -- both outside this packet's owned paths.
+  - claim: "THE FORECLOSURE WEIGHT IS A PARTICIPATION SHARE, NOT A PROBABILITY."
+    detail: >
+      `Relationship.weight` is described as "how strongly the edge is asserted,
+      where the assertion is probabilistic". What is stored is exposure's
+      `participation`: the fraction of minimal blocking sets a commitment appears
+      in. 1.0 means every route to freeing capacity ran through it. That is a
+      strength-of-assertion and it is documented as such on
+      `ForeclosedOpportunity`, but a reader who takes `weight` for a probability
+      of the trip having happened will be wrong. A separate weight SEMANTICS field
+      would be the honest fix and is not built.
+  - claim: "`themis.ontology.episode` IS A WRITE PATH THAT THE CONCURRENT LAYERING SUITE DOES NOT CLASSIFY."
+    detail: >
+      `test_layer_metis.py` derives which Themis modules are "persistence" from
+      the WRITER METHOD NAMES they define. `episode.py` defines none of them -- it
+      delegates every write to `OntologyStore` -- so the derivation does not
+      classify it, and `from themis.ontology.episode import
+      record_decision_episode` in the solver would pass the layering suite while
+      handing Metis a write path to canonical state. Closed from this side by
+      `test_the_solver_does_not_reach_into_the_ontology_either`, which asserts by
+      AST that metis imports nothing from `themis.ontology`. The layering packet
+      should classify the module properly; this packet did not edit its file.
+  - claim: "NO CONCURRENCY TESTING, INHERITED."
+    detail: >
+      Single-writer-per-tenant remains an untested assumption. Two processes
+      recording episodes for one tenant would contend on the receipt ledger; what
+      happens then is not known and is not tested here either.
+  - claim: "THE OPTIMALITY CLAIM IS CARRIED, NEVER CHECKED."
+    detail: >
+      `DecisionResult.proven_optimal` is the producer's claim. This packet checks
+      it for INTERNAL consistency (a proven optimum must have a closed gap and an
+      OPTIMAL status) and nothing more. Establishing it is ADR-0060's job and
+      nothing in the ontology can or should second-guess it.
+  - claim: "`record_decision_episode` CANNOT VERIFY THAT THE DECISION USED ONLY THE SNAPSHOT."
+    detail: >
+      It did not make the decision. What it does is make the claim falsifiable:
+      the action pins the snapshot's id, hash and `as_of`, and the reconstruction
+      re-derives and re-checks. A decision that reached outside its snapshot
+      leaves a record that says what it claims to have used, and the gap becomes
+      an auditable question rather than an invisible one. That is weaker than
+      enforcement and it is the strongest thing available from this side of the
+      seam.
+
+guesses_about_operator_data:
+  preamble: >
+    Places where this packet had to assume a shape for data nobody has handed us.
+    ADR-0072's own list still stands unchanged; these are the ones this packet
+    ADDS. All are Demonstrated on synthetic data only.
+  ask_the_first_operator_for:
+    - guess: "THEIR SCHEDULER CAN SAY WHETHER IT ENUMERATES REJECTIONS -- FOR A WHOLE BATCH."
+      assumed: >
+        `AlternativesProvenance` is per-ACTION, but `DecisionResult` carries one
+        value for the whole result and `provenance_for` deduces the per-action
+        value from it. That deduction rests on ENUMERATED meaning "complete for
+        every request in this result".
+      cost_if_wrong: >
+        A scheduler that enumerates for some decisions and not others (a common
+        shape: the exact solver logs candidates, the greedy fallback does not)
+        would either have to split its export, or would have every fallback
+        decision recorded as a FORCED placement when it is actually unknown. That
+        is the exact error this field exists to prevent, reintroduced one level up.
+      ask_for: >
+        Whether rejected-candidate logging is a property of the SCHEDULER or of
+        the DECISION -- i.e. does it depend on which code path ran? And if it does,
+        can the export say which path ran, per decision?
+      change_cost: "LOW if asked before backfill: a per-request provenance on `ConsideredOption`, or a per-assignment override on `DecisionResult`. Retrofitting after a history is loaded is impossible."
+    - guess: "A DENIAL HAS ONE BINDING CONSTRAINT SET, KNOWN AT DECISION TIME."
+      assumed: "`ProposedDenial.binding_constraints` is non-empty and is recorded WITH the decision."
+      cost_if_wrong: >
+        Many dispatch systems record a denial and its reason SEPARATELY, often
+        with the reason keyed in later by a person. If the reason arrives hours
+        after the denial, its receipt time is later, and a snapshot taken between
+        the two correctly cannot see it -- so a replay would score the dispatcher
+        as having denied a trip for no stated reason.
+      ask_for: "Whether the denial reason is captured in the same transaction as the denial, or later. If later: by whom, and how much later."
+      change_cost: "MEDIUM. It would mean the binding constraint is a separate receipt-stamped fact rather than a field on the denial event, which changes the episode's shape."
+    - guess: "AN OPERATOR CAN NAME WHICH EARLIER TRIP CONSUMED THE CAPACITY A DENIED TRIP NEEDED."
+      assumed: >
+        `ASSIGNMENT_FORECLOSED_POOLING_WITH` edges are computed by Milexium from
+        ADR-0065's search, over Milexium's own model of the fleet.
+      cost_if_wrong: >
+        The attribution is only as good as the feasibility model behind it. If the
+        real fleet has constraints Milexium does not model (a driver's break, a
+        depot bay, a securement type), the minimal blocking sets are wrong and the
+        weights are confident nonsense. Nothing in the record would show it.
+      ask_for: >
+        Their own account of why a specific denied trip was denied, for 20-30
+        real denials, so the attribution can be scored against a human's answer
+        before any of it is quoted.
+      change_cost: "N/A -- this is a validation task, not a schema change, and it is the one that decides whether these edges may ever be shown to an operator."
+    - guess: "THE POLICY IN FORCE AT A DECISION IS IDENTIFIABLE AND VERSIONED."
+      assumed: "`policy_id` + `policy_version` (an integer >= 1) are supplied per action and are stable enough to join on."
+      cost_if_wrong: >
+        Most operators' service rules live in a contract document and a set of
+        habits, not in a versioned record. If the version is invented at ingest,
+        every "did the policy change cause this?" question is unanswerable and the
+        field is decorative.
+      ask_for: "Whether any system records which version of the service rules was in force on a given date, and who changes them."
+      change_cost: "LOW mechanically; the risk is data quality, not schema."

@@ -58,6 +58,7 @@ from themis.ontology.receipt import ReceiptStamp
 from themis.ontology.vocab import (
     ACTION_PERMISSIONS,
     ActionKind,
+    AlternativesProvenance,
     AuthorityKind,
     ObjectKind,
     Permission,
@@ -74,7 +75,41 @@ __all__ = [
     "ActionOutcome",
     "PermissionDenied",
     "UnverifiedActionError",
+    "resolve_alternatives_provenance",
 ]
+
+
+def resolve_alternatives_provenance(
+    alternatives: object, given: AlternativesProvenance | None
+) -> AlternativesProvenance:
+    """THE one rule for what an omitted `alternatives_provenance` means.
+
+    `alternatives` is typed `object` rather than
+    `tuple[ActionAlternative, ...]` on purpose: one of its two call sites is a
+    `mode="before"` validator, which sees RAW input -- a tuple of dicts from a
+    JSON round trip just as often as a tuple of models. Only its emptiness is
+    read, and narrowing the annotation would be a promise this function does not
+    need and could not keep.
+
+    A free function rather than a method because two call sites need it BEFORE an
+    `ActionRecord` exists: the model's own pre-validator, and
+    `themis/ontology/store.record_action`, which must put the resolved value
+    into the row digest it hashes before it can construct the record. Two copies
+    of this rule is how the persisted column and the in-memory field would come
+    to disagree about a decision's most misreadable field.
+
+    An explicit `given` is returned unchanged -- including `NONE_CONSIDERED`,
+    which only a caller can know. Omitted, a NON-EMPTY tuple deduces ENUMERATED
+    (nothing else could have produced it) and an EMPTY tuple falls to
+    NOT_RECORDED, which claims nothing.
+    """
+    if given is not None:
+        return given
+    return (
+        AlternativesProvenance.ENUMERATED
+        if alternatives
+        else AlternativesProvenance.NOT_RECORDED
+    )
 
 
 class PermissionDenied(PermissionError):
@@ -165,10 +200,14 @@ class Authority(BaseModel):
 class ActionAlternative(BaseModel):
     """One option that was considered and not taken.
 
-    REQUIRED IN THE PLURAL SENSE: an action whose `alternatives` is empty is
-    recording that nothing else was considered, which is a real and recordable
-    state (a forced assignment with one feasible vehicle) but must be SAID rather
-    than defaulted to. `ActionRecord` therefore requires the field explicitly.
+    REQUIRED IN THE PLURAL SENSE: `ActionRecord` requires the field explicitly,
+    with no default, so an empty tuple is always something a caller wrote down
+    rather than something that happened to them.
+
+    WHAT AN EMPTY TUPLE MEANS IS NOT CARRIED HERE. It is carried by
+    `ActionRecord.alternatives_provenance`, because "nothing else was on the
+    table" and "the producing system does not record what it rejected" are
+    different claims that both render as `()`. See `AlternativesProvenance`.
 
     `failed_constraints` reuses `themis/canonical/vocab.ReasonCode` -- the
     closed scheduling vocabulary already committed to in the roadmap -- rather
@@ -316,7 +355,18 @@ class ActionRecord(BaseModel):
 
     # -- what else was on the table ------------------------------------------- #
     alternatives: tuple[ActionAlternative, ...] = Field(
-        description="Options considered. May be empty -- meaning 'nothing else was considered' -- but must be supplied explicitly."
+        description="Options considered and rejected. May be empty; what an empty tuple MEANS is stated by `alternatives_provenance`, never inferred."
+    )
+    alternatives_provenance: AlternativesProvenance = Field(
+        default=AlternativesProvenance.NOT_RECORDED,
+        description=(
+            "Whether `alternatives` is a complete enumeration, an assertion that "
+            "nothing else was on the table, or an admission that the producing "
+            "system does not record rejections. Omitted, it resolves to ENUMERATED "
+            "for a non-empty tuple and to NOT_RECORDED for an empty one -- the safe "
+            "reading, because an empty tuple IS absence of evidence, and only a "
+            "caller who knows may upgrade it to NONE_CONSIDERED."
+        ),
     )
     prediction: ActionPrediction | None = None
     verifier: VerifierResult
@@ -337,6 +387,31 @@ class ActionRecord(BaseModel):
 
     prev_hash: str | None = None
     hash: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_alternatives_provenance(cls, data):
+        """Resolve an OMITTED provenance from the tuple, in the safe direction.
+
+        A non-empty tuple can only have come from a producer that enumerates, so
+        ENUMERATED is a deduction rather than an assumption. An EMPTY tuple is
+        left at the field default `NOT_RECORDED`: it is the reading that claims
+        least, and upgrading it to `NONE_CONSIDERED` -- an assertion that the
+        decision was forced -- is something a caller must do deliberately.
+
+        `mode="before"` rather than a computed property because the value is
+        PERSISTED: a consumer reading the row back must see the same three-way
+        distinction the writer had, without re-deriving it from a tuple whose
+        emptiness is exactly what is ambiguous.
+        """
+        if isinstance(data, dict) and data.get("alternatives_provenance") is None:
+            data = {
+                **data,
+                "alternatives_provenance": resolve_alternatives_provenance(
+                    data.get("alternatives"), None
+                ),
+            }
+        return data
 
     @model_validator(mode="after")
     def _validate(self) -> "ActionRecord":
@@ -381,6 +456,25 @@ class ActionRecord(BaseModel):
         ranks = [a.rank for a in self.alternatives]
         if len(set(ranks)) != len(ranks):
             raise ValueError("two alternatives share a rank; the ordering is ambiguous")
+        if self.alternatives and self.alternatives_provenance is not (
+            AlternativesProvenance.ENUMERATED
+        ):
+            raise ValueError(
+                f"alternatives_provenance is "
+                f"{self.alternatives_provenance.value} but "
+                f"{len(self.alternatives)} alternative(s) are recorded. "
+                "'nothing was considered' and 'we do not know what was considered' "
+                "are both contradicted by a list of what was considered"
+            )
+        if not self.alternatives and self.alternatives_provenance is (
+            AlternativesProvenance.ENUMERATED
+        ):
+            raise ValueError(
+                "alternatives_provenance is ENUMERATED but no alternatives are "
+                "recorded. 'we enumerated the options and there were none' is not a "
+                "claim; use NONE_CONSIDERED if the choice was forced, or "
+                "NOT_RECORDED if the producing system does not report rejections"
+            )
         if self.receipt.receipt_sequence == 1:
             if self.prev_hash is not None:
                 raise ValueError("the first row in a receipt ledger has no predecessor")
@@ -406,6 +500,17 @@ class ActionRecord(BaseModel):
     def decision_lag_seconds(self) -> float:
         """How stale the information set was when the decision was taken."""
         return (self.decided_at - self.input_snapshot_as_of).total_seconds()
+
+    @property
+    def alternatives_are_unknown(self) -> bool:
+        """Whether this row says NOTHING about what else was on the table.
+
+        The predicate a learner must filter on. Training a "why did the
+        dispatcher not pick the other vehicle?" model over rows where the answer
+        was never exported teaches the exporter's blind spot, and the only
+        defence is that this question is cheap to ask.
+        """
+        return self.alternatives_provenance is AlternativesProvenance.NOT_RECORDED
 
 
 class ActionOutcome(BaseModel):

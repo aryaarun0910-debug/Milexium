@@ -57,6 +57,7 @@ from themis.ontology.actions import (
     ActionRecord,
     Authority,
     VerifierResult,
+    resolve_alternatives_provenance,
 )
 from themis.ontology.events import (
     LateArrivalReason,
@@ -89,6 +90,7 @@ from themis.ontology.snapshot import (
 )
 from themis.ontology.vocab import (
     ActionKind,
+    AlternativesProvenance,
     AuthorityKind,
     EventKind,
     FactClass,
@@ -1368,6 +1370,7 @@ class OntologyStore:
         decided_at: datetime,
         alternatives: tuple[ActionAlternative, ...],
         verifier: VerifierResult,
+        alternatives_provenance: AlternativesProvenance | None = None,
         prediction: ActionPrediction | None = None,
         override_justification: str | None = None,
         reason_codes: tuple[ReasonCode, ...] = (),
@@ -1387,6 +1390,12 @@ class OntologyStore:
 
         Gate 2 before gate 3 because a forged snapshot could otherwise satisfy
         gate 3 trivially by moving its own `as_of`.
+
+        `alternatives_provenance` defaults to None and is resolved by
+        `ActionRecord` -- ENUMERATED for a non-empty tuple, NOT_RECORDED (i.e.
+        UNKNOWN) for an empty one. It is passed through rather than computed here
+        so there is ONE resolution rule, in the model, exercised identically by a
+        store write and by an in-memory construction.
         """
         _require_utc(decided_at)
         self._scope()
@@ -1412,6 +1421,9 @@ class OntologyStore:
         input_snapshot.verify()
 
         aid = new_id(ActionId)
+        provenance = resolve_alternatives_provenance(
+            alternatives, alternatives_provenance
+        )
         alternatives_json = canonical_json(
             [
                 {
@@ -1454,6 +1466,7 @@ class OntologyStore:
             str(policy_id),
             policy_version,
             alternatives_json,
+            provenance.value,
             prediction_json,
             verifier.verdict.value,
             verifier.verifier_name,
@@ -1480,6 +1493,7 @@ class OntologyStore:
             policy_id=policy_id,
             policy_version=policy_version,
             alternatives=alternatives,
+            alternatives_provenance=provenance,
             prediction=prediction,
             verifier=verifier,
             override_justification=override_justification,
@@ -1501,11 +1515,11 @@ class OntologyStore:
                 "INSERT INTO ontology_actions (action_id, tenant_id, action_kind, "
                 "subject_kind, subject_id, input_snapshot_id, input_snapshot_hash, "
                 "input_snapshot_as_of, policy_id, policy_version, alternatives_json, "
-                "prediction_json, verifier_verdict, verifier_name, verifier_version, "
-                "violated_rules_json, override_justification, authority_kind, authority_ref, "
-                "authority_role, authority_permissions_json, authority_on_behalf_of, "
+                "alternatives_provenance, prediction_json, verifier_verdict, verifier_name, "
+                "verifier_version, violated_rules_json, override_justification, authority_kind, "
+                "authority_ref, authority_role, authority_permissions_json, authority_on_behalf_of, "
                 "decided_at, reason_codes, receipt_time, receipt_sequence, prev_hash, hash) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (*columns, stamp.iso, stamp.receipt_sequence, prev_hash, chain),
             )
         return action
@@ -1700,7 +1714,8 @@ class OntologyStore:
             "action": (
                 "SELECT action_id, tenant_id, action_kind, subject_kind, subject_id, "
                 "input_snapshot_id, input_snapshot_hash, input_snapshot_as_of, policy_id, "
-                "policy_version, alternatives_json, prediction_json, verifier_verdict, "
+                "policy_version, alternatives_json, alternatives_provenance, "
+                "prediction_json, verifier_verdict, "
                 "verifier_name, verifier_version, violated_rules_json, "
                 "override_justification, authority_kind, authority_ref, authority_role, "
                 "authority_permissions_json, authority_on_behalf_of, decided_at, "

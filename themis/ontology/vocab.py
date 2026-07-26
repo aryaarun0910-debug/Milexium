@@ -55,6 +55,7 @@ __all__ = [
     "RepairKind",
     "AuthorityKind",
     "VerifierVerdict",
+    "AlternativesProvenance",
 ]
 
 
@@ -456,6 +457,42 @@ class VerifierVerdict(str, Enum):
     WARN = "warn"
     NOT_RUN = "not_run"
     UNAVAILABLE = "unavailable"
+
+
+class AlternativesProvenance(str, Enum):
+    """What an EMPTY `ActionRecord.alternatives` tuple means.
+
+    THE THIRD STATE ADR-0072 SAID WAS NEEDED, ADDED BEFORE ANY BACKFILL RATHER
+    THAN AFTER. That ADR closed by naming this as the question to put to the
+    first operator -- "whether their scheduler logs rejected candidates at all;
+    if not, `alternatives=()` reads as 'nothing considered' when it means
+    'unknown'". Two of the three cases below collapse onto the same empty tuple,
+    and without this field a learner cannot tell them apart:
+
+      * an assignment with exactly one feasible vehicle, where nothing else was
+        genuinely on the table, is a real and highly informative record; and
+      * an assignment from a scheduler that simply does not export what it
+        rejected, where the empty tuple carries no information at all.
+
+    Training on the second as though it were the first teaches a model that
+    forced choices are the norm. `NOT_RECORDED` is the DEFAULT for an empty
+    tuple (see `ActionRecord`) because absence of evidence is what an empty
+    tuple actually is; claiming `NONE_CONSIDERED` requires a caller to say so.
+    """
+
+    ENUMERATED = "enumerated"
+    """The tuple is what was considered and rejected. Requires a non-empty tuple:
+    "we enumerated the options and there were none" is not a coherent claim."""
+
+    NONE_CONSIDERED = "none_considered"
+    """Nothing else was on the table -- a forced choice. An ASSERTION about the
+    decision, only recordable by a caller who knows it, and it requires an empty
+    tuple."""
+
+    NOT_RECORDED = "not_recorded"
+    """UNKNOWN. The producing system does not report what it rejected, so the
+    empty tuple is absence of evidence and must never be read as evidence of
+    absence. Requires an empty tuple."""
 
 
 # --------------------------------------------------------------------------- #

@@ -312,6 +312,13 @@ CREATE TABLE ontology_actions (
     policy_id             TEXT    NOT NULL,
     policy_version        INTEGER NOT NULL CHECK (policy_version >= 1),
     alternatives_json     TEXT    NOT NULL DEFAULT '[]',
+    -- What an EMPTY alternatives_json MEANS. Without this column the two states
+    -- collapse: an assignment with one feasible vehicle and an assignment from a
+    -- scheduler that never exports its rejections both store '[]'. The CHECK
+    -- pairs the two, so the contradiction ('enumerated' with nothing enumerated)
+    -- is refused by the database and not only by the model.
+    alternatives_provenance TEXT  NOT NULL DEFAULT 'not_recorded' CHECK
+        (alternatives_provenance IN ('enumerated','none_considered','not_recorded')),
     prediction_json       TEXT,
     verifier_verdict      TEXT    NOT NULL CHECK (verifier_verdict IN
         ('pass','fail','warn','not_run','unavailable')),
@@ -335,7 +342,10 @@ CREATE TABLE ontology_actions (
     CHECK (input_snapshot_as_of <= decided_at),
     CHECK (decided_at <= receipt_time),
     -- A failing verifier that was overridden must say why.
-    CHECK (verifier_verdict <> 'fail' OR override_justification IS NOT NULL)
+    CHECK (verifier_verdict <> 'fail' OR override_justification IS NOT NULL),
+    -- 'enumerated' asserts the list IS the enumeration, so an empty list
+    -- contradicts it; the other two both assert the list is empty.
+    CHECK ((alternatives_provenance = 'enumerated') = (alternatives_json <> '[]'))
 );
 
 -- ---------------------------------------------------------------------------
