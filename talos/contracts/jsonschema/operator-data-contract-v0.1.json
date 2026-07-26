@@ -1,0 +1,712 @@
+{
+  "answer_options": [
+    "yes",
+    "no",
+    "we do not record that"
+  ],
+  "capabilities": [
+    {
+      "id": "outcome_analysis",
+      "name": "Outcome analysis",
+      "question_it_answers": "How did the service actually perform -- lateness against the promised pickup, denial rate, no-show rate, demand by zone and hour?",
+      "requires": [
+        "trip_ref",
+        "requested_at",
+        "scheduled_pickup_at",
+        "actual_pickup_at",
+        "pickup_zone",
+        "dropoff_zone",
+        "outcome",
+        "export_generated_at",
+        "coverage_window",
+        "timestamp_convention",
+        "source_systems"
+      ],
+      "requires_any": [],
+      "sharpened_by": [
+        "scheduled_dropoff_at",
+        "outcome_known_at",
+        "field_authority_map"
+      ]
+    },
+    {
+      "id": "deadhead_measurement",
+      "name": "Deadhead measurement",
+      "question_it_answers": "How much of the fleet's day was spent running empty between one trip's dropoff and the next trip's pickup?",
+      "requires": [
+        "pickup_zone",
+        "dropoff_zone",
+        "scheduled_pickup_at",
+        "fleet_shape"
+      ],
+      "requires_any": [
+        "vehicle_ref",
+        "run_ref"
+      ],
+      "sharpened_by": [
+        "actual_dropoff_at",
+        "trip_distance"
+      ]
+    },
+    {
+      "id": "unmet_demand_forecasting",
+      "name": "Unmet-demand forecasting",
+      "question_it_answers": "What demand did you turn away, and would a forecast have seen it coming far enough ahead to do something about it?",
+      "requires": [
+        "requested_at",
+        "pickup_zone",
+        "outcome"
+      ],
+      "requires_any": [],
+      "sharpened_by": []
+    },
+    {
+      "id": "information_set_replay",
+      "name": "Information-set replay",
+      "question_it_answers": "What did your system know at 10:45 on a given morning -- which bookings existed, and which had not been entered yet?",
+      "requires": [
+        "record_created_known_at"
+      ],
+      "requires_any": [],
+      "sharpened_by": [
+        "knowledge_time_source"
+      ]
+    },
+    {
+      "id": "intraday_state_replay",
+      "name": "Intra-day state replay",
+      "question_it_answers": "What did the dispatcher's board LOOK LIKE at 10:45 -- including the trips that had already been cancelled, reassigned or re-timed by then?",
+      "requires": [
+        "record_created_known_at",
+        "record_updated_known_at"
+      ],
+      "requires_any": [],
+      "sharpened_by": []
+    },
+    {
+      "id": "counterfactual_comparison",
+      "name": "Counterfactual comparison",
+      "question_it_answers": "Would a different assignment have done better than the one that was made -- judged only on what was knowable at the time?",
+      "requires": [
+        "record_created_known_at",
+        "alternatives_logged",
+        "run_roster"
+      ],
+      "requires_any": [],
+      "sharpened_by": [
+        "record_updated_known_at",
+        "candidate_log"
+      ]
+    },
+    {
+      "id": "denial_analysis",
+      "name": "Denial analysis",
+      "question_it_answers": "Why were trips refused, in your vocabulary rather than ours -- and which of those reasons were capacity and which were policy?",
+      "requires": [
+        "denial_code",
+        "denial_code_list"
+      ],
+      "requires_any": [],
+      "sharpened_by": []
+    }
+  ],
+  "contract_date": "2026-07-26",
+  "contract_id": "operator-data-contract",
+  "contract_version": "0.1",
+  "fields": [
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "We cannot tell a re-sent correction from a duplicate trip, so a second export can only replace the first wholesale. Nothing we report can be traced back to a row you can look up.",
+      "name": "trip_ref",
+      "note": null,
+      "operator_question": "Does every exported row carry a stable trip or booking reference that stays the same if the row is later corrected and re-sent?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "Your own booking or trip reference. We never resolve it back to anything.",
+      "unlocks": "Every row-level statement we make. It is the handle a corrected re-send is matched on, and the key that lets a second export of the same period be reconciled with the first rather than double-counted.",
+      "value_type": "string, opaque to us"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis",
+        "unmet_demand_forecasting"
+      ],
+      "lost_without_it": "A trip booked three weeks ahead and one booked at 06:00 the same morning become the same event. Lead-time distribution, same-day demand and any forecast horizon shorter than a service day all disappear.",
+      "name": "requested_at",
+      "note": null,
+      "operator_question": "Is the booking/request timestamp exported, and is it the time the request was made rather than the time the record was last touched?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "When the trip was booked or requested.",
+      "unlocks": "Booking lead time, and the demand signal itself: demand is when people ask, not when they travel.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis",
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "Lateness is undefined. There is nothing to be late relative to, and any on-time figure would be invented.",
+      "name": "scheduled_pickup_at",
+      "note": null,
+      "operator_question": "Is the promised or scheduled pickup time exported for every trip, including trips that were later cancelled?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "The pickup time you promised or scheduled.",
+      "unlocks": "The promise half of on-time performance -- the thing lateness is measured against.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": "outcome = served",
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "On-time performance cannot be computed at all. We will not substitute the scheduled time for the actual one -- the gap between them is the measurement.",
+      "name": "actual_pickup_at",
+      "note": null,
+      "operator_question": "For served trips, is an actual pickup time recorded (AVL, driver console, or manual), and is it exported?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "When the pickup actually happened. Blank for trips that were not served.",
+      "unlocks": "Realised lateness, which is the single number the whole teardown is about.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis",
+        "deadhead_measurement",
+        "unmet_demand_forecasting"
+      ],
+      "lost_without_it": "Every trip becomes placeless. Demand cannot be attributed to an area, and deadhead cannot be estimated even when the vehicle chain exists.",
+      "name": "pickup_zone",
+      "note": "Anything coarser than an address is fine. Anything that could be a doorstep is not, and is refused -- see the refusals section.",
+      "operator_question": "Can pickup geography be exported as a zone, district, ZIP or grid cell rather than a street address?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "The geography you already schedule against, at the coarsest granularity that still means something to you.",
+      "unlocks": "Origin-destination structure, demand by area, and the spatial half of deadhead.",
+      "value_type": "string -- a ZONE, never an address (ZONE-NW-3, Downtown, 90210, a TAZ, a grid cell)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis",
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "Deadhead becomes unmeasurable in space: we would know a vehicle finished one trip and started another, but not how far apart they were.",
+      "name": "dropoff_zone",
+      "note": null,
+      "operator_question": "Can dropoff geography be exported as a zone rather than a street address?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "The same, for the destination.",
+      "unlocks": "The destination half of origin-destination structure, and the start point of the empty leg to the next trip.",
+      "value_type": "string -- a ZONE, never an address"
+    },
+    {
+      "conditional_on": "at least one of vehicle_ref / run_ref",
+      "gates_capabilities": [
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "Trips cannot be put in the order one vehicle performed them, so the empty time between them does not exist as a quantity. A row naming neither vehicle nor run is unusable by the teardown.",
+      "name": "vehicle_ref",
+      "note": "Read the fleet-shape declaration below before exporting this. In an owner-operator fleet a vehicle id is a person id, and the question is fleet shape, not column name (ADR-0057).",
+      "operator_question": "Does each trip row name the vehicle that performed it, or the run/block it belonged to? Either is enough; both is better.",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "Vehicle or unit number, as your fleet numbers it.",
+      "unlocks": "Chaining one vehicle's consecutive trips, which is the ONLY way deadhead is measurable.",
+      "value_type": "string, opaque to us"
+    },
+    {
+      "conditional_on": "at least one of vehicle_ref / run_ref",
+      "gates_capabilities": [
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "Idle time and off-shift time are indistinguishable, so deadhead is overstated by every hour a vehicle was legitimately not working.",
+      "name": "run_ref",
+      "note": null,
+      "operator_question": "Is a run, block or manifest id carried on each trip?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "Run, block or manifest id -- a day's chained work.",
+      "unlocks": "The same chaining as vehicle_ref, and additionally the boundary of a shift, so 'the vehicle was idle' can be separated from 'the run had ended'.",
+      "value_type": "string, opaque to us"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis",
+        "unmet_demand_forecasting"
+      ],
+      "lost_without_it": "A trip that was refused and a trip that was never requested look identical. Every rate we could compute would have an unknown denominator.",
+      "name": "outcome",
+      "note": null,
+      "operator_question": "Is a trip status exported for every row, and can you send us your status code list so we map it explicitly rather than by resemblance?",
+      "requirement": "required",
+      "shape": "column",
+      "summary": "What happened to the trip.",
+      "unlocks": "Separating 'happened late' from 'did not happen', and denial and no-show rates.",
+      "value_type": "one of: served, no_show, denied, cancelled (your own synonyms are mapped explicitly, never guessed)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "A missing row is ambiguous between 'it did not happen' and 'it had not been entered when the extract ran', and we would have no way to detect a knowledge timestamp stamped by the export tool.",
+      "name": "export_generated_at",
+      "note": null,
+      "operator_question": "What date and time was this extract run?",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "When the extract was actually run.",
+      "unlocks": "The ceiling on what can be in the file. It is also the control that catches a knowledge timestamp which is really the export time under another name -- the failure mode that would make the most important field in this contract look present and be worthless.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "A gap in the data is indistinguishable from a gap in the service. Every per-day and per-hour figure silently inherits the shape of the extract rather than the shape of the service.",
+      "name": "coverage_window",
+      "note": null,
+      "operator_question": "What period does this extract cover, is it complete over that period, and were any trip types, contractors or funding streams excluded?",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "The period the export is meant to cover, and whether it is complete over that period.",
+      "unlocks": "Telling a quiet Sunday apart from a missing day. It is what makes any rate we report a rate rather than a count of whatever happened to be in the file.",
+      "value_type": "two dates, plus a yes/no on completeness"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "We assume UTC, which shifts every trip by your local offset. Every on-time number, every hour-of-day bucket and every headway would be wrong while looking perfectly well-formed -- the worst failure shape, because nothing about the output announces it.",
+      "name": "timestamp_convention",
+      "note": null,
+      "operator_question": "Are the timestamps UTC, or local time? If local, is the UTC offset included in the string, and does it change across a daylight-saving boundary inside the export period?",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "How to read the timestamps in the file.",
+      "unlocks": "Reading the clock correctly. Nothing else.",
+      "value_type": "one of: UTC / local with offset / local without offset (name the zone) / mixed"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "We fail closed and withhold every vehicle-level analysis, because in a fleet where vehicle and driver are one-to-one a vehicle number is a pseudonymous person identifier no matter what the column is called. We will not guess this from the data.",
+      "name": "fleet_shape",
+      "note": "This is the ADR-0057 question, and it is asked as a question because it cannot be inferred from a column name. If the answer is yes, tokenise vehicle_ref before export or send run_ref instead.",
+      "operator_question": "Is any vehicle in this export driven by exactly one person -- an owner-operator, a sole contractor, a single-vehicle subcontractor? How many?",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "Whether any vehicle in the export is operated by exactly one person.",
+      "unlocks": "Knowing whether vehicle_ref is a vehicle id or a person id. It decides whether we can accept the column at all.",
+      "value_type": "yes/no, plus a count if yes"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "Conflicting values have no precedence rule, so we either pick one silently -- which is the failure this whole repository is built to avoid -- or stop and ask you, mid-analysis.",
+      "name": "source_systems",
+      "note": null,
+      "operator_question": "Was this export produced by one system or assembled from several? Name them, and say which fields came from which.",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "Which of your systems this export was assembled from.",
+      "unlocks": "Knowing whether two fields can disagree at all. One system cannot contradict itself; a booking system joined to an AVL feed joined to a dispatch console can, and does.",
+      "value_type": "a list of system names, and which fields each one produced"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "counterfactual_comparison"
+      ],
+      "lost_without_it": "Backfilled decisions would carry an empty alternatives list, which reads as a claim that no alternative existed. That is a fabricated finding, and a flattering one, since it makes every decision look forced.",
+      "name": "alternatives_logged",
+      "note": "A 'no' here is a completely acceptable answer and changes nothing about whether the export is worth sending. What it changes is what we are allowed to conclude.",
+      "operator_question": "Does your scheduling system log the vehicle/run candidates it evaluated and rejected for a trip? If it does, are those logs retained for the export period?",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "Whether your scheduler records the candidate assignments it rejected, not just the one it chose.",
+      "unlocks": "The difference between 'nothing else was considered' and 'we do not know what else was considered'. Those are different facts and only one of them is a finding.",
+      "value_type": "one of: yes / no / we do not know"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "information_set_replay",
+        "intraday_state_replay",
+        "counterfactual_comparison"
+      ],
+      "lost_without_it": "We would use OUR receipt time as a proxy for YOUR knowledge time. If your system knew at 10:30 and exported at 11:00, our 10:45 reconstruction excludes it -- correct for us, but your dispatcher knew. Replay would then systematically credit your staff with LESS information than they had, and bias every comparison in our favour. We refuse to publish a comparison built that way, so without this field decision replay is withdrawn rather than degraded.",
+      "name": "record_created_known_at",
+      "note": "This cannot be retrofitted. History already exported without it stays without it, which is why it is asked before the first extract rather than after.",
+      "operator_question": "Does every record carry a creation/entry timestamp written by your system when the row first appeared -- and is it exportable? Many systems do not have one, and that is a valid answer.",
+      "requirement": "required_for_replay",
+      "shape": "column",
+      "summary": "The instant this row first became visible IN YOUR SYSTEM -- distinct from when the trip happened, and distinct from when the extract was run.",
+      "unlocks": "Reconstructing what your system knew at any chosen instant, which is the precondition for judging a decision against the information available when it was made rather than against hindsight.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "intraday_state_replay",
+        "counterfactual_comparison"
+      ],
+      "lost_without_it": "Only the final state of each trip is reconstructable. A day's board can be rebuilt from bookings that arrived, but not from the cancellations, re-times and reassignments that changed it during the day -- which is most of what a dispatcher actually reacts to.",
+      "name": "record_updated_known_at",
+      "note": "A change log is the ideal and a created/modified pair is the cheap approximation. If you can only give one, give created.",
+      "operator_question": "Does the record carry a last-modified timestamp? Better still: can you export a change log with one row per change rather than one row per trip?",
+      "requirement": "required_for_replay",
+      "shape": "column",
+      "summary": "When the row was last changed in your system.",
+      "unlocks": "Replaying revisions, not just arrivals -- a trip cancelled at 09:10 was on the board until 09:10 and off it afterwards.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": "record_created_known_at is supplied",
+      "gates_capabilities": [
+        "information_set_replay"
+      ],
+      "lost_without_it": "We would treat an ETL load time as the dispatcher's knowledge time. That is worse than having no knowledge timestamp, because the resulting replay looks rigorous and is wrong in a direction we cannot see.",
+      "name": "knowledge_time_source",
+      "note": null,
+      "operator_question": "What writes that timestamp -- the booking/dispatch application at the moment of entry, or a downstream warehouse/report layer when the row was copied?",
+      "requirement": "required_for_replay",
+      "shape": "declaration",
+      "summary": "Which system stamps the creation timestamp, and whether it is the operational system or the reporting/export layer.",
+      "unlocks": "Knowing that the knowledge timestamp is real. A created_at written by a data warehouse load or by the export tool is the export time wearing a disguise, and it is indistinguishable from the real thing by inspection alone.",
+      "value_type": "a system name, plus what writes the timestamp"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "Deadhead can only be bounded, not measured: pickup-to-pickup includes the in-service time, so every figure is an upper bound. We would report it as a bound and label it as one, which is a materially weaker statement.",
+      "name": "actual_dropoff_at",
+      "note": null,
+      "operator_question": "Is an actual dropoff/completion time recorded and exportable for served trips?",
+      "requirement": "helpful",
+      "shape": "column",
+      "summary": "When the trip actually finished.",
+      "unlocks": "Deadhead as a MEASUREMENT. The empty leg runs from one trip's dropoff to the next trip's pickup, and this is its start.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "A trip that was picked up on time and delivered an hour late reads as on time. Ride-time constraint violations are invisible.",
+      "name": "scheduled_dropoff_at",
+      "note": null,
+      "operator_question": "Is a scheduled or promised dropoff/appointment time exported?",
+      "requirement": "helpful",
+      "shape": "column",
+      "summary": "The promised or scheduled dropoff time.",
+      "unlocks": "The dropoff half of the promise, and a check on maximum-ride-time constraints -- one of the reasons a trip is refused.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "All cancellations look alike, and the recoverable ones cannot be counted. Late-notice no-shows and early cancellations collapse into one rate.",
+      "name": "outcome_known_at",
+      "note": "If record_updated_known_at is supplied and maintained, this is largely implied by it. Sent separately it is more reliable, because it is the one timestamp a dispatcher enters deliberately.",
+      "operator_question": "Is the time a cancellation or no-show was recorded kept separately from the trip's scheduled time?",
+      "requirement": "helpful",
+      "shape": "column",
+      "summary": "When you learned the outcome -- particularly when a cancellation was received.",
+      "unlocks": "Separating a cancellation received at 06:00, where the slot was recoverable, from one received at 08:14 when the vehicle was already en route. That difference is the entire operational content of a cancellation.",
+      "value_type": "timestamp, ISO-8601, with UTC offset (2026-03-04T08:15:00-05:00)"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "denial_analysis"
+      ],
+      "lost_without_it": "`denied` is one undifferentiated bucket. We can count denials and can say nothing about them.",
+      "name": "denial_code",
+      "note": null,
+      "operator_question": "Does a denial or refusal carry a reason code? Send the code as it appears -- our own reason vocabulary is ours, not yours, and we will map yours to it explicitly and publish the mapping.",
+      "requirement": "helpful",
+      "shape": "column",
+      "summary": "Why a trip was refused, in your system's own code.",
+      "unlocks": "Telling capacity denials apart from policy denials. 'No accessible vehicle was free' is an operational finding; 'outside the service area' is a policy statement about the boundary, and conflating them makes the first one disappear into the second.",
+      "value_type": "your own code, verbatim -- do NOT map it onto our vocabulary"
+    },
+    {
+      "conditional_on": "the export contains any denied rows",
+      "gates_capabilities": [
+        "denial_analysis"
+      ],
+      "lost_without_it": "Codes get bucketed by how they look, which is a fabrication dressed as a mapping. We would rather leave them unmapped and report them verbatim.",
+      "name": "denial_code_list",
+      "note": "Required only because an export containing denied rows and no code list forces exactly the guess this contract exists to prevent. If there are no denied rows, this line does not apply.",
+      "operator_question": "Can you send the denial/refusal code list with a one-line meaning per code? Expect a long tail and expect one code to mean 'other' -- tell us which one.",
+      "requirement": "required",
+      "shape": "declaration",
+      "summary": "What your denial codes mean.",
+      "unlocks": "Mapping your vocabulary onto ours by agreement rather than by resemblance.",
+      "value_type": "the code list, with each code's meaning in your words"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "deadhead_measurement"
+      ],
+      "lost_without_it": "Deadhead is reported in minutes only. That is still a real measurement, but it is not directly comparable to your own reporting, and a figure nobody can cross-check is a figure nobody acts on.",
+      "name": "trip_distance",
+      "note": null,
+      "operator_question": "Is per-trip in-service mileage recorded, and is it measured (odometer/AVL) or estimated by the scheduler?",
+      "requirement": "helpful",
+      "shape": "column",
+      "summary": "Distance travelled in service for the trip, as your system records it.",
+      "unlocks": "Reporting deadhead in the same unit your NTD submission uses, so the figure can be checked against a number you already file rather than against one only we can compute.",
+      "value_type": "number, miles"
+    },
+    {
+      "conditional_on": null,
+      "gates_capabilities": [
+        "counterfactual_comparison"
+      ],
+      "lost_without_it": "A counterfactual can only re-sequence trips inside the runs that happened. It cannot say a different vehicle should have taken a trip, because it does not know which vehicles existed. Accessibility denials can be counted but not tested -- so we would report the count and refuse the conclusion.",
+      "name": "run_roster",
+      "note": "This asks about VEHICLES, not riders. Nothing in it describes a person, and no rider mobility-device or eligibility field is requested anywhere in this contract.",
+      "operator_question": "Can you send a run roster for the same period: run id, vehicle, start and end time, and the number of wheelchair securement positions on that vehicle? Are securement positions fixed per vehicle, or reconfigurable during a day?",
+      "requirement": "helpful",
+      "shape": "table",
+      "summary": "Which runs operated on each day, on which vehicle, between which times, with how many wheelchair securement positions.",
+      "unlocks": "Knowing what the fleet actually was. Any 'a different assignment would have been better' statement needs the set of vehicles that existed and were on shift; and a denial for no accessible capacity can only be checked against the accessible vehicles that were actually free.",
+      "value_type": "one row per run per day: run_ref, vehicle_ref, run_start_at, run_end_at, securement_positions"
+    },
+    {
+      "conditional_on": "alternatives_logged = yes",
+      "gates_capabilities": [
+        "counterfactual_comparison"
+      ],
+      "lost_without_it": "Any comparison is between your decision and our reconstruction of the option set. That is a weaker claim, and we would label it as one rather than presenting it as a replay.",
+      "name": "candidate_log",
+      "note": null,
+      "operator_question": "If your scheduler logs rejected candidates, can those logs be exported for the same period?",
+      "requirement": "helpful",
+      "shape": "table",
+      "summary": "The assignments your scheduler considered and rejected.",
+      "unlocks": "Comparing against what your system actually weighed, rather than against a set of options we reconstruct and then grade ourselves on.",
+      "value_type": "one row per rejected candidate: trip_ref, candidate_vehicle_ref or candidate_run_ref, rejection code, evaluated_at"
+    },
+    {
+      "conditional_on": "source_systems names more than one system",
+      "gates_capabilities": [
+        "outcome_analysis"
+      ],
+      "lost_without_it": "Disagreements stay unresolved and are reported as conflicts rather than as values. Nothing is corrupted, but a number is missing where a number was expected, and it stops the analysis rather than biasing it.",
+      "name": "field_authority_map",
+      "note": "'It depends' is the expected answer and is worth writing down as-is. A precedence rule with an honest exception list beats a clean one that nobody in dispatch believes.",
+      "operator_question": "If the AVL feed and the dispatch console disagree about an actual pickup time, which is authoritative? Does the answer differ by shift, by contractor, or by field?",
+      "requirement": "helpful",
+      "shape": "declaration",
+      "summary": "When two of your systems disagree about a field, which one is right.",
+      "unlocks": "A precedence rule for conflicts. Our model retains both values and refuses to choose; this is the answer that lets it choose.",
+      "value_type": "per field: which named system is authoritative"
+    }
+  ],
+  "generated_by": "talos/contracts/generate.py from talos/contracts/operator_contract.py",
+  "limitations": [
+    "This is a contract, not an integration. Nothing here connects to any scheduling system, and no operator has confirmed that any field in it exists in the shape described. Every field is a request, and several are requests we expect to be answered 'we do not record that'.",
+    "The field list is derived from what this repository can currently consume and from what ADR-0072 had to guess about operator data. It is not derived from any real vendor export, because none has been seen.",
+    "The validator reads a sample and reports on the sample. A sample that is clean is not evidence that the full extract is, and a column populated in two hundred rows may be null in the other two million.",
+    "Requirement levels are our judgement about what makes a claim defensible. An operator may reasonably disagree about which fields are worth the effort, and that disagreement is a conversation this document is meant to start, not a rule it is meant to impose.",
+    "No capability listed here has ever been exercised on operator data. Each one describes what the code in this repository is built to do, on the data described. None is a track record."
+  ],
+  "minimum_viable_ask": {
+    "agencies": 1,
+    "must_be_complete_over_window": true,
+    "must_include_non_served_outcomes": true,
+    "statement": "Eight to twelve weeks from one agency, complete over that window. One complete decision-to-outcome chain is worth more than five years of disconnected trip totals.",
+    "weeks": [
+      8,
+      12
+    ]
+  },
+  "not_requested": [
+    {
+      "name": "rider_ref (any rider identifier, including one you have already hashed)",
+      "what_we_give_up": "Repeat-rider behaviour: no-show propensity, whether the same people are late repeatedly, subscription-trip patterns. All of it.",
+      "when_we_would_ask": "Only if rider-level no-show behaviour became the agreed question, and only with a salted pseudonym generated on your side and a separate written basis for it. Not for the evaluation this contract covers.",
+      "why_not": "Nothing in the analysis described here needs to link two trips to the same person. The adapter still accepts and tokenises the column because ADR-0038 shipped it as optional, but this contract does not ask for it, and the tokenisation is an unsalted hash -- a pseudonym, not anonymisation, and brute-forceable by anyone holding your client list."
+    },
+    {
+      "name": "driver or operator identifier, even tokenised",
+      "what_we_give_up": "Any per-driver variation: whether lateness clusters by operator. That is a performance-management question, and it is not one we are offering to answer.",
+      "when_we_would_ask": "Not currently foreseen.",
+      "why_not": "Everything we compute attributes work to a RUN, not to a person. A driver id would buy nothing and would add a person to a dataset that otherwise contains none. Shift boundaries -- the one thing a driver id might have been used for -- are asked for on the run roster instead."
+    },
+    {
+      "name": "rider mobility-device, eligibility category, or trip purpose",
+      "what_we_give_up": "This is the one omission that costs something real and it should be said plainly. Without a per-trip flag for whether an accessible vehicle was required, we can count denials coded as accessibility denials and check them against the accessible vehicles on shift (via the run roster), but we cannot measure unmet ACCESSIBLE demand directly -- only the subset your own system already labelled.",
+      "when_we_would_ask": "If accessibility-denial analysis becomes the agreed question, this is the field that would make it possible, and it is a decision for your counsel rather than a request we will make by default. We are raising it here so the trade-off is visible, not to ask for it.",
+      "why_not": "These are health-adjacent facts about an individual. ADR-0038 refuses them and this contract does not reopen that."
+    },
+    {
+      "name": "fare, payment, funding source, subscription status",
+      "what_we_give_up": "Any cost or revenue statement, which we are not making.",
+      "when_we_would_ask": "A cost-per-hour split (fixed versus variable) would be needed before any monetary figure could be quoted at all, and that is a separate conversation with a separate refusal attached: we do not quote a saving from a deadhead figure.",
+      "why_not": "No capability in this contract consumes them."
+    },
+    {
+      "name": "GPS breadcrumb traces / raw AVL position streams",
+      "what_we_give_up": "Route-level deadhead geometry and true empty mileage.",
+      "when_we_would_ask": "A per-trip odometer delta (trip_distance, above) answers the mileage question without a trace, so we ask for that instead.",
+      "why_not": "A breadcrumb trail is a doorstep whenever the vehicle is stopped. Zones plus timestamps answer the questions in this contract without carrying precise location."
+    },
+    {
+      "name": "free-text notes, driver comments, dispatcher remarks",
+      "what_we_give_up": "Whatever context a dispatcher wrote down. Genuinely a loss; taken anyway.",
+      "when_we_would_ask": "Never in this form.",
+      "why_not": "This is where personal detail actually hides, and we cannot review your free text for you. It is refused, not merely unrequested."
+    },
+    {
+      "name": "live API access, database credentials, or a system integration",
+      "what_we_give_up": "Nothing, for the evaluation described here.",
+      "when_we_would_ask": "Not at evaluation stage.",
+      "why_not": "A file is all we want at this stage. An integration is a much larger commitment on your side and answers nothing this contract does not."
+    }
+  ],
+  "note": "Generated. Do not hand-edit -- change operator_contract.py and regenerate.",
+  "pseudonymisation_and_minimisation": "**Rider identity must never arrive in the clear, and the gate runs before\neverything else.** PII is checked ahead of all other validation -- ahead of\nrequired-field checks, ahead of timestamp parsing, ahead of any repair of a\nmalformed value. A row that is both malformed and carries a rider name is\nrejected on the identity ground, and the offending value is redacted from the\nrejection record itself, so a rejection for rider PII never becomes a file full\nof rider PII (ADR-0051).\n\n**What we refuse to accept**, whether or not it is encrypted, zipped, or sent\n\"just in case it is useful\": every category in the refusals table below. Refusal\nmeans the export is set aside and you are asked to re-cut it -- not imported with\nthe column ignored. A column carrying a direct identifier stops the row even when\nthat column is blank in the sample you sent, because an all-blank column in a\ntwo-hundred-row sample is usually a populated column in the full extract.\n\n**An identifier does not have to be called a name to be one.** In an\nowner-operator fleet -- one vehicle, one driver, one licensee -- a vehicle number\n*is* a pseudonymous person identifier. `vehicle_ref` is safe for an agency's\nnumbered bus and unsafe for a single-vehicle subcontractor, and **nothing about\nthe column tells you which**. That is why the fleet-shape question is asked\ndirectly and answered by you, rather than inferred by us from a header (ADR-0057).\nIf any vehicle in your export is operated by exactly one person, tokenise\n`vehicle_ref` on your side before export, or send `run_ref` instead.\n\n**Minimisation is structural, not a policy someone remembers.** Columns outside\nthis contract are recorded **by name only, never by value** -- an unrecognised\ncolumn in an operator export is precisely where unanticipated personal data\nhides, so we decline to keep what is in it while still recording that it\nexisted, because silently dropping a column is its own kind of dishonesty.\n\n**Where pseudonymisation is weak, we say so rather than implying strength.** If a\nrider identifier is sent despite this document asking you not to send one, it is\nreplaced by an unsalted SHA-256 truncated to 24 hex characters. That is a\npseudonym, not anonymisation: over a small identifier space it is reversible by\nbrute force by anyone who already holds your client list, and it does not by\nitself take the field outside your privacy obligations. This is stated as a\nreason to omit the column, not as a reassurance.\n\n**Honest limit on all of the above.** The automated checks are a backstop, not a\nguarantee. They catch columns that announce themselves, email addresses that look\nlike email addresses, and zone values shaped like street addresses. A rider's\nname in a column called `ref2` is not caught by anything. **This document is the\ncontract; the code is the seatbelt.** If you are unsure about a column, ask\nbefore exporting rather than sending it.\n",
+  "refused": [
+    {
+      "category": "Personal names -- riders, carers, emergency contacts, or your own staff",
+      "example_columns": [
+        "rider_name",
+        "client_name",
+        "first_name",
+        "last_name",
+        "driver_name"
+      ],
+      "why": "Direct identifier. Nothing we compute uses a name."
+    },
+    {
+      "category": "Email addresses",
+      "example_columns": [
+        "email",
+        "rider_email",
+        "contact_email"
+      ],
+      "why": "Direct identifier, and the one that survives a column rename -- so it is also checked by value, in every cell."
+    },
+    {
+      "category": "Phone numbers",
+      "example_columns": [
+        "phone",
+        "home_phone",
+        "mobile",
+        "cell",
+        "fax"
+      ],
+      "why": "Direct identifier."
+    },
+    {
+      "category": "Street addresses",
+      "example_columns": [
+        "pickup_address",
+        "dropoff_address",
+        "home_address",
+        "street",
+        "addr1",
+        "apt"
+      ],
+      "why": "A pickup address is a rider's home. Zones exist precisely so this column does not have to travel."
+    },
+    {
+      "category": "National, insurance or medical identifiers",
+      "example_columns": [
+        "ssn",
+        "national_id",
+        "nhs_number",
+        "medicaid_id",
+        "medicare_id",
+        "insurance_id",
+        "mrn"
+      ],
+      "why": "Direct identifier, and in most jurisdictions a special category on top of that."
+    },
+    {
+      "category": "Dates of birth",
+      "example_columns": [
+        "dob",
+        "date_of_birth",
+        "birth_date"
+      ],
+      "why": "Quasi-identifier strong enough to re-identify on its own in combination with a zone."
+    },
+    {
+      "category": "Medical or eligibility detail",
+      "example_columns": [
+        "diagnosis",
+        "disability_type",
+        "medical_condition",
+        "eligibility_category"
+      ],
+      "why": "Health data about an individual. Refused regardless of any consent you may hold."
+    },
+    {
+      "category": "Free text of any kind",
+      "example_columns": [
+        "notes",
+        "comments",
+        "remarks",
+        "driver_notes"
+      ],
+      "why": "Unreviewable. Personal detail hides here more reliably than in the columns that announce themselves."
+    },
+    {
+      "category": "Driver-licensing and vehicle-registration identifiers",
+      "example_columns": [
+        "driver_license",
+        "hack_license",
+        "medallion",
+        "license_plate",
+        "vin"
+      ],
+      "why": "A hack licence is a person's licence, not a vehicle's, and licensee lookups are public. The 2013 NYC TLC release hashed medallion and hack licence and was de-anonymised within days because the input space is enumerable. A plate or VIN is registered to a person or a company and resolves through public and commercial lookups."
+    }
+  ],
+  "related": {
+    "companion_document": "talos/contracts/OPERATOR_DATA_CONTRACT.md",
+    "intake_adapter": "themis/connect/operator_export.py",
+    "intake_document": "forge/knowledge/docs/OPERATOR_DATA_INTAKE.md",
+    "validator": "talos/contracts/validate_operator_export.py"
+  },
+  "requirement_levels": {
+    "helpful": "Absent -> one named capability is narrowed in a way we can state precisely. Nothing else is affected.",
+    "required": "For a column: absent -> we decline the export rather than produce a number we cannot defend. This set is identical to the one already published in forge/knowledge/docs/OPERATOR_DATA_INTAKE.md; this contract adds no new mandatory column. For a declaration: unanswered -> we do not start, because each answer changes how the file must be read. Each is one line of an email, and 'we do not record that' is an acceptable answer to every one of them.",
+    "required_for_replay": "Absent -> the export is still worth sending and outcome analysis is unaffected, but decision replay and any counterfactual comparison are WITHDRAWN, not approximated. Cannot be retrofitted onto history already exported without it."
+  },
+  "status": {
+    "operator_data_held": "none",
+    "pilots": "none",
+    "statement": "Milexium holds no operator data. Nothing in this contract has been exercised on an operator export. Every capability listed is what the code is built to do, not something it has been shown to do on real data.",
+    "status_vocabulary": "forge/knowledge/architecture/decisions/0001-adopt-expansion-blueprint-and-control-plane.md",
+    "validated_claims": "none"
+  }
+}

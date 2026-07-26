@@ -8,6 +8,18 @@ cannot drift:
 - talos/contracts/jsonschema/canonical-v0.1.json  -- the 12 canonical entities
 - talos/contracts/openapi/milexium-api-v0.1.json  -- the public HTTP surface
 
+The operator data contract is the same discipline applied to a contract that has
+no running system behind it yet. Its source of truth is
+`talos/contracts/operator_contract.py`, and BOTH renderings are generated from
+it -- the machine-readable one an IT lead answers line by line, and the
+human-readable one an operations director reads. Generating both is the point:
+the two documents are for different readers, and a field list that says one thing
+to engineering and another to the person who signs off the extract is worse than
+having only one of them.
+
+- talos/contracts/jsonschema/operator-data-contract-v0.1.json
+- talos/contracts/OPERATOR_DATA_CONTRACT.md
+
 Protobuf (talos/contracts/proto/) + Buf codegen for Rust/TS/Python clients is the
 next step, deferred until the buf/protoc toolchain is installed (ADR-0026);
 the .proto seed is hand-maintained until then. Run:  py -3 talos/contracts/generate.py
@@ -88,9 +100,36 @@ def write_openapi() -> Path | None:
     return path
 
 
+def write_operator_contract() -> tuple[Path, Path]:
+    """The operator data contract, in both renderings.
+
+    Deliberately deterministic: `operator_contract.as_dict()` reads no clock and
+    iterates no set, so a second run produces identical bytes and the CI drift
+    gate (`git diff --exit-code -- talos/contracts/`) means what it says.
+    """
+    from talos.contracts import operator_contract
+
+    json_path = (
+        _HERE / "jsonschema"
+        / f"{operator_contract.CONTRACT_ID}-v{operator_contract.CONTRACT_VERSION}.json"
+    )
+    json_path.write_text(
+        newline="\n",
+        data=json.dumps(operator_contract.as_dict(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    md_path = _HERE / "OPERATOR_DATA_CONTRACT.md"
+    md_path.write_text(
+        newline="\n", data=operator_contract.as_markdown(), encoding="utf-8"
+    )
+    return json_path, md_path
+
+
 if __name__ == "__main__":
     js = write_jsonschema()
     print(f"wrote {js.relative_to(_HERE.parents[1])} ({len(_ENTITIES)} entities)")
     oa = write_openapi()
     if oa is not None:
         print(f"wrote {oa.relative_to(_HERE.parents[1])}")
+    for path in write_operator_contract():
+        print(f"wrote {path.relative_to(_HERE.parents[1])}")

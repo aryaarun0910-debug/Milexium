@@ -1,0 +1,448 @@
+id: MX-TALOS-OPERATOR-CONTRACT-016
+status: completed
+completed_date: "2026-07-26"
+dispatched_date: "2026-07-26"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none.
+
+result: >
+  A machine-readable operator data contract, a human-readable companion
+  generated from the same source, and a validator that reads a sample export and
+  reports capability by capability what it can and cannot support. 65 tests, 0
+  skipped. 33 mutations applied and checked: 29 RED first time, 4 came back
+  GREEN and ALL FOUR were real test gaps -- one of which caused a redundant
+  branch to be DELETED rather than covered. No operator data exists in this
+  repository; every fixture is synthetic and labelled.
+
+objective: >
+  Milexium has ZERO operator data. A former WMATA accessibility chief has invited
+  us to evaluate live agency deployments, and the thing that converts that
+  invitation into data is a precise, honest answer to "what exactly do you need
+  from us?". This packet writes that answer down so it can be put in front of an
+  agency and ANSWERED -- line by line, yes / no / we-do-not-record-that.
+
+  It is a CONTRACT, NOT A CONNECTOR. No integration to any scheduling system was
+  built, because no such system has been talked to. Its value is that it states
+  precisely what we must ask for and what each field buys.
+
+owned_paths:
+  - talos/contracts/operator_contract.py                      # source of truth: 27 fields, 7 capabilities, 7 not-requested, 9 refusals
+  - talos/contracts/validate_operator_export.py               # the validator (importable + CLI)
+  - talos/contracts/jsonschema/operator-data-contract-v0.1.json   # GENERATED
+  - talos/contracts/OPERATOR_DATA_CONTRACT.md                 # GENERATED companion
+  - talos/contracts/generate.py                               # +1 writer, wired into the existing drift gate
+  - talos/contracts/README.md                                 # the new rows in the artifact table
+  - aletheia/conformance/property-tests/test_operator_contract.py  # 65 tests
+  - forge/knowledge/workstreams/packets/MX-TALOS-OPERATOR-CONTRACT-016.yaml
+
+read_only_dependencies:
+  - forge/knowledge/architecture/decisions/0072-transport-ontology-decision-snapshot.md  # the two questions this packet leads with
+  - forge/knowledge/architecture/decisions/0038-operator-data-intake.md   # the required column list, reused UNCHANGED
+  - forge/knowledge/architecture/decisions/0051-graduated-repair-messy-data.md  # PII fails closed FIRST
+  - forge/knowledge/architecture/decisions/0057-adapter-vehicle-references.md   # fleet shape, not column name
+  - forge/knowledge/docs/OPERATOR_DATA_INTAKE.md      # NOT MODIFIED -- the contract extends it and does not restate it differently
+  - themis/connect/operator_export.py                 # NOT MODIFIED -- `classify_pii_column`, `looks_like_street_address`, `_contains_email` IMPORTED
+  - themis/**, metis/**, argus/**, aletheia/** (source)  # NOT MODIFIED (concurrent packets)
+
+normative_contracts:
+  - ADR-0001   # status vocabulary: nothing here is Validated, and the contract says so on page one
+  - ADR-0007   # adapter contract: nothing silently dropped
+  - ADR-0026   # contracts-first; talos/contracts/ is the one contract layer
+  - ADR-0038   # the published required column list -- reused, not re-derived
+  - ADR-0051   # PII fails closed AHEAD of all other validation
+  - ADR-0057   # in an owner-operator fleet a vehicle id is a person id
+  - ADR-0069/0070   # claim discipline: no savings, no ROI, no "validated"
+
+problem: >
+  ADR-0072 closed by naming what it had to GUESS about operator data, and two of
+  those guesses are not engineering problems -- they are acquisition problems
+  with a deadline attached.
+
+  FIRST: Milexium's receipt time is a proxy for the operator's KNOWLEDGE time. If
+  their system knew at 10:30 and exported at 11:00, our 10:45 snapshot correctly
+  excludes it -- correct for us, but THE DISPATCHER KNEW. Replay then
+  systematically credits their staff with LESS information than they had, and
+  biases every "we would have done better" comparison IN OUR FAVOUR. A
+  source-side knowledge timestamp cannot be retrofitted onto history already
+  exported without one, so the ask has to exist BEFORE the first extract.
+
+  SECOND: 8-12 weeks arriving as one backfill gives every row the same receipt
+  time, so every snapshot over that history shares one boundary. Without the
+  first, backfilled data supports OUTCOME ANALYSIS BUT NOT DECISION REPLAY, and
+  the contract says so rather than accepting data that cannot answer the question
+  we would use it for.
+
+  Nothing in the repository stated either of those to an operator, or could check
+  whether an arriving file satisfied them.
+
+what_was_built:
+  source_of_truth: >
+    `talos/contracts/operator_contract.py`. 27 fields (16 required -- 9 columns,
+    6 declarations and 1 conditional declaration -- 3 required-for-replay and 8
+    helpful), each carrying what it
+    UNLOCKS and what is LOST WITHOUT IT, plus the question an IT lead answers.
+    7 capabilities, each naming the fields it needs. 7 explicit NOT-REQUESTED
+    items with what we give up by omitting them, and 9 refusal categories.
+
+    THE RULE THE FILE IS WRITTEN UNDER, made a test: a field that cannot state
+    both halves does not belong. `test_no_field_gates_nothing` fails if any field
+    gates no capability, because an operator asked for everything gives nothing.
+
+  two_renderings_one_source: >
+    BOTH the machine-readable JSON and the human-readable Markdown are GENERATED
+    from that module by `talos/contracts/generate.py`, which the CI drift gate
+    already covers (`git diff --exit-code -- talos/contracts/`). The two
+    documents are for different readers -- an IT lead and an operations director
+    -- and a field list that says one thing to engineering and another to the
+    person who signs off the extract is worse than having only one of them.
+
+    Even the headline numbers are computed: "nine columns, six questions, two
+    timestamps" is substituted from the field list, so the opening sentence
+    cannot drift away from the table beneath it.
+
+  the_validator: >
+    `talos/contracts/validate_operator_export.py`. Takes a sample export (CSV or
+    dict rows), plus the operator's answers to the declaration questions, and
+    reports capability by capability with the missing field NAMED:
+
+      "This export supports outcome analysis, deadhead measurement and
+       unmet-demand forecasting. It cannot support information-set replay,
+       because no source-side knowledge timestamp is present."
+
+    It writes nothing, opens no network connection, and can be run by the agency
+    before anything leaves their building. Exit code 1 only on REFUSAL; a file
+    that supports less than the maximum is a normal, useful answer.
+
+  pseudonymisation_and_minimisation: >
+    A statement in the contract itself (rendered into both artifacts), and a gate
+    in the validator. Rider identity must never arrive in the clear; the identity
+    check runs BEFORE everything else; refusal means the export is set aside and
+    re-cut, not imported with the column ignored; unrecognised columns are
+    recorded by NAME ONLY; and the weakness of the existing tokenisation
+    (unsalted SHA-256, a pseudonym and not anonymisation) is stated as a reason
+    to omit the column rather than as reassurance.
+
+the_required_vs_helpful_split:
+  design_note: >
+    THREE levels, not two, and the third exists for exactly one reason. Marking
+    the knowledge timestamp REQUIRED would make the contract unanswerable --
+    many systems do not record one, and an operator whose honest answer fails the
+    contract outright sends nothing. Marking it HELPFUL would understate it: its
+    absence withdraws a whole class of claim. So `REQUIRED_FOR_REPLAY` says
+    precisely that, and `test_the_knowledge_timestamp_is_not_marked_plain_required`
+    pins the judgement so it cannot be "tidied" into one of the other two.
+  required_columns_9: >
+    trip_ref, requested_at, scheduled_pickup_at, actual_pickup_at (when served),
+    pickup_zone, dropoff_zone, vehicle_ref OR run_ref, outcome. IDENTICAL to
+    ADR-0038's published list -- this contract adds NO new mandatory column, and
+    a conformance test asserts the set equals
+    `themis.connect.operator_export.REQUIRED_COLUMNS` + the vehicle-or-run pair,
+    so the document and the adapter that enforces it cannot promise different
+    things in either direction.
+  required_declarations_6: >
+    export_generated_at, coverage_window, timestamp_convention, fleet_shape,
+    source_systems, alternatives_logged. These are ANSWERS, not data -- an email
+    is sufficient -- and they are required because each changes how the file must
+    be READ. Plus one conditional: denial_code_list, required only if the export
+    contains denied rows, because denials with no code list force exactly the
+    guess this contract exists to prevent.
+  required_for_replay_3: >
+    record_created_known_at, record_updated_known_at, knowledge_time_source.
+  helpful_8: >
+    actual_dropoff_at, scheduled_dropoff_at, outcome_known_at, denial_code,
+    trip_distance, run_roster (table), candidate_log (table),
+    field_authority_map.
+
+justification_per_required_field:
+  trip_ref: "The handle a corrected re-send is matched on. Without it a second export cannot be reconciled with the first and can only replace it wholesale."
+  requested_at: "Demand is when people ASK, not when they travel. Without it a trip booked three weeks ahead and one booked at 06:00 the same morning are the same event."
+  scheduled_pickup_at: "The promise lateness is measured against. Without it lateness is undefined -- there is nothing to be late relative to."
+  actual_pickup_at: "Realised lateness. Without it on-time performance cannot be computed, and we will not substitute the scheduled time for the actual one -- the gap between them IS the measurement."
+  pickup_zone_dropoff_zone: "Origin-destination structure and the spatial half of deadhead. Without them every trip is placeless."
+  vehicle_ref_or_run_ref: "Deadhead is measurable ONLY by chaining one vehicle's consecutive trips (ADR-0039). A row naming neither cannot be chained, so the empty time between trips does not exist as a quantity."
+  outcome: "Separates 'happened late' from 'did not happen'. Without it a refused trip and a trip never requested are identical, and every rate has an unknown denominator."
+  export_generated_at: "The ceiling on what can be in the file -- AND the control that catches a knowledge timestamp which is really the export time under another name."
+  coverage_window: "Tells a quiet Sunday from a missing day. Without it every per-day figure inherits the shape of the extract rather than the shape of the service."
+  timestamp_convention: "Without it we assume UTC, which shifts every trip by the local offset and makes every on-time number wrong WHILE LOOKING PERFECTLY WELL-FORMED."
+  fleet_shape: "Decides whether vehicle_ref is a vehicle id or a person id (ADR-0057). Unanswered fails closed and withholds vehicle-level analysis."
+  source_systems: "Decides whether two fields can disagree at all. One system cannot contradict itself; a booking system joined to an AVL feed can."
+  alternatives_logged: "The difference between 'nothing else was considered' and 'we do not know what else was considered'. Only one of those is a finding."
+  denial_code_list: "Required only when denials are present. Without it, codes get bucketed by how they LOOK, which is a fabrication dressed as a mapping."
+
+what_the_validator_reports_on_a_sample_lacking_knowledge_timestamps:
+  headline: >
+    "This export supports outcome analysis, deadhead measurement and unmet-demand
+    forecasting. It cannot support information-set replay, because no source-side
+    knowledge timestamp is present. Also unsupported, for their own reasons:
+    intra-day state replay, counterfactual comparison and denial analysis."
+  finding: >
+    NO_KNOWLEDGE_TIMESTAMP (critical). The message names the 10:30/11:00 case,
+    states the DIRECTION of the bias ("in our favour" -- asserted by test,
+    because "replay would be less accurate" is a technical caveat while "it
+    biases the comparison in our favour" is the reason we refuse to publish it),
+    says the export is still worth sending, repeats the operator question, and
+    states that it cannot be retrofitted.
+  the_harder_case_and_the_reason_the_validator_exists: >
+    A PRESENCE test on the knowledge timestamp is nearly worthless, because the
+    field that matters most is also the one most likely to be present and
+    MEANINGLESS. An extract writing `created_at = now()` on every row produces a
+    column that is fully populated and correctly typed and is the export time
+    under another name -- and a validator reporting "decision replay: supported"
+    for it would be WORSE than no validator, because the analysis built on it
+    looks rigorous. Four degeneracy checks, each pure arithmetic on the sample:
+      - KNOWN_AT_CONSTANT           one value across every row
+      - BACKFILL_SIGNATURE          events spanning weeks, knowledge spanning hours
+      - KNOWN_AT_EQUALS_EXPORT_TIME >= half the rows equal the declared export time
+      - KNOWN_AT_PRECEDES_EVENT     a row known before the booking it describes
+    Every one of them has a test whose fixture WOULD PASS a presence check.
+  partial_population: >
+    Any row missing the timestamp -> SUPPORTED_WITH_LIMITS with the count named,
+    not a pass and not a refusal: replay over a subset is possible and the subset
+    is not the board.
+  arrivals_vs_state: >
+    Reported as SEPARATE capabilities. A created timestamp alone rebuilds which
+    bookings EXISTED at an instant; it does not rebuild the BOARD, because the
+    cancellations and reassignments that changed it during the day are only
+    visible in their final state -- and that is most of what a dispatcher reacts
+    to. Collapsing the two would overstate what a created/modified pair buys.
+
+minimum_viable_ask: >
+  EIGHT TO TWELVE WEEKS, FROM ONE AGENCY, COMPLETE OVER THAT WINDOW. One complete
+  decision-to-outcome chain is worth more than five years of disconnected trip
+  totals, because trip totals answer "what happened" and a chain answers "what
+  was knowable when the choice was made".
+
+  Three things matter more than volume, and all three are stated in the companion
+  document: (1) COMPLETE, not filtered -- an export of served trips only makes
+  unmet demand structurally invisible, and the validator treats "every row is
+  served" as a DEFECT IN THE EXTRACT rather than a perfect service record;
+  (2) a 200-row sample FIRST, run through the validator, so both sides find the
+  problems before anything of size moves; (3) eight weeks is a floor, below which
+  day-of-week and weather effects are not separable from noise.
+
+deliberately_not_requested:
+  - name: "rider_ref -- any rider identifier, including a pre-hashed one"
+    why: "Nothing in the described analysis needs to link two trips to the same person, and the existing tokenisation is an unsalted hash over a small id space."
+    cost: "Repeat-rider behaviour entirely: no-show propensity, whether the same people are late repeatedly, subscription patterns."
+  - name: "driver / operator identifier, even tokenised"
+    why: "Everything computed attributes work to a RUN, not a person. Shift boundaries -- the one thing a driver id might have served -- are asked for on the run roster instead."
+    cost: "Any per-driver variation. That is a performance-management question and not one we are offering to answer."
+  - name: "rider mobility-device flag, eligibility category, trip purpose"
+    why: "Health-adjacent facts about an individual. ADR-0038 refuses them and this packet does not reopen that."
+    cost: >
+      THE ONE OMISSION THAT COSTS SOMETHING REAL, and it is raised rather than
+      buried: without a per-trip accessible-vehicle-required flag we can count
+      denials the operator already CODED as accessibility denials and check them
+      against the accessible vehicles on shift (via the run roster), but we
+      cannot measure unmet ACCESSIBLE demand directly. Given that the invitation
+      came from an accessibility chief, this is the trade-off most likely to
+      matter -- so it is stated as a decision for their counsel, not made
+      silently in either direction.
+  - name: "fare, payment, funding source, subscription status"
+    why: "No capability consumes them, and a monetary figure would need a fixed/variable cost split we do not have and would not quote a saving from."
+    cost: "Any cost or revenue statement, which we are not making."
+  - name: "GPS breadcrumb traces / raw AVL position streams"
+    why: "A breadcrumb trail is a doorstep whenever the vehicle is stopped."
+    cost: "Route-level deadhead geometry. A per-trip odometer delta answers the mileage question without a trace, so that is asked for instead."
+  - name: "free-text notes, driver comments, dispatcher remarks"
+    why: "Unreviewable, and where personal detail actually hides. REFUSED, not merely unrequested."
+    cost: "Whatever context a dispatcher wrote down. Genuinely a loss; taken anyway."
+  - name: "live API access, database credentials, system integration"
+    why: "A file is all we want at this stage and all we will accept."
+    cost: "Nothing, for the evaluation described."
+
+refusals_the_gate_enforces:
+  - "Names, emails, phones, street addresses, national/insurance/medical ids, dates of birth, medical or eligibility detail, free text -- the ADR-0038 table."
+  - "Driver-licensing and vehicle-registration identifiers: driver_license, hack_license, medallion, license_plate, vin. A hack licence is a PERSON'S licence; the 2013 NYC TLC release hashed medallion and hack licence and was de-anonymised within days because the input space is enumerable."
+  - "A pickup or dropoff zone shaped like a street address."
+  - "An email address in ANY cell, so renaming the column does not defeat the check."
+  - "vehicle_ref in an owner-operator fleet, because vehicle and driver are 1:1 there and a vehicle number is then a pseudonymous person id. THE QUESTION IS FLEET SHAPE, NOT COLUMN NAME -- so it is asked of the operator and never inferred from a header, and the SAME column is accepted or refused depending on the answer."
+
+ordering_and_fail_closed_behaviour:
+  - "The identity gate runs FIRST -- before required-column checks, before timestamp parsing, before any capability is assessed. Proven by a fixture that is otherwise PERFECT (every column, every declaration, a genuine knowledge timestamp, revisions, denials) and carries a rider name: it is refused, and every capability is reported NOT_ASSESSED rather than NOT_SUPPORTED, because we did not look and a verdict on a file we declined to read would be a claim about data never examined."
+  - "The gate fires on the COLUMN even when it is blank in the sample: an all-blank identity column in 200 rows is usually a populated one in the full extract."
+  - "Laundering through `column_map` does not defeat it -- the check reads the operator's OWN header, not the mapped target."
+  - "No cell value from the sample ever reaches a finding. Findings name COLUMNS. ADR-0057 closed a live defect where a rejected identifier was echoed into a loss record; a report that quotes the rider's name is a second copy of the thing being refused."
+  - "Unanswered fleet shape -> withheld. UNREADABLE fleet shape -> also withheld, with a distinct code, because an ambiguous answer to a privacy question is the last place to resolve by resemblance."
+  - "alternatives_logged fails closed in the OPPOSITE direction: the counterfactual is supported only on a clear YES, because the dangerous reading there is treating a 'no' as an affirmative and then recording alternatives=() as a fact."
+
+mutations_checked:
+  method: >
+    33 single-point source mutations, applied one at a time to the shipped
+    source, with the test file re-run and the file restored afterwards. Harness
+    lived in the scratchpad, not the repo. Tree re-run green after each batch.
+  came_back_green_and_were_real_gaps:
+    - id: M10
+      mutation: "`_reads_as_no` matches the negative tokens ANYWHERE in the answer instead of as the first word only."
+      why_it_was_green: >
+        Both unreadable-answer fixtures ("not sure", "I would have to check with
+        the contractor team") contain NO negative token at all, so neither could
+        tell the two rules apart. The first-word rule -- the thing that stops "I
+        have no idea" being read as "no" on a privacy question -- was certified
+        by tests that never exercised it. The mutation was correct; the test was
+        the gap.
+      closed_by: "'I have no idea' added to the unreadable fixtures. Re-run: RED."
+    - id: M19
+      mutation: "The companion document's headline question count replaced with a typed literal 'six'."
+      why_it_was_green: >
+        `test_the_headline_numbers_are_derived_not_typed` compared the rendered
+        number against `_spell(len(...))` -- and a hardcoded six and a computed
+        six are the same string TODAY, so the assertion passed over a literal.
+        The test asserted the value, not the derivation. Fixed by PERTURBING the
+        field list with monkeypatch and asserting the sentence moves with it,
+        which is the only form of the assertion that distinguishes the two.
+      closed_by: "test_the_headline_numbers_are_derived_rather_than_typed. Re-run: RED."
+    - id: M20
+      mutation: "The `row_count == 0 -> NOT_SUPPORTED` special case in `_verdicts` deleted."
+      why_it_was_green: >
+        THE MUTATION WAS RIGHT AND THE BRANCH WAS DEAD. Every capability requires
+        at least one COLUMN, so an empty sample already reports every capability
+        unsupported through the ordinary missing-column path -- and does it
+        better, because the reasons name the columns instead of restating that
+        the file was empty.
+      closed_by: >
+        The branch was DELETED rather than covered by a test written to reach it,
+        and `test_every_capability_requires_at_least_one_column` put in its place
+        so a future declaration-only capability cannot silently make an empty
+        file look supported. Keeping unreachable code and writing a test to
+        justify it is how a redundant branch survives review forever.
+    - id: M31
+      mutation: "The required-column loop folded the CONDITIONAL columns (actual_pickup_at, vehicle_ref, run_ref) in with the unconditional ones."
+      why_it_was_green: >
+        The false-positive direction, and the one that costs goodwill. An export
+        sending `run_ref` alone is fully compliant; with the mutation the
+        validator tells that operator `vehicle_ref` is a missing required column
+        -- asking for MORE than the adapter enforces, which is the exact drift
+        the contract-versus-adapter test guards against one level up. Every
+        fixture happened to carry `actual_pickup_at`, and no test asserted the
+        ABSENCE of a spurious finding. The mutation was correct; the test was
+        the gap.
+      closed_by: >
+        test_a_conditionally_required_column_is_not_reported_as_simply_missing,
+        plus a real check the gap revealed was missing entirely --
+        SERVED_ROWS_WITHOUT_AN_ACTUAL_PICKUP, which counts served rows with no
+        actual pickup time per ROW rather than per column, because a column
+        blank for every cancelled trip is correct and blank for a served one is
+        the measurement missing. Re-run: RED.
+  all_red_first_time:
+    - "M1  identity gate no longer runs first                              -> RED"
+    - "M2  KNOWN_AT_CONSTANT degeneracy check deleted                      -> RED"
+    - "M3  BACKFILL_SIGNATURE check deleted                                -> RED"
+    - "M4  KNOWN_AT_EQUALS_EXPORT_TIME check deleted                       -> RED"
+    - "M5  knowledge-time ordering violation ignored                       -> RED"
+    - "M6  fleet-shape gate always passes vehicle_ref                      -> RED"
+    - "M7  unreadable fleet-shape answer counts as answered (fails OPEN)   -> RED"
+    - "M8  alternatives-logged 'no' no longer withdraws the counterfactual -> RED"
+    - "M9  served-only export no longer flagged                            -> RED"
+    - "M11 capabilities reported NOT_SUPPORTED instead of NOT_ASSESSED     -> RED"
+    - "M12 refusal report echoes the offending cell values                 -> RED"
+    - "M13 partial knowledge time reported as fully SUPPORTED              -> RED"
+    - "M14 intraday state replay no longer needs a visible revision        -> RED"
+    - "M15 deadhead reported as a measurement without a dropoff time       -> RED"
+    - "M16 contract's required column set drifts from the adapter          -> RED"
+    - "M17 knowledge timestamp demoted to HELPFUL                          -> RED"
+    - "M18 an ungated field added to the contract                          -> RED"
+    - "M21 EMPTY_SAMPLE finding deleted                                    -> RED"
+    - "M22 naive-timestamp warning deleted                                 -> RED"
+    - "M23 identity gate reads the MAPPED target, not the operator header  -> RED"
+    - "M24 minimum-viable-window check deleted                             -> RED"
+    - "M25 markdown renderer drops the pseudonymisation statement          -> RED"
+    - "M26 email value check deleted (renaming defeats the gate)           -> RED"
+    - "M27 address-shaped zone check deleted                               -> RED"
+    - "M28 served-only export still supports demand forecasting            -> RED"
+    - "M29 required-column check no longer covers vehicle-or-run           -> RED"
+    - "M30 declaration answers ignored (every declaration counts supplied) -> RED"
+    - "M32 required-column check derives from HELPFUL instead of REQUIRED     -> RED"
+    - "M33 served-rows-without-an-actual-pickup check deleted                 -> RED"
+
+test_counts:
+  test_operator_contract.py: 65
+  skipped: 0
+
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_operator_contract.py -q   # 65 passed, 0 skipped"
+  - "py -3 talos/contracts/generate.py && git diff --exit-code -- talos/contracts/   # the CI drift gate, clean"
+  - "py -3 talos/contracts/validate_operator_export.py <sample.csv> --declarations <answers.json>"
+  - "py -3 -m pytest themis/ metis/ aletheia/ argus/ -q   # 2927 passed, 1 skipped (see full_suite_result)"
+
+full_suite_result: >
+  2927 passed, 1 skipped, 980s, run with three concurrent packets' work also
+  present in the tree. Two failures appeared in that run, BOTH in
+  aletheia/conformance/property-tests/test_dependency_direction.py -- a file this
+  packet does not own and did not touch, landed by the concurrent
+  MX-ARCH-PROHIBITIONS-016 while the suite was running, so its module census was
+  taken against a tree that was still moving. Re-run in isolation afterwards:
+  24 passed. The 280-test slice most adjacent to this packet
+  (test_operator_contract, test_api_contract_drift, test_operator_export,
+  test_messy_operator_data, test_dependency_direction, test_claim_discipline,
+  test_adapter_vehicle_references) is green.
+
+  ONE COORDINATION ITEM for that concurrent packet: its docstring says "4 talos
+  modules import themis (6 sites)". This packet adds a fifth
+  (validate_operator_export.py imports classify_pii_column and two helpers), so
+  that sentence is now stale. Nothing is asserted on the count -- the test pins
+  only `reaches['argus'] == {talos/contracts/generate.py}`, which this packet does
+  not touch -- so it is a prose fix in their owned file, not a failure.
+
+drift_gate: >
+  The two new artifacts are generated by the EXISTING `talos/contracts/
+  generate.py`, so the existing CI gate (`git diff --exit-code -- talos/
+  contracts/`) covers them with no workflow change. Rendering is deterministic:
+  no clock is read, no set is iterated, JSON is sorted and indented, newline is
+  forced to "\n". `test_rendering_is_deterministic` and
+  `test_the_committed_artifacts_match_a_fresh_render` are the local half, and
+  the latter deliberately WRITES NOTHING -- a test that regenerated the artifact
+  would repair the drift it exists to report and pass for the wrong reason.
+
+scope_honesty:
+  what_this_is: >
+    A statement of what to ask an operator for, in two renderings from one
+    source, plus a tool that checks whether an arriving sample satisfies it.
+  what_this_is_NOT:
+    - "NOT a connector. Nothing in themis/connect was modified; no scheduling system is contacted; no operator format is parsed that themis/connect/operator_export.py does not already parse."
+    - "NOT an ingest path. The validator persists nothing, repairs nothing and imports nothing. It reads a sample and prints."
+    - "NOT wired into the ontology. `themis/ontology/` is where a knowledge timestamp would eventually live; this packet does not add the column, the adapter or the migration -- it establishes whether the data would exist to fill it."
+    - "NOT an agreement. The companion document says on page one that it cannot create one, and the signed data-sharing agreement, contracting entity, secure transfer and the operator-side privacy assessment remain founder/legal tasks (ADR-0038 §7)."
+    - "NOT evidence of anything. No operator has seen it, answered it, or sent a file."
+  status_label: >
+    Exists. Demonstrated on SYNTHETIC fixtures only. Nothing here is Validated,
+    there are zero operator customers and zero pilots, and the contract states
+    that in its own first section rather than in a footnote.
+
+limitations:
+  - "NO OPERATOR HAS SEEN THIS. Every field is a request, several are requests we expect to be answered 'we do not record that', and the requirement levels are OUR judgement about what makes a claim defensible. An operator may reasonably disagree about which fields are worth the effort; that disagreement is the conversation this is meant to start."
+  - "THE FIELD LIST IS DERIVED FROM WHAT THIS REPOSITORY CAN CONSUME, not from any real vendor export. No Ecolane, TripSpark, RouteMatch or Trapeze extract has been inspected. Field NAMES an operator would actually see are unknown, which is why the validator takes a column_map instead of assuming headers."
+  - "THE VALIDATOR REPORTS ON THE SAMPLE. A column populated in 200 rows may be null in the other two million, and a clean report is the most dangerous output it can produce -- which is why the report carries its own limits section."
+  - "THE IDENTITY GATE IS A BACKSTOP, NOT A SCANNER. It catches columns that announce themselves, emails that look like emails and zones shaped like addresses. A rider's name in a column called `ref2` passes, and nothing detects it."
+  - "THE ADR-0057 CLASSIFIER GAP IS STILL OPEN. `classify_pii_column` does not catch hack_license / medallion / license_plate / vin; the vocabulary is applied LOCALLY here, exactly as tlc_trips.py does, because widening the shared classifier would change what the ingest adapter quarantines for unrelated reasons -- and that path is another packet's. Two local copies of the same vocabulary now exist and should converge."
+  - "THE DEGENERACY THRESHOLDS ARE STATED RULES, NOT TUNED PARAMETERS, and they are guesses about data nobody has seen. A live feed exported weekly could trip BACKFILL_SIGNATURE legitimately, which is why the finding names the two spans and asks rather than concluding."
+  - "TIMESTAMP PARSING IS DELIBERATELY THINNER THAN THE ADAPTER'S. The validator does not implement ADR-0051's ten repair rules; an unparseable value is reported as unparseable. Duplicating the repair layer would give an operator two different answers about the same file, but it does mean a file the adapter would happily repair can look worse here than it is."
+  - "CAPABILITY VERDICTS ARE ABOUT THE DATA, NOT ABOUT US. 'Supported' means the file would support the analysis. It does not mean the analysis has ever been run on operator data, and the report says so in the output itself."
+  - "NO DECLARATION SCHEMA IS ENFORCED. `--declarations` takes free-form JSON keyed by field name. Answers are read as prose (yes/no detection is word-based and fails closed), so a typo'd key is silently an unanswered question rather than an error."
+  - "THE RUN ROSTER AND CANDIDATE LOG ARE DECLARED, NOT PARSED. The validator accepts the operator's word that they were sent; it does not read them. Their contents are unspecified beyond a column list, because specifying a schema for a file no one has seen is the guess this packet exists to avoid."
+  - "ONE OMISSION IS A REAL ANALYTICAL LOSS AND IS NOT PAPERED OVER: with no per-trip accessible-vehicle-required flag, unmet ACCESSIBLE demand cannot be measured directly -- only the subset the operator's own system already labelled as an accessibility denial. Given who the introduction came from, that limitation should be discussed early rather than discovered late."
+
+forbidden_interface_changes_observed:
+  - "themis/, metis/, argus/ and aletheia/ SOURCE not modified (three concurrent packets). Only read-only imports of themis.connect.operator_export."
+  - "forge/knowledge/docs/OPERATOR_DATA_INTAKE.md NOT modified -- the contract extends it and is asserted against the adapter it describes."
+  - "No ADR written. No git add / commit / push. IMPLEMENTATION_STATUS.md and forge/knowledge/docs/JOURNAL.md NOT edited -- the orchestrator's to make."
+  - "The existing generated artifacts (canonical-v0.1.json, milexium-api-v0.1.json) regenerate byte-identical; the drift gate was extended, not disturbed."
+  - "No claim of savings, ROI, validation or a pilot appears in either artifact, and a test asserts it."
+
+downstream_consumers:
+  - "Outreach: the companion document is the answer to 'what exactly do you need from us?' and can be sent as-is."
+  - "Program B (adapters): the validator's capability verdicts say what an adapter would have to be written for, and what it could never recover."
+  - "themis/ontology (ADR-0072): `record_created_known_at` is the column its receipt-time proxy needs. If an operator answers yes, the ontology needs one nullable column and one extra conjunct -- stated as low cost IF asked before the history loads, which is what this packet does."
+  - "Program H (replay): the contract states plainly which exports can and cannot support a counterfactual, so a replay is never run against data that cannot carry it."
+
+notes: >
+  ONE THING WORTH THE ORCHESTRATOR'S ATTENTION. This packet takes a position that
+  should be checked before it is sent to anyone: the required COLUMN list is
+  frozen at ADR-0038's, and everything this packet adds is either a question
+  answerable by email or a HELPFUL field. That is deliberate -- an operator who
+  has read the intake document and then reads this one must not find a longer
+  mandatory ask -- but it means the single most important field in the whole
+  packet, the knowledge timestamp, is NOT mandatory. The contract's answer is to
+  withdraw the claim instead of the data, and to say so in the output. If the
+  orchestrator disagrees and wants it mandatory, that is a one-line change to
+  `Requirement` on one field plus the test that pins it, and it will cost some
+  operators who would otherwise have sent something.
