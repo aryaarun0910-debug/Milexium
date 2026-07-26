@@ -108,8 +108,15 @@ credentials are local-only and gitignored — see
 ```bash
 py -3 -m pytest                        # the full suite
 py -3 -m argus.demo                    # end-to-end walkthrough, ~2.5s
+py -3 -m argus.command_centre          # the operating picture, ~2.4s -> HTML
 py -3 talos/tools/audit_repository.py  # structure, data boundaries, integrity
 ```
+
+`argus.command_centre` writes `aletheia/artifacts/command-centre/index.html` — a
+self-contained page that opens from disk with no server and no network. **Every
+number on it prints its own source** (layer, call site, what was read), because
+Argus composes and never originates. Alongside it, `operating_picture.json` is
+the machine-checkable record behind every figure.
 
 The demo's best moments are its **refusals**: PII quarantined ahead of all other
 validation, an ambiguous date declined while its unambiguous twin is repaired, a

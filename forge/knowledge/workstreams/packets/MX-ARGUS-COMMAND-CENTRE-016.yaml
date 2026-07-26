@@ -1,0 +1,263 @@
+id: MX-ARGUS-COMMAND-CENTRE-016
+status: completed
+completed_date: "2026-07-26"
+dispatched_date: "2026-07-26"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none by instruction
+
+result: >
+  THE OPERATIONAL PICTURE, AS ONE HTML FILE THAT OPENS FROM DISK. `py -3 -m
+  argus.command_centre` writes aletheia/artifacts/command-centre/index.html in
+  3.2 s warm (8.3 s of total process time, the rest interpreter start and the
+  solver-stack import): current state, forecast risk, scarce accessible capacity, the
+  decision with every rejected alternative and its exact binding constraint,
+  what the commitment would cost in future capacity, the serve-time drift
+  evidence, the human authorisation on a hash-chained ledger, and the later
+  actual outcome against what was expected. No web server, no build step, no
+  CDN, no JavaScript, no network reference of any kind.
+
+  EVERY NUMBER CARRIES ITS SOURCE, STRUCTURALLY. Nothing reaches the page except
+  as an `attribution.Figure`, which cannot be constructed without a `Source`
+  naming the layer, the call or file, and what was read; the renderer prints
+  that attribution UNDER every number rather than behind a tooltip, and every
+  table carries one too. 47 figures this build: 14 Themis, 13 Metis, 5 Aletheia,
+  5 governed corpus, 9 DECLARED scenario input, 1 the page about itself.
+
+  THE DECLARED INPUTS ARE VISIBLE AS SUCH, NOT BLENDED. `Figure.derived_from`
+  attributes a composite to its WEAKEST input, so a percentage of governed
+  counts stays governed and the same percentage with a modelling assumption in
+  it becomes DECLARED and renders with a different tag. Nine such figures. All
+  eight declared inputs are listed in full on the page with why each is declared
+  rather than read.
+
+  SEVEN REFUSALS ARE ON THE PAGE. PII quarantined ahead of all other validation;
+  an ambiguous date declined while its unambiguous twin is repaired; NO DEMAND
+  FORECAST SHOWN AND NONE SUBSTITUTED (the registry has no champion and Argus
+  renders `NoChampionError` verbatim); a conformal interval withdrawing its own
+  coverage guarantee under measured drift, in the monitor's own words; no
+  savings envelope without the operator's own cost split; 43.0 empty minutes
+  left unattributable; and the operator's own denial keeping its own missing
+  reason.
+
+  16 MUTATIONS APPLIED, 16 RED AFTER CLOSURE. Nine RED first time, four survived
+  and one more survived a follow-up round. Every survivor had the same shape the
+  packet warned about -- the fixture never reached the case the guard covers --
+  and each was closed by constructing the violating case rather than by
+  strengthening the prose.
+
+deliverables:
+  - argus/command_centre/attribution.py    # Source / Figure / FigureLedger; the prohibition as a type
+  - argus/command_centre/picture.py        # composition: drives Themis, Metis, Aletheia; decides nothing
+  - argus/command_centre/render.py         # OperatingPicture -> one self-contained HTML file
+  - argus/command_centre/__init__.py
+  - argus/command_centre/__main__.py       # py -3 -m argus.command_centre [dir] [--skip-real-drift]
+  - aletheia/conformance/property-tests/test_argus_command_centre.py   # 35 tests
+  - aletheia/artifacts/command-centre/index.html                # the page
+  - aletheia/artifacts/command-centre/operating_picture.json    # every figure with its attribution
+
+what_the_page_shows:
+  current_state: >
+    15 canonical requests, 3 vehicles, 2 named runs, 1 denial, 1 no-show, 9 rows
+    quarantined, 153 repairs recorded. Per-vehicle shift envelopes and a
+    per-request table, all from canonical records.
+  forecast_risk: >
+    A REFUSAL where the number would be. Argus calls
+    `ForecastRuntime.forecast('forecast.demand', ...)` on every build; the
+    registry has no champion (the trained boosters are gitignored local
+    artifacts) and the page renders the exception. Beneath it, the demand
+    already in the book against capacity in service, by hour, with the hour at
+    which assigned wheelchair demand exceeds accessible positions flagged
+    (07:00 on this scenario).
+  scarce_accessible_capacity: >
+    Wheelchair positions counted separately from seats everywhere, with the
+    footprint against shared floor stated. `AccessibilityProfile.can_bind` is
+    surfaced as an explicit anti-vacuity check.
+  the_decision: >
+    Six probes across three vehicles and two independent authorities.
+    `metis.decide.solve` denies on all three: SHIFT_END, NO_ACCESSIBLE_CAPACITY,
+    SHIFT_END. `certify_insertion` answers separately and its verdicts are shown
+    unreconciled, with the structural reason for the disagreement stated.
+  future_capacity_cost: >
+    `metis.decide.capacity_value` surfaced, not reimplemented. 4 draws x 16
+    hypothetical trips. The counterfactual placement of the denied rider
+    forecloses 0.75 +/- 0.48 future trips, ALL of them accessible.
+  uncertainty: >
+    The serve-time drift monitor on the real Access-A-Ride panel: control
+    no_drift/unqualified, real 2026 serving window drift/unsupported on 9
+    features, per-feature PSI and KS. Labelled as evidence about that panel and
+    NOT about the synthetic operator.
+  authorisation: >
+    RECOMMENDATION -> REJECTION -> OVERRIDE on the append-only hash-chained
+    ledger, read back after writing, with prev_hash -> hash per row and
+    integrity_verified True across 0 chain violations. The actor is labelled
+    synthetic on the page.
+  outcome: >
+    Milexium denied T-2005 with SHIFT_END, recorded before the outcome was
+    known; the operator's export later recorded DENIED. The outcome matched and
+    the reason is still unknown -- and Milexium does not back-fill it.
+
+findings_reported_not_worked_around:
+  - >
+    THE TWO AUTHORITIES CANNOT AGREE, STRUCTURALLY.
+    `metis.decide.DecisionProblem` carries a shift start and end PER VEHICLE.
+    `metis.decide.darp_ir.DarpInstance` has ONE depot with ONE time window and
+    cannot express a per-vehicle shift at all, so the capacity lens cannot see
+    the constraint that actually binds this decision, and certifies insertions
+    the scheduler denied. The page states this and uses the lens only for what a
+    placement would COST, labelled a counterfactual. Reported rather than
+    patched: the fix belongs in metis/, which this packet did not own.
+  - >
+    MILEXIUM'S CANONICAL RECORDS STILL CANNOT DRIVE MILEXIUM'S OWN GEOMETRY. The
+    intake column list carries no trip END time and neither does `Outcome`, so
+    the mean trip duration that scales the projection is read from the export's
+    unmapped ActualDO column, outside the canonical path. ADR-0068 hit the same
+    wall for the deadhead teardown; this is the second surface to need it and
+    the first to need it for something other than deadhead.
+  - >
+    THE PROJECTION'S FLEET HAS SLACK THE REAL DAY DID NOT, and the capacity
+    figures show it: every committed block scores ZERO foreclosure, because
+    three vehicles with one depot window and no shift bound absorb nearly every
+    hypothetical trip. Tightening `max_route_duration` to the day's own longest
+    block was tried and changed nothing. Reported as a negative result on the
+    page, because a table of zeros with no explanation is indistinguishable from
+    a broken computation.
+  - >
+    THE EQUIPMENT CHECKER REFUSED NOTHING ON THIS SCENARIO (0 of 3), and the
+    page says so rather than omitting the count. The wheelchair-position
+    constraint binds inside the SCHEDULING authority instead. The conformance
+    suite separately constructs the case that makes the checker fire on this
+    page's own instance, because a count of zero is not evidence that it could
+    not.
+  - >
+    `decision_alternatives` remains unwritable through the supported API -- the
+    canonical table foreign-keys to a `schedule_runs` row no public store method
+    creates. The payload convention stands and the page says so. Same gap
+    ADR-0068 recorded; unchanged.
+
+mutations:
+  applied: 16
+  red_first_round: 9
+  survived_first_round: 4
+  survived_second_round: 1
+  red_after_closure: 16
+  survivors_and_how_they_were_closed:
+    - mutation: "Tables render with no source at all (empty string instead of the source line)"
+      why_it_survived: >
+        The test asserted only the ABSENCE of the "UNATTRIBUTED TABLE" defect
+        marker, and a renderer emitting nothing at all also lacks the marker.
+        The assertion never reached the case it guarded.
+      closed_by: >
+        Asserting POSITIVELY that every registered table source's citation AND
+        detail appear in the page, plus a direct test that `_table(..., None)`
+        does produce the marker -- so the negative check is checking for the
+        absence of something that can be present.
+    - mutation: "ACCESSIBLE_VEHICLES = 3, making every vehicle accessible"
+      why_it_survived: >
+        `can_bind` stays True (positions 1 < capacity 3) and the scheduling
+        authority's NO_ACCESSIBLE_CAPACITY comes from `DecisionVehicle`, not from
+        the profile -- so every accessible-capacity assertion stayed green while
+        the equipment layer became incapable of refusing anything.
+      closed_by: >
+        A test that constructs the violating case on the page's OWN projection:
+        a wheelchair-assigned request offered to a vehicle with no position must
+        be refused by `check_equipment_feasibility` with NO_ACCESSIBLE_CAPACITY.
+        With every vehicle accessible there is no such vehicle and the test says
+        so in its message.
+    - mutation: "The marginal-foreclosure sign flip is dropped"
+      why_it_survived: >
+        Every committed block on this scenario forecloses exactly zero, so the
+        sign is invisible in the artifact. The fixture never reached the case.
+      closed_by: >
+        Extracting `marginal_cost_of_a_block` as a named public function and
+        calling it directly with non-zero values, both signs, plus negative
+        zero. A second mutation that allowed -0.0 through was caught by the same
+        test.
+    - mutation: "The record/row pairing guard is deleted"
+      why_it_survived: >
+        The pairing holds on this fixture, so the guard never fires and deleting
+        it changes nothing observable.
+      closed_by: >
+        Constructing both violations -- rows in reversed order, and a short row
+        list -- and requiring each to raise. Without the guard the reversed case
+        silently attributes one vehicle's figures to another.
+    - mutation: "The equipment-refusal count is widened to any rejection"
+      why_it_survived: >
+        Survived a follow-up round. The count is 0 and the test only read it
+        back from the same string that produced it, so crediting the equipment
+        layer with the routing checker's work looked identical.
+      closed_by: >
+        Recomputing the count independently from `certify_insertion` outcomes on
+        the rebuilt projection and requiring equality with what the page shows.
+
+tests:
+  new: 35
+  file: aletheia/conformance/property-tests/test_argus_command_centre.py
+  runtime_seconds: 10
+  what_they_pin:
+    - Every emitted figure appears in the HTML with its origin label and citation, walked from the generator's own ledger rather than a list in the test.
+    - Every table renders its source, asserted positively and with the defect marker proved reachable.
+    - A Figure cannot be built without an origin, a citation and a detail; a ledger refuses a duplicate key.
+    - Governed counts equal what the SDK independently returns when the intake is re-driven.
+    - Every binding constraint on the page is a real `themis.canonical.ReasonCode` value.
+    - The forecast box shows no digit, and the refusal is Metis's own `NoChampionError` message, verified by calling the runtime directly.
+    - Figures resting on a declared input are attributed to it; attribution follows the weakest input in both argument orders; build metadata can never relabel a domain claim.
+    - All seven refusals present; the drift withdrawal carries the monitor's own text; the monitor is shown answering both ways.
+    - The equipment layer can bind, an authority actually refuses on accessible capacity, and the checker is proved able to fire on this page's own instance.
+    - The incremental marginal equals the definitional `value_of` per vehicle, AND the rows the page shows equal the definitional values.
+    - No script, link, img, @import, url( or http(s) reference anywhere in the page; doctype, charset and viewport present.
+    - No real NTD agency name appears on the page, checked against every name in the committed corpus; `customer` appears only inside a disclaimer.
+    - "`--skip-real-drift` REMOVES the section and says so, rather than substituting a cached verdict."
+
+honest_limitations:
+  - >
+    The scenario is synthetic and the page says so in its own banner, not in a
+    README. Demonstrated at most. Zero customers, zero pilots, zero operator
+    data.
+  - >
+    NO FORECAST IS SERVED, so the demand-against-capacity picture is entirely
+    BACKWARD-looking: it is the demand already in the book, not a prediction.
+    "Upcoming window" describes the decision's position in time.
+  - >
+    The DARP projection needs a geometry the repository does not have. The zone
+    layout is a declared regular polygon; only its SCALE is measured, from the
+    export's own mean trip duration. Travel times in the projection do not
+    reproduce any individual trip.
+  - >
+    Accessibility labels are ASSIGNED by `assign_accessibility`, not observed.
+    The assignment seed is chosen by a stated rule -- the smallest seed at which
+    the operator's own completed day is itself equipment-feasible -- which says
+    nothing about the outcome and did not select for one. Seed 0 qualifies.
+  - >
+    Every foreclosure figure inherits the placeholder demand prior: it resamples
+    observed requests and displaces them. The feasibility half is exact; the
+    demand half is a stated assumption. Reach is MARGINAL, not simultaneous.
+  - >
+    The counterfactual foreclosure is 0.75 +/- 0.48 across 4 draws. It clears
+    its own standard error, barely. More draws would narrow it and the page does
+    not pretend the ones it ran were enough.
+  - >
+    Runtime on ONE machine: 3.1-3.2 s warm, 6.1-8.7 s cold, 0.5 s with
+    --skip-real-drift, 8.3 s of total process time including interpreter start
+    and imports. The spread is the 571k-row panel read for the drift section
+    against a warm or cold page cache. ADR-0056 recorded a 2.8x thermal swing
+    and ADR-0061 saw 4.2x between two runs of the same benchmark, so treat all
+    of these as indicative rather than a specification.
+  - >
+    The page is a rendered picture of one build. Nothing on it is interactive,
+    no state is stored, and the "human authorisation" is a synthetic actor
+    recorded by the walkthrough -- no person has reviewed anything.
+  - >
+    Not attempted: any live or multi-tenant view, any second scenario, the
+    Cal-ITP scheduled-deadhead work (ADR-0062), the intervention evaluation
+    (ADR-0064), and the capacity backtest artifact's 640 real NTD series (they
+    carry real agency names and belong nowhere near an operating picture).
+
+owned_paths:
+  - argus/**  (except argus/sdk-typescript/**)
+  - aletheia/conformance/property-tests/test_argus_*.py
+  - forge/knowledge/workstreams/packets/MX-ARGUS-COMMAND-CENTRE-016.yaml
+  - aletheia/artifacts/command-centre/**   # generated output, not source
+
+not_touched:
+  - themis/, metis/, talos/ and all aletheia/ source -- three agents working concurrently
+  - argus/demo/** -- imported unchanged, so the command centre and the walkthrough
+    cannot drift apart about what the scenario is
