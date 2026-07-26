@@ -1,0 +1,475 @@
+id: MX-ONT-DECISION-SNAPSHOT-013
+status: completed
+completed_date: "2026-07-26"
+dispatched_date: "2026-07-26"
+adr: null   # ADRs are the orchestrator's to write; this packet wrote none.
+
+result: >
+  147 tests, 0 skipped, in a NEW package `packages/ontology/`. PostgreSQL 17 +
+  RLS RAN against the native dev instance (not skipped): ENABLE and FORCE
+  asserted from pg_class for all 9 tables, cross-tenant raw scan, the RESET /
+  EMPTY-STRING deny case, foreign-tenant write rejection, a FORCE-lifted
+  boundary-collapse control, and statement-level TRUNCATE refusal. 25 mutations
+  applied and checked: 23 went RED first time; 2 came back GREEN, BOTH were real
+  test gaps rather than wrong mutations, and both are now closed and RED.
+
+objective: >
+  Give Milexium a representation for a complete DECISION EPISODE -- the request
+  that arrived, the vehicle expected free, the trips that were compatible, the
+  pooling opportunities the assignment consumed, the dispatcher's override, and
+  the fourteen-minute-late pickup that followed -- and make the point-in-time
+  INFORMATION SET behind each decision a first-class, provably leakage-safe
+  object. This is the connective tissue between forecasting, solving and
+  evidence export, and it is designed to be loadable the day an operator's
+  8-12 weeks of records arrive.
+
+owned_paths:
+  - packages/ontology/__init__.py
+  - packages/ontology/vocab.py         # 28 object kinds, 23 relationship kinds + legality table, 16 event kinds, 11 actions, 8 permissions, 5 provenance vocabularies
+  - packages/ontology/ids.py           # 8 new typed ids; canonical ids re-exported, never re-declared
+  - packages/ontology/receipt.py       # THE clock the caller does not own
+  - packages/ontology/provenance.py    # SnapshotFact + IdentityResolution
+  - packages/ontology/graph.py         # OntologyObject (identity only) + Relationship
+  - packages/ontology/events.py        # OntologyEvent, late-arrival declaration
+  - packages/ontology/snapshot.py      # DecisionSnapshot
+  - packages/ontology/actions.py       # Authority, ActionRecord, ActionOutcome
+  - packages/ontology/store.py         # OntologyDatabase (2 engines) + OntologyStore
+  - packages/ontology/sql/ontology_v0_1.sql
+  - packages/ontology/sql/ontology_rls_postgres.sql
+  - packages/ontology/sql/ontology_immutability_postgres.sql
+  - packages/ontology/sql/ontology_immutability_sqlite.sql
+  - conformance/property-tests/test_ontology_v1.py          # 68 tests
+  - conformance/property-tests/test_ontology_store.py       # 47 tests (both engines)
+  - conformance/property-tests/test_decision_snapshot.py    # 32 tests
+  - workstreams/packets/MX-ONT-DECISION-SNAPSHOT-013.yaml
+
+read_only_dependencies:
+  - packages/core/feature_store.py     # the point-in-time discipline this reuses; `_iso_utc` is IMPORTED, not copied
+  - packages/canonical/ids.py          # `_TypedId`, `new_id`, TenantId/RequestId/... re-exported
+  - packages/canonical/time.py         # UtcDateTime, _require_utc
+  - packages/canonical/vocab.py        # SensitivityClass, ReasonCode -- reused unforked
+  - packages/canonical/events.py       # canonical_json, compute_hash (ADR-0003's normative hash)
+  - packages/core/migrations.py        # read for the splitter counterexample only
+  - MILEXIUM_INTERNAL_AUDIT_2026-07-26.md   # the two P0 defects this package is designed not to repeat
+  - packages/canonical/**              # NOT MODIFIED (concurrent packet)
+  - packages/decide/**, docs/**, research/**   # NOT TOUCHED (concurrent packets)
+  - conformance/property-tests/test_realdata_governance.py  # NOT TOUCHED (concurrent packet)
+
+normative_contracts:
+  - ADR-0001   # status vocabulary: nothing here is Validated
+  - ADR-0002   # portable DDL: one file, SQLite and PostgreSQL 17, unmodified
+  - ADR-0003   # one normative hash function, imported not re-implemented
+  - ADR-0004   # SQLite reference / PostgreSQL production, same method contract
+  - ADR-0006   # milexium_dev role, password from the user profile, never committed
+  - ADR-0018   # RLS: ENABLE *and* FORCE, keyed on the milexium.tenant_id GUC
+  - ADR-0034   # the strict `<` as-of read, enforced as a SQL predicate
+  - ADR-0037   # a tenant-scoped table without a policy is a defect, not a to-do
+  - blueprint/10-security-privacy-and-ai-governance.md   # field-level sensitivity, tokenised person refs
+
+problem: >
+  Milexium could forecast in one place, solve in another and export evidence in a
+  third. Nothing in the repository could hold one decision episode. The unit
+  intelligence learns from -- what was knowable, what was chosen, what else was on
+  the table, what was predicted, who decided, and what followed -- had no home,
+  so the platform could describe outcomes and could not describe DECISIONS.
+
+  Worse, the substrate it would have been built on was defective. The external
+  audit of 2026-07-26 found the canonical lifecycle record's two clocks BOTH
+  caller-supplied ("I inserted a transition today whose decided_at was 2020-01-01
+  and whose recorded_at was one second later; it was accepted") and its
+  "append-only" table rewritable by a direct SQL UPDATE that read back through
+  the normal API with no violation reported. A decision-episode record built on
+  those two properties would have inherited both.
+
+what_was_built:
+  ontology_v1: >
+    OBJECTS (28 kinds) carry IDENTITY ONLY. There is no attribute field on
+    `OntologyObject` and there is no attribute column on `ontology_objects`.
+    Everything time-varying is a `SnapshotFact` with a receipt time. This is the
+    modelling decision the whole package rests on: an attribute that could live
+    on an object would have no receipt time, so a decision replayed at time T
+    would read whatever it says NOW -- the commonest way leakage enters a
+    warehouse, and it enters invisibly because the row IS correct, just not as of
+    the decision instant. Statelessness makes that row unrepresentable rather
+    than discouraged.
+
+    RELATIONSHIPS (23 kinds) are first-class rows with a validity interval, an
+    optional probability `weight`, a `retracts_relationship_id`, and a LEGALITY
+    TABLE (`RELATIONSHIP_SIGNATURES`) that is total over the enum and enforced at
+    construction. A foreign key could not have carried the packet's own vignette:
+    "consumed two likely future pooling opportunities" needs cardinality > 1, a
+    probability, and non-destructive contradiction, and a column has none of
+    those.
+
+    EVENTS (16 kinds) are receipt-stamped, hash-chained into the tenant's single
+    receipt order, and carry a STORED `ingest_lag_seconds`. Beyond 300 seconds an
+    event must name a `LateArrivalReason` from a closed vocabulary -- late arrival
+    is declared, never hidden.
+
+    ACTIONS (11 kinds) are typed and permissioned. `OntologyStore` exposes NO
+    generic writer; its public surface is pinned by a conformance test. An
+    `ActionRecord` cannot be constructed without an `Authority` holding the
+    action's permission, an input snapshot id AND its content hash, the
+    alternatives considered, the verifier verdict, and the policy version. A
+    SYSTEM authority may not APPROVE or REJECT a recommendation, because a system
+    approving its own recommendation is the recommendation under a second name.
+    Outcomes are SEPARATE rows with their own receipt times, at their own
+    horizons.
+
+  decision_snapshot: >
+    `DecisionSnapshot` is the point-in-time information set: what could
+    reasonably have been KNOWN at the decision instant, not what turned out to be
+    true. It carries facts, relationships, events and identity resolutions, all
+    admitted by one rule, plus the scope and purpose it was taken under.
+
+  provenance_envelope: >
+    Every `SnapshotFact` carries: source system, source record id, event
+    /observation time, MILEXIUM RECEIPT TIME (writer-assigned), quality state,
+    confidence, repair kind + backward-only repair lineage + repair note, privacy
+    classification (`SensitivityClass`, reused from packages/canonical unforked)
+    + a `special_category` flag, legal-use basis, and missingness reason. A fact
+    must carry a VALUE XOR a MISSINGNESS REASON -- an unexplained null cannot be
+    stored, in Python or in the DDL.
+
+  identity: >
+    `IdentityResolution` retains match candidates with probabilities. An
+    ambiguous match stays UNRESOLVED (an honest state, not an error), dependent
+    facts carry `MissingnessReason.UNRESOLVED_IDENTITY`, and every candidate
+    survives. Resolving to a non-candidate, to a weaker candidate, or to a tie is
+    refused (`ForcedMatchError`). A later resolution is a NEW receipt-stamped
+    record, so a snapshot taken before it correctly does not see it.
+
+how_the_information_set_boundary_is_enforced:
+  layer_1_sql: >
+    `OntologyStore._select_content` issues `receipt_time < ?` as a WHERE-clause
+    predicate over fixed-width ISO-8601 UTC text, on every one of the four
+    streams a snapshot admits. A post-boundary row is never fetched and then
+    filtered -- it is never fetched. Same mechanism, same spelling, as
+    `packages/core/feature_store.PersistentFeatureStore`'s `knowledge_time < ?`;
+    that module's `_iso_utc` is IMPORTED here rather than re-implemented, so
+    there is one timestamp convention in the repository and not two. A test
+    parses `store.py`'s AST and asserts at least four `receipt_time <` literals
+    inside `_select_content` and zero `receipt_time <=` anywhere.
+  layer_2_construction: >
+    `DecisionSnapshot`'s model validator re-checks every admitted item against
+    `as_of` and raises `SnapshotLeakageError`. Redundant with layer 1 ON PURPOSE:
+    an in-memory snapshot built without a database obeys the identical rule, and
+    the boundary is asserted by two independent implementations.
+  layer_3_structure: >
+    A `DecisionSnapshot` holds NO reference to a store. Tuple-valued collections
+    (a `list` field would let a caller append a future fact into an
+    already-validated snapshot); no callable field; and an AST test asserts
+    `snapshot.py` imports nothing whose module name contains "store" and reads no
+    clock. The audit view that deliberately has NO time filter (`fact_history`)
+    lives on the STORE, never on the snapshot -- that is the "read path other than
+    the obvious one" a leakage test must cover, and it is covered by placement,
+    not by discipline.
+  layer_4_content_hash: >
+    `content_hash` is a COMPUTED PROPERTY, not a stored field, over the admitted
+    content INCLUDING `as_of`. `record_action` compares it against the value
+    recorded when the snapshot was taken and raises `ForgedSnapshotError` on
+    mismatch. This exists because pydantic's `model_copy(update=...)` and
+    `model_construct` skip validators by design: a forged snapshot with extra
+    facts, or with a later `as_of`, is one line away and passes layer 2 because
+    layer 2 never runs.
+  layer_5_receipt_monotonicity: >
+    THE PROPERTY THAT MAKES AN INFORMATION SET FINAL, and the one the packet did
+    not ask for by name. Receipt times are non-decreasing per tenant, enforced
+    (a) in `receipt.next_stamp`, (b) by a BEFORE INSERT trigger on
+    `ontology_receipt_log` on BOTH engines (MX002/MX003), and (c) detectably, by
+    a per-tenant hash chain covering every stream. Consequence: once a snapshot at
+    T has been taken, nothing can afterwards appear before T -- so a snapshot
+    rebuilt tomorrow for the same T is byte-identical, and `load_snapshot` (which
+    RE-DERIVES rather than caches, because the content is deliberately not stored)
+    is a LEAK DETECTOR rather than a tautology.
+
+leakage_probes_run:
+  - "Read-path totality: the test enumerates `dir(DecisionSnapshot)` PLUS `model_fields` and fails unless every public member is either probed against a poisoned store or listed in a short justified `_NOT_A_READ_PATH`. 56 members enumerated: 36 PROBED (11 fields, 15 projections, 7 serialisation paths including the deprecated v1 shims, `content_hash`, `verify`, `redacted`/`for_training`), 20 justified as non-read (class-level schema/config and CONSTRUCTORS -- two of which, `construct`/`model_construct`, are forgery paths and get their own dedicated test rather than being waved through). Adding a read path without a probe breaks the suite; so does listing a probe for a member that no longer exists."
+  - "Sentinel poisoning, not equality assertions: post-boundary writes carry a unique string, a unique number and a unique attribute prefix, and every probe's rendered output is searched for all three. A probe cannot pass by returning a shape the author did not anticipate."
+  - "POSITIVE CONTROL: `store.fact_history` (the audit view, no time filter) MUST show `[None, 14.0]` -- the decision-time absence and the later actual. Without this the corruption could be inert and every no-leak assertion vacuous."
+  - "The label case specifically: `actual_pickup_delay_minutes` is NOT_YET_KNOWN at decision time and 14.0 afterwards; the snapshot reads None, and reads the MISSINGNESS REASON, not an unexplained null."
+  - "Boundary exactness: a fact stamped at exactly `as_of` is excluded; the same fact one microsecond earlier is admitted."
+  - "Serialisation paths: `model_dump`, `model_dump_json`, the deprecated `dict`/`json`/`copy` shims, and a full JSON round trip that goes back through the validator and still refuses an injected future fact."
+  - "Projection paths: `feature_vector` (the most dangerous -- where a future value would be laundered into a float), `provenance_manifest`, `redacted`, `for_training`."
+  - "Forgery paths: `model_copy(update={facts})`, `model_copy(update={as_of})`, `model_construct` -- all caught by `verify()` and/or the store's hash comparison; an action citing a forged or unknown snapshot is refused."
+  - "Reproducibility: a snapshot rebuilt AFTER the future arrives is byte-identical (`model_dump_json` equality, not just hash equality)."
+  - "Drift detection: with the monotonicity trigger DROPPED, a raw INSERT behind the boundary makes `load_snapshot` raise `SnapshotDriftError` -- proving the detector is not decorative."
+  - "Retraction: a relationship retracted after the boundary still holds in the earlier snapshot ('who did the dispatcher believe was driving?'), and is gone from a later one."
+  - "Identity: a resolution recorded after the boundary is invisible to the earlier snapshot, which still shows every candidate."
+  - "Tenant: a cross-tenant item is refused at construction and by `verify()`; a second tenant's snapshot over the same scope is empty."
+  - "Structural: `snapshot.py` imports no store module, reads no clock, holds no callable field, and its collections are tuples (append raises)."
+  - "Signature: NO store method accepts `receipt`/`receipt_time`/`recorded_at`/`receipt_sequence`, read back with `inspect.signature` rather than asserted in prose."
+
+mutations_checked:
+  method: >
+    25 single-point source mutations, applied one at a time to the shipped
+    source (including the two .sql trigger files), with the named test files
+    re-run and the file restored afterwards. Harness lived in the scratchpad, not
+    the repo. After every batch the restored tree was re-run and confirmed green.
+  all_red_first_time:
+    - "M1  SQL boundary `receipt_time <` -> `<=`                          -> RED (2 failed)"
+    - "M2  construction-time boundary check made a no-op                  -> RED (2 failed)"
+    - "M3  `verify()` made a no-op                                        -> RED (2 failed)"
+    - "M4  `as_of` dropped from the content hash                          -> RED"
+    - "M5  clock-regression guard removed from `next_stamp`               -> RED (3 failed)"
+    - "M6  SQLite receipt-monotonicity trigger neutered                   -> RED"
+    - "M7  SQLite append-only trigger neutered on ontology_facts          -> RED (2 failed)"
+    - "M8  PostgreSQL append-only trigger neutered (WHEN false)           -> RED (5 failed)"
+    - "M9  `record_action` stops comparing the snapshot content hash      -> RED"
+    - "M10 tenant conjunct removed from the point-in-time facts query     -> RED"
+    - "M11 observation-cannot-precede-receipt rule removed                -> RED"
+    - "M12 unique-argmax identity check removed (forced merge allowed)    -> RED"
+    - "M13 relationship legality table ignored                            -> RED"
+    - "M14 action permission check removed                                -> RED"
+    - "M15 `load_snapshot` stops comparing hashes (drift detector off)    -> RED"
+    - "M16 row digest becomes a constant (integrity check vacuous)        -> RED (2 failed)"
+    - "M17 `ReceiptStamp.precedes` becomes non-strict                     -> RED"
+    - "M18 model-training lawful-basis filter removed from the store      -> RED"
+    - "M19 SQL splitter loses BEGIN/END awareness (triggers truncated)    -> RED (3 failed, 15 errors)"
+    - "M21 value-XOR-missingness rule removed                             -> RED"
+    - "M23 special-category lawful-basis guard removed                    -> RED"
+    - "M24 late-arrival declaration requirement removed                   -> RED"
+    - "M25 conflicted attributes silently enter the feature vector        -> RED"
+  came_back_green_and_were_real_gaps:
+    - id: M20
+      mutation: "`DecisionSnapshot.for_training()` returns the UNFILTERED fact tuple."
+      why_it_was_green: >
+        Two independent paths reach a training snapshot -- `take_snapshot(purpose=
+        MODEL_TRAINING)` and the `for_training()` projection -- and only the first
+        was covered. `_probes` did call `for_training()`, but on an episode whose
+        facts were ALL trainable, so the filter had nothing to remove and its
+        absence was invisible. The mutation was correct; the test was the gap.
+      closed_by: "test_for_training_drops_a_fact_with_no_lawful_basis -- re-run: RED."
+    - id: M22
+      mutation: "The cross-tenant admission check in `DecisionSnapshot._validate` deleted."
+      why_it_was_green: >
+        The store's own `tenant_id = ?` conjunct means it never PRODUCES a
+        cross-tenant item, so the object-layer defence had nothing exercising it
+        and could have been removed silently. It is defence in depth that matters:
+        a snapshot can be constructed by something other than this store (an
+        evidence-pack reader, a replay importer, a future adapter) and those have
+        no SQL predicate protecting them. The mutation was correct; the test was
+        the gap.
+      closed_by: "test_a_snapshot_cannot_admit_another_tenants_item -- re-run: RED."
+  additional_defect_found_while_writing_the_tests:
+    - >
+      `test_every_ontology_table_refuses_update` initially reported ALL NINE
+      tables as unguarded. The tables were guarded; the TEST was wrong -- it ran
+      `UPDATE <table> SET tenant_id = tenant_id` against EMPTY tables, and a
+      BEFORE UPDATE row-level trigger does not fire when there are no rows, so
+      the statement succeeds on both engines whatever guards exist. Had the
+      assertion been written the other way round it would have been GREEN with
+      every trigger deleted. Fixed by writing one row into all nine streams
+      first, and by asserting the rows are VISIBLE before attempting the update.
+      The same failure shape recurred in the PostgreSQL reopen test, where RLS
+      (not emptiness) was hiding the row: fixed by scoping the session and
+      asserting visibility first.
+
+test_counts:
+  test_ontology_v1.py: 68
+  test_ontology_store.py: 47   # 15 tests x [sqlite]/[postgres] = 30, plus 6 postgres-only, plus 11 engine-independent
+  test_decision_snapshot.py: 32
+  total: 147
+  skipped: 0
+  postgres_ran: true
+
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_ontology_v1.py conformance/property-tests/test_ontology_store.py conformance/property-tests/test_decision_snapshot.py -q   # 147 passed, 0 skipped, PostgreSQL RAN"
+  - "py -3 -m pytest packages/ conformance/ -q   # 2689 passed, 1 skipped, 0 failed in 693.70s"
+
+full_suite_result: >
+  2689 passed, 1 skipped, 0 failed, 4 warnings in 693.70s, run with the
+  concurrent packets' work also present in the tree. The single skip is the
+  pre-existing missing generated GTFS scheduled-deadhead narrative the
+  2026-07-26 audit already recorded; it is not caused by this packet and this
+  packet does not touch it. Nothing this packet added skips.
+
+security_and_privacy_invariants:
+  - "All 9 tables are tenant-scoped and get ENABLE **and** FORCE row-level security. The application role OWNS them and an owner bypasses RLS by default, so ENABLE alone is a false green (ADR-0018). Both flags are read out of pg_class, and a FORCE-lifted control shows the boundary collapsing and then restores it."
+  - "The deny-all default is proven for the case that ACTUALLY OCCURS: after a RESET (a pooled connection reused) `current_setting(name, true)` returns the EMPTY STRING, not NULL. The test asserts the GUC reads as '' FIRST, then that zero rows come back, so it is not silently proving the NULL branch."
+  - "The SAME GUC name (`milexium.tenant_id`) as packages/canonical and packages/core, so one connection carrying all three contracts cannot be scoped to two tenants at once."
+  - "Person references are tokenised everywhere: `Authority.actor_ref`, `OntologyEvent.actor_ref`, rider pseudonyms. `extra='forbid'` on every model means an ingest carrying a real name alongside a token fails at construction."
+  - "`MatchCandidate.evidence` holds opaque feature tokens ('surname_exact'), never the surname -- an evidence string containing the value would be a disclosure inside an audit field."
+  - "Field-level legal basis: a `NOT_ESTABLISHED` fact may be used for OPERATIONAL DISPATCH and may NOT enter a MODEL_TRAINING snapshot. Enforced at snapshot construction, not left to a downstream feature builder."
+  - "Special-category (health-adjacent) data cannot be held with `legal_basis='not_established'` -- in Python AND as a CHECK. Deliberately the WEAKEST defensible rule: which bases actually suffice is a jurisdiction-specific legal question this repository is not entitled to answer."
+  - "`redacted()` replaces a protected value with SUPPRESSED_PRIVACY rather than deleting it, so a redacted export stays distinguishable from a field the operator never collected."
+  - "`provenance_manifest()` deliberately excludes VALUES: it is the artefact most likely to leave the tenant boundary, so it carries no personal data by construction rather than by a redaction step someone must remember."
+
+failure_injections:
+  - "direct SQL UPDATE / DELETE on any of the 9 tables (populated) -> MX001, both engines"
+  - "TRUNCATE on PostgreSQL -> MX001 via a STATEMENT-level trigger (a row-level trigger does not fire for TRUNCATE; a suite that only tried UPDATE would have been green)"
+  - "raw INSERT into the receipt ledger with an earlier receipt_time -> MX002, both engines"
+  - "raw INSERT with a gapped receipt sequence -> MX003, both engines"
+  - "a store clock wound backwards -> ReceiptClockRegressionError"
+  - "a rejected write (unexplained null) -> the receipt sequence is UNCHANGED (the ledger row rolls back with it), then the next accepted write takes it"
+  - "trigger dropped + row mutated -> the forgery is readable through the normal API (the audit's exact finding, reproduced deliberately) AND `verify_integrity` reports it"
+  - "a snapshot forged with model_copy / model_construct -> `verify()` raises; `record_action` raises ForgedSnapshotError"
+  - "an action citing a snapshot this store never took -> UnknownSnapshotError"
+  - "a row written behind an already-taken boundary (guard removed) -> SnapshotDriftError on reload"
+  - "an illegal relationship (incident -> forecast) -> IllegalRelationshipError"
+  - "a foreclosed pooling edge with no weight -> refused"
+  - "a system authority approving its own recommendation -> PermissionDenied"
+  - "an action against a FAILING verifier with no justification -> UnverifiedActionError"
+  - "an identity resolved to a weaker or tied candidate -> ForcedMatchError"
+  - "candidate probabilities summing above 1 -> refused"
+  - "an imputed value classed as an observation -> refused"
+  - "an observation timestamped after its receipt -> refused"
+  - "an event more than 300s late with no declared reason -> refused"
+  - "a cross-tenant item admitted to a snapshot -> SnapshotLeakageError"
+  - "an unmodelled personal field smuggled onto a fact -> refused"
+
+compatibility_matrix:
+  - "ontology_v0_1.sql executes unmodified on a bare `sqlite3` in-memory connection (the file's ACTUAL BYTES, with nothing from this repo in the loop) and on PostgreSQL 17."
+  - "Portable subset asserted by reading the file: no JSONB, no CREATE TYPE, no ENUM, no SERIAL, no GENERATED ALWAYS, no GEOMETRY, no `$$`."
+  - "DOUBLE PRECISION everywhere, never REAL: PostgreSQL's REAL is float4 while SQLite's is 8-byte, so a REAL column silently loses precision on one engine. Asserted by a test that greps the schema."
+  - "15 store tests are parametrised [sqlite]/[postgres] and run the SAME assertions on both, so a behaviour that holds on the reference engine and not on the production target cannot pass unnoticed."
+  - "Statement counts of all four .sql files are pinned (13 / 20 / 40 / 36), because the BEGIN/END- and `$$`-aware splitter is load-bearing: a naive splitter truncates every SQLite trigger body at its inner semicolon and silently installs triggers that do nothing. The counterexample against packages.core.migrations.split_statements is itself a test."
+
+guesses_about_operator_data:
+  preamble: >
+    THE MOST VALUABLE SECTION OF THIS PACKET. Every item below is a place where
+    the design had to assume a shape for data nobody has yet handed us. Each is
+    stated with what was assumed, why, what it costs to be wrong, and -- since the
+    packet asked for the guesses to be cheap to change -- where exactly to change
+    it. None of these is Validated; all fixtures are synthetic.
+  ask_the_first_operator_for:
+    - guess: "MILEXIUM'S RECEIPT TIME IS A USABLE PROXY FOR THE OPERATOR'S OWN KNOWLEDGE TIME."
+      assumed: >
+        The snapshot boundary is keyed on when MILEXIUM received a fact. If an
+        operator's system knew a vehicle was unavailable at 10:30 and exported it
+        at 11:00, a 10:45 snapshot correctly does not contain it -- correctly for
+        Milexium, but the DISPATCHER knew at 10:30.
+      cost_if_wrong: >
+        Replaying operator decisions would systematically credit them with less
+        information than they had, biasing any "we would have done better"
+        comparison in OUR favour. This is the single most dangerous assumption in
+        the package.
+      ask_for: >
+        A source-side knowledge/entry timestamp on every exported row -- the
+        instant the record became visible IN THEIR system, distinct from both the
+        operational event time and the export time. Ask whether their booking /
+        AVL / dispatch systems record one at all; many do not.
+      change_cost: "One nullable column and one extra conjunct. Low, IF asked for before an operator's history is loaded; retrofitting it later is impossible for data already ingested."
+
+    - guess: "INGEST LAG SEPARATES CLEANLY AT ~300 SECONDS."
+      assumed: "`LATE_ARRIVAL_THRESHOLD_SECONDS = 300` -- long enough to exclude any plausible queue/polling delay, short enough to catch a human typing it in later."
+      cost_if_wrong: "Either every row demands a late-arrival reason (noise) or none does (the declaration becomes decorative)."
+      ask_for: "The distribution of (entry time - event time) per event type, for 8-12 weeks. Especially no-shows and cancellations, which are the ones entered by hand."
+      change_cost: "One integer in events.py, mirrored by one CHECK. Trivial."
+
+    - guess: "0.95 IS THE RIGHT IDENTITY-MATCH THRESHOLD."
+      assumed: "`DEFAULT_MATCH_THRESHOLD = 0.95`, chosen conservatively because an unresolved identity is recoverable and a wrong merge, once trained on, is not."
+      cost_if_wrong: "Too high and most riders stay unresolved, so rider-history features are mostly missing. Too low and trips are attributed to the wrong people."
+      ask_for: "A labelled sample of duplicate/near-duplicate rider records, and their own dedup rules -- most operators already have one, usually undocumented."
+      change_cost: "One constant; `would_resolve` already takes the threshold as an argument. Trivial."
+
+    - guess: "OPERATORS TRACK VEHICLE CONFIGURATION SEPARATELY FROM THE VEHICLE."
+      assumed: "`ObjectKind.CAPACITY_PROFILE` exists because a bus with fold-up seats has a time-varying effective capacity."
+      cost_if_wrong: "An unused object kind -- harmless. The reverse is the real risk: if they DO reconfigure and do NOT record it, wheelchair capacity is unknowable at decision time and every accessibility-denial analysis is built on a fiction."
+      ask_for: "Whether securement positions are fixed per vehicle or configurable, and whether any system records the configuration in force on a given day."
+      change_cost: "Additive. Low."
+
+    - guess: "'WHY WAS THIS TRIP DENIED' IS ANSWERABLE FROM A CLOSED VOCABULARY."
+      assumed: "`ReasonCode` (reused from packages/canonical) has 7 members, and `ActionAlternative.failed_constraints` uses it."
+      cost_if_wrong: "Real denial reasons land nowhere and reappear as free text, which is exactly what the closed vocabulary exists to prevent."
+      ask_for: "Their actual denial/refusal code list, and 8-12 weeks of denials with codes attached. Expect a long tail and expect most of it to be one code meaning 'other'."
+      change_cost: "Adding members to ReasonCode is additive BUT it lives in packages/canonical, which this packet does not own. Coordinate."
+
+    - guess: "ALTERNATIVES ARE RECOVERABLE FOR DECISIONS THE OPERATOR'S OWN SYSTEM MADE."
+      assumed: "`ActionRecord.alternatives` is required (possibly empty). For a Milexium-solved decision we know the alternatives; for a historical operator decision we almost certainly do not."
+      cost_if_wrong: "Every backfilled historical action has `alternatives=()`, which reads as 'nothing else was considered' when it means 'we do not know'."
+      ask_for: >
+        Whether their scheduler logs rejected candidate assignments at all. If
+        not, this needs a THIRD state (empty vs unknown) rather than being
+        silently backfilled as empty.
+      change_cost: "MEDIUM and worth pre-empting: an `alternatives_known: bool` field, or a distinguished sentinel. Do NOT backfill empty tuples onto historical actions before deciding this."
+
+    - guess: "AN OPERATOR CAN STATE A LAWFUL BASIS PER FIELD."
+      assumed: "`LegalBasis` is per-field with `NOT_ESTABLISHED` as the honest default, and training excludes it."
+      cost_if_wrong: "If an operator can only answer at table or system granularity, either everything is NOT_ESTABLISHED (nothing trainable) or the field-level structure is filled in with a uniform value and stops meaning anything."
+      ask_for: "Their DPIA / records-of-processing, and whoever owns it. Ask early: this is a legal-team calendar problem, not an engineering one."
+      change_cost: "The mechanism is fine either way; the risk is data quality, not schema."
+
+    - guess: "SOURCES DISAGREE OFTEN ENOUGH FOR CONFLICT TO BE WORTH MODELLING."
+      assumed: "Facts resolve latest-per-(subject, attribute, SOURCE), so two sources produce two retained facts and `value_of` refuses to guess."
+      cost_if_wrong: "If conflicts are rare this is harmless. If they are COMMON (AVL vs dispatcher console on securement availability is the likely case), `value_of` raises constantly and callers need a documented precedence rule the ontology deliberately does not supply."
+      ask_for: "Which systems are authoritative for which fields, in their own words. Expect the answer to be 'it depends' and to differ by shift."
+      change_cost: "MEDIUM: a per-(tenant, attribute) source-precedence table. Deliberately not built on a guess."
+
+    - guess: "A DECISION EPISODE'S PARTICIPANTS ARE KNOWN WHEN THE SNAPSHOT IS TAKEN."
+      assumed: "`SnapshotScope.subject_ids` is required and non-empty; an unscoped snapshot is not offered."
+      cost_if_wrong: "If a dispatcher's real information set is 'the whole board', a per-trip scope understates it and any replay is scored against a narrower view than the human had."
+      ask_for: "A screen recording, or the actual dispatch UI. What is on screen IS the information set, and no data dictionary will tell you."
+      change_cost: "Scope is persisted with the snapshot, so widening it later is a new snapshot, not a migration. Low mechanically, high in re-derivation cost."
+
+    - guess: "8-12 WEEKS ARRIVES AS ROWS, NOT AS A STREAM."
+      assumed: "Backfill works: `LateArrivalReason.BACKFILL` exists and receipt monotonicity permits any ORDER of ingestion as long as receipt times do not go backwards."
+      cost_if_wrong: >
+        A backfilled history has receipt times equal to INGEST time, not to when
+        the operator knew things -- so every snapshot over backfilled data has the
+        same boundary and the information-set property degenerates. THIS IS THE
+        BIGGEST OPEN ISSUE IN THE PACKAGE and it is why the first guess above
+        matters so much.
+      ask_for: "A source-side knowledge timestamp (see guess 1). Without it, backfilled data supports outcome analysis but NOT decision replay, and the packet says so rather than pretending otherwise."
+      change_cost: "See guess 1."
+
+scope_honesty:
+  what_this_is: >
+    A representation for decision episodes and their point-in-time information
+    sets, durable on two engines, tenant-isolated by the database, append-only by
+    the database, and proven leakage-safe through every enumerated read path with
+    25 mutations checked.
+  what_this_is_NOT:
+    - "NOT an adapter. Nothing in packages/connect was touched; no operator format is parsed anywhere in this package. Loading an operator's 8-12 weeks still needs an adapter that maps their export onto these objects, facts and events."
+    - "NOT wired into the solver, the forecaster, the evidence packs or the API. `packages/decide`, `packages/forecast`, `packages/evidence`, `packages/api` and `packages/replay` are untouched. Nothing produces an ActionRecord from a real schedule run yet."
+    - "NOT a migration path from packages/canonical. The two models coexist; no canonical record is copied into the ontology and no reconciliation exists."
+    - "NOT authenticated tamper evidence. The hash chain has no secret, so a party who can write can recompute. It catches a row changed WITHOUT recomputation. Anchoring signed roots outside the database is a separate piece of work."
+    - "NOT privilege-separated on PostgreSQL. The application role owns the tables and could DROP the triggers. See limitations."
+  status_label: >
+    Demonstrated. Every fixture is synthetic; there is no consented operator data
+    in this repository. NOTHING here is Validated, and the `guesses_about_operator_data`
+    section above is the list of reasons it cannot be until an operator's records
+    arrive.
+
+limitations:
+  - "PRIVILEGE SEPARATION IS ABSENT AND IS THE LARGEST REMAINING HOLE. The append-only guarantee rests on triggers the owning role can DROP (proven: a test drops one and shows the forgery succeed). The complete repair needs the tables owned by a role no application credential can assume, with the application holding INSERT/SELECT only. Creating a role requires a superuser, which `milexium_dev` deliberately is not (ADR-0006), so this packet CANNOT install it. The exact SQL is written out in sql/ontology_immutability_postgres.sql as a deployment task rather than left as a discovery. On SQLite there is no privilege model at all; there, detection (the hash chain) is the honest claim and prevention is not."
+  - "THE CLOCK SEAM IS A TRUST BOUNDARY. `OntologyStore` takes its clock as a constructor argument so tests can drive receipt times. A process constructing the store with a lying clock gets lying receipt times. It is categorically different from the audited defect (a per-write parameter lets any caller lie differently on every row; a construction-time clock is one reviewable substitution that STILL cannot go backwards), but it is not a defence against a hostile operator of the Milexium process. That needs signed checkpoint roots anchored outside the database."
+  - "NO CONCURRENCY TESTING. `_stamp` reads the tenant's head and inserts; two concurrent writers would race on `receipt_sequence`. On PostgreSQL the primary key on (tenant_id, receipt_sequence) makes the loser fail rather than corrupt, and `_atomic` rolls it back -- but there is no retry, no advisory lock, and no test. Single-writer-per-tenant is an untested assumption."
+  - "SNAPSHOT COST IS UNMEASURED AT SCALE. `take_snapshot` issues four queries with an `IN (...)` over the scope. Indexes exist on (tenant_id, subject_id, receipt_time). Nothing has been run against more than a few dozen rows, and an operator's 8-12 weeks is the first real test."
+  - "NO OPERATOR-FACING SEMANTICS FOR CONFLICT PRECEDENCE. `value_of` raises on disagreement by design; no precedence table exists because none should be guessed. Callers must handle it."
+  - "REPAIR LINEAGE IS BACKWARD-ONLY BY DESIGN, so 'what did this fact become?' is a query (`WHERE repairs_fact_id = ?`) with no index on that column. Cheap to add; not added speculatively."
+  - "THE ATTRIBUTE VOCABULARY IS OPEN. `SnapshotFact.attribute` is a free string -- deliberately, because a closed enum would mean an operator's genuinely-held field could not be loaded at all. The cost is that two adapters could name the same concept differently and nothing would notice. A per-tenant attribute registry is the obvious next step and is not built."
+  - "`ObjectKind.CAPACITY_PROFILE`, `PROTECTED_ZONE`, `SERVICE_RULE`, `ELIGIBILITY_PROFILE` and `JOURNEY` have no adapter, no fixture beyond synthetic ones, and no operator has confirmed they exist in the shape modelled. See guesses."
+  - "The PostgreSQL suite runs ~25s locally because each test builds a disposable schema. CI does not provision PostgreSQL, so these tests SKIP there -- the same narrower-CI-signal limitation the 2026-07-26 audit recorded for the repository as a whole. They RAN here."
+
+forbidden_interface_changes_observed:
+  - "packages/canonical/** NOT modified (read-only imports of ids, time, vocab, events)."
+  - "packages/decide/**, docs/**, research/** NOT touched."
+  - "conformance/property-tests/test_realdata_governance.py NOT touched."
+  - "packages/core/feature_store.py NOT modified -- `_iso_utc` is imported from it."
+  - "No ADR written. No git add/commit/push. contracts/ NOT regenerated. IMPLEMENTATION_STATUS.md and docs/JOURNAL.md NOT edited -- the orchestrator's to make."
+  - "No secret committed: the PostgreSQL password is read from %USERPROFILE%\\.milexium_pg_app_password.txt at connection time (ADR-0006), never hardcoded and never logged."
+
+downstream_consumers:
+  - "Program B (adapters): an operator export now has a target that preserves receipt time, missingness reason and legal basis per field. An adapter can be written the day a sample arrives."
+  - "Program D (adaptive memory): `DecisionSnapshot.for_training()` is the leakage-safe feature source; `ActionRecord` + `ActionOutcome` is the (state, action, outcome) triple a policy learner needs."
+  - "Program F (solver): a schedule run can emit one ActionRecord per assignment carrying its probed alternatives, which the DecisionAlternative table already holds in canonical form."
+  - "Program H (replay): `load_snapshot` re-derives a decision's exact information set, which is what an honest counterfactual replay requires and what the current replay does not have."
+  - "Evidence packs: `provenance_manifest()` is a value-free, per-fact provenance view already shaped for export."
+
+notes: >
+  BASELINE NOTE FOR THE INTEGRATOR. Four other packets were building concurrently
+  in packages/canonical, packages/decide, docs/ and research/. This packet is
+  disjoint from all four: it adds a NEW package and three NEW test files, and
+  modifies no existing file anywhere in the repository. Its only coupling to the
+  concurrent work is READ-ONLY imports of packages/canonical/{ids,time,vocab,
+  events}.py, none of which were among the files those packets had modified at
+  the time this one ran.
+
+  ONE THING WORTH THE ORCHESTRATOR'S ATTENTION: this package re-implements, in
+  packages/ontology/sql/, the same three-layer append-only discipline that the
+  concurrent MX-A-LIFECYCLE-IMMUTABILITY-012 packet is landing for
+  packages/canonical. The two were built independently and reached the same
+  design (trigger + privilege note + hash chain, SQLSTATE marker MX001). They
+  should probably converge on one shared implementation later; they were not
+  merged here because packages/canonical is another packet's owned path.
