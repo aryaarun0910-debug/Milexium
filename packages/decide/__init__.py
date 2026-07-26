@@ -165,6 +165,84 @@ from packages.decide.exposure import (
     measure_exposure,
 )
 
+# Pooling, compatibility and future capacity value (v0.5) -- additive; every API
+# above is unchanged.
+#
+# The sector's productivity collapse is LOST RIDE-SHARING, not longer trips:
+# 2015->2024 trip length fell 4.6% while occupancy fell 10.0%. Occupancy is not a
+# fact about riders -- it is what a scheduler decides. `compatibility` is the
+# object that decision needs (which trips can share, at what cost, with a
+# materialised feasibility proof attached to every edge); `capacity_value` prices
+# what committing a vehicle NOW costs a rider LATER, which is the quantity
+# `exposure` measures only after the fact; `pooling` is the planner that spends
+# both and the evaluation that judges the resulting PLAN rather than its score.
+#
+# The load-bearing structural property: a scorer may PROPOSE combinations, and
+# only the feasibility authority may ESTABLISH one. A `Certificate` cannot be
+# constructed without the authority's private witness, and it carries the witness
+# schedule so both independent checkers can re-derive the verdict.
+from packages.decide.compatibility import (
+    ASSIGNED_ACCESSIBILITY_NOTE,
+    COMPATIBILITY_VERSION,
+    AccessibilityProfile,
+    Certificate,
+    CertificationOutcome,
+    CompatibilityEdge,
+    CompatibilityGraph,
+    ForgedCertificate,
+    ProposalScorer,
+    ProposalView,
+    ShareFeatures,
+    UncertifiedGroup,
+    admits_insertion,
+    assign_accessibility,
+    bound_by_equipment,
+    build_compatibility_graph,
+    certify_group,
+    certify_insertion,
+    check_equipment_feasibility,
+    geometric_affinity,
+    onboard_profile,
+    route_passenger_miles,
+    route_shared_vehicle_miles,
+    shares_a_ride,
+    solo_route,
+)
+from packages.decide.capacity_value import (
+    CAPACITY_VALUE_VERSION,
+    PRIOR_IS_AN_ASSUMPTION_NOTE,
+    CapacityEnsemble,
+    CapacityLens,
+    CapacitySnapshot,
+    CapacityValue,
+    DemandPrior,
+    ScenarioRequest,
+    attach_capacity_features,
+    build_ensemble,
+    build_lens,
+    empty_routes,
+    prior_from_observed,
+    sample_scenarios,
+)
+from packages.decide.pooling import (
+    POOLING_PLANNER_NAME,
+    POOLING_PLANNER_VERSION,
+    CohortService,
+    PlacementPolicy,
+    PlanDiff,
+    PlanMetrics,
+    PoolingPlan,
+    PoolingView,
+    booking_order,
+    diff_plans,
+    evaluate,
+    evaluate_plan,
+    free_accessible_minutes,
+    least_total_cost,
+    plan_online,
+    routes_from_solution,
+)
+
 __all__ = [
     "Assignment",
     "DecisionPolicy",
@@ -266,6 +344,62 @@ __all__ = [
     "attribute_capacity",
     "measure_exposure",
     "EXPOSURE_VERSION",
+    # Pooling, compatibility and future capacity value (v0.5)
+    "ASSIGNED_ACCESSIBILITY_NOTE",
+    "AccessibilityProfile",
+    "Certificate",
+    "CertificationOutcome",
+    "CompatibilityEdge",
+    "CompatibilityGraph",
+    "ForgedCertificate",
+    "ProposalScorer",
+    "ProposalView",
+    "ShareFeatures",
+    "UncertifiedGroup",
+    "admits_insertion",
+    "assign_accessibility",
+    "bound_by_equipment",
+    "build_compatibility_graph",
+    "certify_group",
+    "certify_insertion",
+    "check_equipment_feasibility",
+    "geometric_affinity",
+    "onboard_profile",
+    "route_passenger_miles",
+    "route_shared_vehicle_miles",
+    "shares_a_ride",
+    "solo_route",
+    "COMPATIBILITY_VERSION",
+    "PRIOR_IS_AN_ASSUMPTION_NOTE",
+    "CapacityEnsemble",
+    "CapacityLens",
+    "CapacitySnapshot",
+    "CapacityValue",
+    "DemandPrior",
+    "ScenarioRequest",
+    "attach_capacity_features",
+    "build_ensemble",
+    "build_lens",
+    "empty_routes",
+    "prior_from_observed",
+    "sample_scenarios",
+    "CAPACITY_VALUE_VERSION",
+    "CohortService",
+    "PlacementPolicy",
+    "PlanDiff",
+    "PlanMetrics",
+    "PoolingPlan",
+    "PoolingView",
+    "booking_order",
+    "diff_plans",
+    "evaluate",
+    "evaluate_plan",
+    "free_accessible_minutes",
+    "least_total_cost",
+    "plan_online",
+    "routes_from_solution",
+    "POOLING_PLANNER_NAME",
+    "POOLING_PLANNER_VERSION",
 ]
 
-CONTRACT_VERSION = "0.4.0"
+CONTRACT_VERSION = "0.5.0"
