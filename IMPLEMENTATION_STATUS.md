@@ -389,8 +389,59 @@ Program depth after five tranches: **A ~60%**, **B ~60%**, **C ~55%**,
 **D ~70%**, **E ~40%**, G ~35%, **H ~45%**, **I ~45%**, **M ~50%**;
 **F ~45%** (was ~10%); J/K/L 0% (measured, not assumed — ADR-0056).
 
+#### Pilot-conversion tranche 6 (2026-07-26)
+
+| Item | Program | ADR | Tests |
+|---|---|---|---|
+| Lifecycle decision record — bitemporal, backdating refused | A | 0063 | 112 |
+| Intervention evaluation that cannot *type* a causal claim | H | 0064 | 73 |
+| Commingled exposure — online-vs-offline gap by who bears it | F | 0065 | 46 |
+| Standalone pack verification | I | 0066 | 47 |
+| Capacity forecast under stated asymmetric cost | E | 0067 | 74 |
+| **End-to-end demo — 2.5 s, six visible refusals** | — | 0068 | 28 |
+| Scheduled deadhead from Cal-ITP GTFS | C | 0062 | 120 |
+
+**Suite ~1900 → 2337 passed, 1 skipped.** CI green.
+
+#### R&D: eleven hypotheses, seven died, and the pitch was aimed wrong
+
+Run in deliberate exploration mode — low bar on *which* questions to ask, full
+bar on whether a number is true. `research/`, every result JSON committed.
+
+**The finding: the productivity collapse is lost RIDE-SHARING, not longer trips.**
+Passenger miles split vehicle-miles-per-trip exactly into trip length ×
+occupancy. Across the 355 agencies filing both years, 2015→2024: vehicle miles
+per trip **+6.0%**, but real trip length **−4.6%** (trips got *shorter*) and
+occupancy **−10.0%** (1.213 → 1.092 passenger miles per vehicle mile). 66.8% of
+agencies lost occupancy; almost flat pre-2020, −8.8% across 2019–2024, recovery
+stalled. **Occupancy is what a scheduling optimiser sets** — it is both the
+better diagnosis and the one our product speaks to.
+
+**The deadhead hook is diagnostically dead.** Pearson **+0.017**, OLS
+**R² = 0.0003**, n=405, cost-per-trip quintile medians flat at
+$53.10/$48.30/$52.21/$53.10/$55.00. The arithmetic saving is real; the diagnosis
+is not — and every v3 agency email leads with it. Warning placed at the top of
+`outreach/README.md`.
+
+**Our headline is conservative.** MTA NYCT's DR opex fell 53.3% in 2024 while its
+trips rose 4.1% and its four other modes all grew opex — a one-mode restatement.
+Excluding it lifts the sector figure from +34.0% to **+40.2%**.
+
+**Died:** deterioration is not predictable (out-of-sample R² −0.06 to +0.03; a
+promising ranking signal ablated down to mean reversion on reporting noise);
+weather is dead twice by independent routes, including an API-free test showing
+snow metros lose *less* winter demand; and **ADR-0062's scheduled deadhead
+measures fixed route, not demand-response** — `DR` appears zero times in 1,539
+NTD GTFS weblink rows. That comparison is not unstable, it is *undefined*.
+
+Program depth after six tranches: **A ~75%**, **B ~60%**, **C ~70%**,
+**D ~70%**, **E ~60%**, G ~35%, **H ~65%**, **I ~65%**, **M ~50%**,
+**F ~65%**; J/K/L 0% (measured, not assumed).
+
 #### Still open after this tranche
 
+- **The peer engine must be rebuilt on occupancy**, not deadhead rank. Until it
+  is, no further deadhead-led agency emails.
 - **The superuser still exists**, as it must — it is the bootstrap identity and
   the only role that can administer the cluster. The *application* no longer uses
   it; a developer connecting with `POSTGRES_PASSWORD` still bypasses RLS, by

@@ -2,6 +2,74 @@
 
 Newest entries first. One entry per working session: what was added, the numbers produced, decisions made, and anything running or unfinished. This is the historical record; `docs/MASTER_ROADMAP.md` is the only active backlog.
 
+## 2026-07-26: six packets land, a demo exists, and R&D moves the pitch
+
+**Suite ~1900 -> 2337 passed, 1 skipped.** ADRs 0063-0068 plus 0062, one commit
+per packet.
+
+All six packets killed mid-edit by the previous session's limit were recovered.
+Assessed rather than assumed: the tree still imported, teardown.py was
+byte-identical, and only ONE test failed across all of them.
+
+**That one failure was worth the whole triage.** The splice test in the pack
+verifier had stopped proving what it claimed. The fixture rewrote the narrative
+with a blanket string replace -- but a row's `prev_hash` IS its predecessor's
+`hash`, the same 64 characters, so replacing it everywhere silently rewrote the
+predecessor's hash in the narrative while the ledger kept the real one. It failed
+for a reason unrelated to the splice. Fixed to edit field-by-field addressed by
+event_id, and mutation-verified: neutering the link walk now fails exactly that
+test and nothing else.
+
+**E's agent died mid-mutation with one unresolved ("M8 came back GREEN").** I
+mutated the central invariant myself -- forcing coverage claimable regardless of
+guarantee status fails 11 tests -- so the propagation is genuinely non-vacuous.
+M8 itself is unrecoverable and is recorded as such rather than quietly dropped.
+
+**The demo is real.** `py -3 -m demo`, 2.5 seconds, and its best moments are
+refusals: PII quarantined ahead of everything else (first send imports 0 of 4
+rows), an ambiguous date declined while its twin is repaired, a denial left
+without a reason rather than back-filled, no savings envelope without the
+operator's cost split, unattributable empty time left unattributed, and a
+conformal interval withdrawing its own guarantee under drift. The pack
+re-verifies itself across 76 checks. It closes: "Demonstrated. Not Validated. No
+customers, no pilots, no operator data."
+
+**E argued against its own mechanism and I kept it.** Headline +40.3% cost
+reduction, but the controls show the point forecast does most of the work --
+asymmetry on a good forecast buys +7.3%, cost-aware inflation on a naive one buys
++2.5%. The controls were run precisely so the headline could not be quoted alone,
+so the decomposition is in the ADR body.
+
+### R&D, run in parallel and deliberately optimistic
+
+Eleven hypotheses, seven died, and the deaths were the point.
+
+**The pitch was aimed at the wrong metric.** Deadhead share does not diagnose an
+expensive agency: Pearson +0.017, R^2 0.0003, quintile medians flat across
+$48-55. Every v3 agency email leads with it.
+
+**What replaces it reverses the obvious reading.** The productivity collapse is
+lost RIDE-SHARING, not longer trips. Trips got *shorter* (-4.6%) while occupancy
+fell 10% (1.213 -> 1.092 passenger miles per vehicle mile). Two thirds of
+agencies lost occupancy; recovery has stalled. Occupancy is what a scheduling
+system *sets* -- so it is both the better diagnosis and the one we can actually
+speak to.
+
+Also: our headline is conservative (excluding an MTA NYCT restatement lifts +34%
+to +40.2%); deterioration is NOT predictable, and the promising signal ablated
+down to mean reversion on reporting noise; weather is dead twice over; and
+ADR-0062's scheduled deadhead measures FIXED ROUTE -- no US demand-response
+service publishes GTFS, so that comparison is undefined, not merely unstable.
+
+The agent also caught a bug it had made: quantile bucketing sorted (x, y) tuples,
+so ties in a zero-inflated x got ordered by y and manufactured a perfectly
+monotone relationship out of noise. A beautiful, entirely fake result. I grepped
+production code for the pattern -- clean.
+
+**Kent reply redrafted** around the ride-sharing finding, and it opens by
+reporting the claim of ours that died. Telling him which of our own hypotheses we
+killed is worth more than any surviving one.
+
 ## 2026-07-25 (late): five packets, two corrections to me, and an open door
 
 **Suite 1411 → ~1900.** ADRs 0057–0061, one commit per packet, CI green.
