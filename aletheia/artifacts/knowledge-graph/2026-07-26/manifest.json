@@ -1,0 +1,3172 @@
+{
+  "C:\\Users\\aryaa\\Documents\\Milexium\\package.json": {
+    "mtime": 1785066070.075,
+    "ast_hash": "91777c4a87285b4393fd11917fd2b7e7",
+    "semantic_hash": "91777c4a87285b4393fd11917fd2b7e7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\command-centre\\operating_picture.json": {
+    "mtime": 1785080337.0403676,
+    "ast_hash": "3fe5510fbe53a2a48b56770af4479eb3",
+    "semantic_hash": "3fe5510fbe53a2a48b56770af4479eb3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-walkthrough\\evidence_pack.json": {
+    "mtime": 1785075760.0112555,
+    "ast_hash": "06df71e6ea430fc3b75282c206331cad",
+    "semantic_hash": "06df71e6ea430fc3b75282c206331cad"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-walkthrough\\run_manifest.json": {
+    "mtime": 1785075760.0604777,
+    "ast_hash": "d7d0bf3f4f259dc13913f6f88c7a194d",
+    "semantic_hash": "d7d0bf3f4f259dc13913f6f88c7a194d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\evidence-registry\\registry.json": {
+    "mtime": 1785065711.1153507,
+    "ast_hash": "004a551671ce96245f2887d72627d039",
+    "semantic_hash": "004a551671ce96245f2887d72627d039"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\knowledge-graph\\2026-07-21\\cost.json": {
+    "mtime": 1784624359.8947594,
+    "ast_hash": "ea878b570f9eb3df22caa7968b66b509",
+    "semantic_hash": "ea878b570f9eb3df22caa7968b66b509"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\knowledge-graph\\2026-07-21\\graph.json": {
+    "mtime": 1784624266.065326,
+    "ast_hash": "96ac28c4093135b7dfc52a0316117758",
+    "semantic_hash": "96ac28c4093135b7dfc52a0316117758"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\knowledge-graph\\2026-07-21\\manifest.json": {
+    "mtime": 1784624359.8947594,
+    "ast_hash": "1e7cb82a3dfac7a1f611b36ceb8ea5f9",
+    "semantic_hash": "1e7cb82a3dfac7a1f611b36ceb8ea5f9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\optimization\\pooling_benchmark.py": {
+    "mtime": 1785065711.122147,
+    "ast_hash": "0d6cb76f716067ee50fb6f5304705157",
+    "semantic_hash": "0d6cb76f716067ee50fb6f5304705157"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\optimization\\pooling_results.json": {
+    "mtime": 1785065711.1656716,
+    "ast_hash": "1d79c2d0989ceea6c8568176a1f2c10d",
+    "semantic_hash": "1d79c2d0989ceea6c8568176a1f2c10d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\optimization\\portfolio_benchmark.py": {
+    "mtime": 1785065711.1823945,
+    "ast_hash": "c8abcb8dbe1b0119bdcc53edc24fdd83",
+    "semantic_hash": "c8abcb8dbe1b0119bdcc53edc24fdd83"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\optimization\\portfolio_results.json": {
+    "mtime": 1785065711.19866,
+    "ast_hash": "b52420e1f3a50069a5bd4186b694e0cd",
+    "semantic_hash": "b52420e1f3a50069a5bd4186b694e0cd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\performance\\teardown_scale.py": {
+    "mtime": 1785065711.2516885,
+    "ast_hash": "18248214ccf2f0857a926796a4e2a1eb",
+    "semantic_hash": "18248214ccf2f0857a926796a4e2a1eb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\performance\\teardown_scale_results.json": {
+    "mtime": 1785065711.2589514,
+    "ast_hash": "c6069a9bfb52661563bd88f5971619db",
+    "semantic_hash": "c6069a9bfb52661563bd88f5971619db"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\best_known.json": {
+    "mtime": 1785065711.2662807,
+    "ast_hash": "f24505b6c38e6043d1b53d1b66008c16",
+    "semantic_hash": "f24505b6c38e6043d1b53d1b66008c16"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\build_forecast_leaderboard.py": {
+    "mtime": 1785065711.27677,
+    "ast_hash": "ab2009732eaacb70a03e159bb725762d",
+    "semantic_hash": "ab2009732eaacb70a03e159bb725762d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\capacity_backtest.json": {
+    "mtime": 1785065836.9245353,
+    "ast_hash": "cac5d20c9f55b83ca4bf2daf54b4e895",
+    "semantic_hash": "cac5d20c9f55b83ca4bf2daf54b4e895"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\capacity_backtest.py": {
+    "mtime": 1785065711.9328837,
+    "ast_hash": "a80e32538508c2c30bd1228990abb604",
+    "semantic_hash": "a80e32538508c2c30bd1228990abb604"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\darp_benchmark.py": {
+    "mtime": 1785065711.949573,
+    "ast_hash": "7d7ba04693de94614d86532790d7f6dc",
+    "semantic_hash": "7d7ba04693de94614d86532790d7f6dc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\darp_results.json": {
+    "mtime": 1784902150.7169583,
+    "ast_hash": "265287567d9c7458c680c96b21ad4d9f",
+    "semantic_hash": "265287567d9c7458c680c96b21ad4d9f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\forecast_leaderboard.json": {
+    "mtime": 1785080106.1476662,
+    "ast_hash": "7ce28f0cf4d504636d6d1526d173a67a",
+    "semantic_hash": "7ce28f0cf4d504636d6d1526d173a67a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\__init__.py": {
+    "mtime": 1784813188.9850564,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_connect_gtfs_flex_malformed.py": {
+    "mtime": 1785065711.9715846,
+    "ast_hash": "4852717ad344aa92c7c15a6e5214643d",
+    "semantic_hash": "4852717ad344aa92c7c15a6e5214643d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_connect_gtfs_realtime_malformed.py": {
+    "mtime": 1785065711.9715846,
+    "ast_hash": "bf4e454d20b89789a8b9c71e8e189487",
+    "semantic_hash": "bf4e454d20b89789a8b9c71e8e189487"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_connect_malformed_rows.py": {
+    "mtime": 1785065711.9715846,
+    "ast_hash": "a318eb749c625a2e46f7125ee475e905",
+    "semantic_hash": "a318eb749c625a2e46f7125ee475e905"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_connect_tides_malformed_rows.py": {
+    "mtime": 1785065711.9819126,
+    "ast_hash": "d9d626880058b71e4e6849fdf380dfb5",
+    "semantic_hash": "d9d626880058b71e4e6849fdf380dfb5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_connect_tlc_malformed_rows.py": {
+    "mtime": 1785065711.9839225,
+    "ast_hash": "0b70e5105bf44e41322940b7e829a905",
+    "semantic_hash": "0b70e5105bf44e41322940b7e829a905"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_decide_feasibility.py": {
+    "mtime": 1785065711.9884806,
+    "ast_hash": "414f8d8f231fde9f85d93cae54989e0c",
+    "semantic_hash": "414f8d8f231fde9f85d93cae54989e0c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_evidence_schema_tamper.py": {
+    "mtime": 1785065711.994194,
+    "ast_hash": "f15aa4f75c0cc2e973b4177d5d599e77",
+    "semantic_hash": "f15aa4f75c0cc2e973b4177d5d599e77"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_evidence_tamper.py": {
+    "mtime": 1785065711.994194,
+    "ast_hash": "5ff1acbb52015f554a2050ad6a9995e5",
+    "semantic_hash": "5ff1acbb52015f554a2050ad6a9995e5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_postgres_rls_isolation.py": {
+    "mtime": 1785065712.0025728,
+    "ast_hash": "794389fb024a638292a7694ca084581d",
+    "semantic_hash": "794389fb024a638292a7694ca084581d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_postgres_tamper_and_isolation.py": {
+    "mtime": 1785065712.0049179,
+    "ast_hash": "49dfb3c2fd7a68f7c12f5b840fed2557",
+    "semantic_hash": "49dfb3c2fd7a68f7c12f5b840fed2557"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_replay_no_future_leak.py": {
+    "mtime": 1785065712.0049179,
+    "ast_hash": "ecfe710edc592992e1e3ede29ef9212d",
+    "semantic_hash": "ecfe710edc592992e1e3ede29ef9212d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\adversarial\\test_tamper_and_isolation.py": {
+    "mtime": 1785065712.011747,
+    "ast_hash": "2eeb06cdd87ae54898913daa2121f51a",
+    "semantic_hash": "2eeb06cdd87ae54898913daa2121f51a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders.py": {
+    "mtime": 1785065712.011747,
+    "ast_hash": "00714edb7eca34cf251a80d3eba938ce",
+    "semantic_hash": "00714edb7eca34cf251a80d3eba938ce"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders_connect.py": {
+    "mtime": 1785065712.0161748,
+    "ast_hash": "79a9fe68b1f6c71bc32515c543ee6d70",
+    "semantic_hash": "79a9fe68b1f6c71bc32515c543ee6d70"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders_connect_gtfs_flex.py": {
+    "mtime": 1785065712.0181715,
+    "ast_hash": "2b19ab23b738e3b968325f68ab4513b6",
+    "semantic_hash": "2b19ab23b738e3b968325f68ab4513b6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders_connect_gtfs_realtime.py": {
+    "mtime": 1785065712.0211728,
+    "ast_hash": "b82bf7e1d21ad01ceaf7f0d1ecdbe131",
+    "semantic_hash": "b82bf7e1d21ad01ceaf7f0d1ecdbe131"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders_connect_tides.py": {
+    "mtime": 1785065712.0211728,
+    "ast_hash": "0acde654dc5dcf16e50ab18840bfc9ed",
+    "semantic_hash": "0acde654dc5dcf16e50ab18840bfc9ed"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders_connect_tlc.py": {
+    "mtime": 1785065712.0211728,
+    "ast_hash": "f16f014a01581fa5291a4af21fd5eca7",
+    "semantic_hash": "f16f014a01581fa5291a4af21fd5eca7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\builders_replay.py": {
+    "mtime": 1785065712.0211728,
+    "ast_hash": "01abbe63360cf15d29973a1d879a41d6",
+    "semantic_hash": "01abbe63360cf15d29973a1d879a41d6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\evidence_builders.py": {
+    "mtime": 1785065712.0211728,
+    "ast_hash": "bebd71c25af419e933eaf1425c70c6f5",
+    "semantic_hash": "bebd71c25af419e933eaf1425c70c6f5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\model_registry_builders.py": {
+    "mtime": 1785065712.034883,
+    "ast_hash": "0438a165f74dae479a5fb209a0c440b2",
+    "semantic_hash": "0438a165f74dae479a5fb209a0c440b2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_canonical_examples.py": {
+    "mtime": 1785065712.036883,
+    "ast_hash": "be4c3184b7fa52d084cd91f19586ca70",
+    "semantic_hash": "be4c3184b7fa52d084cd91f19586ca70"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_connect_gtfs_flex.py": {
+    "mtime": 1785065712.0378928,
+    "ast_hash": "e861dcde0757a97a13b7e8b9dfc98125",
+    "semantic_hash": "e861dcde0757a97a13b7e8b9dfc98125"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_connect_gtfs_realtime.py": {
+    "mtime": 1785065712.049558,
+    "ast_hash": "596854537b8256d5e4b1074eaddf9201",
+    "semantic_hash": "596854537b8256d5e4b1074eaddf9201"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_connect_reference_agency_trips.py": {
+    "mtime": 1785065712.0525987,
+    "ast_hash": "5aacd732a5e212426cc9173c0bf1ba1b",
+    "semantic_hash": "5aacd732a5e212426cc9173c0bf1ba1b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_connect_tides_trips.py": {
+    "mtime": 1785065712.057442,
+    "ast_hash": "b6edfb0af91eb769e44777f6d28239cc",
+    "semantic_hash": "b6edfb0af91eb769e44777f6d28239cc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_connect_tlc_trips.py": {
+    "mtime": 1785065712.0602489,
+    "ast_hash": "1a59c77f3879db6570c56533b7943117",
+    "semantic_hash": "1a59c77f3879db6570c56533b7943117"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_model_registry_examples.py": {
+    "mtime": 1785065712.0602489,
+    "ast_hash": "03834e658642f858beeb040f504312f3",
+    "semantic_hash": "03834e658642f858beeb040f504312f3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_sdk_facade.py": {
+    "mtime": 1785065712.0656838,
+    "ast_hash": "ac31401b550754b9a7fc828f9b9996c3",
+    "semantic_hash": "ac31401b550754b9a7fc828f9b9996c3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\test_sdk_forecast_export.py": {
+    "mtime": 1785065712.0697308,
+    "ast_hash": "0949be802b78d33c2e883fd997f4aaac",
+    "semantic_hash": "0949be802b78d33c2e883fd997f4aaac"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\fixtures\\__init__.py": {
+    "mtime": 1784813191.5004377,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_adapter_vehicle_references.py": {
+    "mtime": 1785065712.0916913,
+    "ast_hash": "63d22ae41502c6871edcbeb8009e23e9",
+    "semantic_hash": "63d22ae41502c6871edcbeb8009e23e9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_api_contract_drift.py": {
+    "mtime": 1785065712.0937512,
+    "ast_hash": "13638214702bc635cae1ae5ba4d41f17",
+    "semantic_hash": "13638214702bc635cae1ae5ba4d41f17"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_api_endpoints.py": {
+    "mtime": 1785065712.0986996,
+    "ast_hash": "628068582a8abf3e54fcf32bdb1a0cbe",
+    "semantic_hash": "628068582a8abf3e54fcf32bdb1a0cbe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_api_teardown.py": {
+    "mtime": 1785065712.1107328,
+    "ast_hash": "72f3f6879518fcb042b0cab862d9660c",
+    "semantic_hash": "72f3f6879518fcb042b0cab862d9660c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_api_teardown_latency.py": {
+    "mtime": 1785065712.1155062,
+    "ast_hash": "81bce6580c8089e76f26257ece5e27b1",
+    "semantic_hash": "81bce6580c8089e76f26257ece5e27b1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_argus_command_centre.py": {
+    "mtime": 1785079622.825892,
+    "ast_hash": "d57cf90999e21b59c8c95bc06518edce",
+    "semantic_hash": "d57cf90999e21b59c8c95bc06518edce"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_bitemporal_correction.py": {
+    "mtime": 1785065712.1155062,
+    "ast_hash": "6c9b7cff11be8d4f1f12309ff510f021",
+    "semantic_hash": "6c9b7cff11be8d4f1f12309ff510f021"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_capacity_backtest.py": {
+    "mtime": 1785065712.131882,
+    "ast_hash": "62e85c2f86eed3a05ae41639d5d9165d",
+    "semantic_hash": "62e85c2f86eed3a05ae41639d5d9165d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_capacity_forecast.py": {
+    "mtime": 1785065712.1488643,
+    "ast_hash": "685135382d3ad3a44717a2efbbe70711",
+    "semantic_hash": "685135382d3ad3a44717a2efbbe70711"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_capacity_value.py": {
+    "mtime": 1785065712.1655307,
+    "ast_hash": "d87bc05ae4aeb19b10b9ad1cf0219766",
+    "semantic_hash": "d87bc05ae4aeb19b10b9ad1cf0219766"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_claim_discipline.py": {
+    "mtime": 1785065712.1655307,
+    "ast_hash": "22e762475637fd8ef5c2400824752080",
+    "semantic_hash": "22e762475637fd8ef5c2400824752080"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_compatibility_graph.py": {
+    "mtime": 1785065712.1988335,
+    "ast_hash": "c2c35faa3fff528ae684fe88f49a783c",
+    "semantic_hash": "c2c35faa3fff528ae684fe88f49a783c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_conformal_uncertainty.py": {
+    "mtime": 1785065712.1988335,
+    "ast_hash": "81d3ed407e5919f5a8317f0a974a6184",
+    "semantic_hash": "81d3ed407e5919f5a8317f0a974a6184"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_core_migrations.py": {
+    "mtime": 1785065712.231202,
+    "ast_hash": "4a3d9df6dcc91af957077a8ba31834cc",
+    "semantic_hash": "4a3d9df6dcc91af957077a8ba31834cc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_core_persistence.py": {
+    "mtime": 1785065712.2487473,
+    "ast_hash": "2809ee76656d381549cacfa202ba5bde",
+    "semantic_hash": "2809ee76656d381549cacfa202ba5bde"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_core_tenant_isolation.py": {
+    "mtime": 1785065712.2652018,
+    "ast_hash": "b09e3ab99b62734eea14e3c6d429d73b",
+    "semantic_hash": "b09e3ab99b62734eea14e3c6d429d73b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_darp_benchmark.py": {
+    "mtime": 1785065712.2821836,
+    "ast_hash": "cd7cd00937a211c70f59261c1cbdc039",
+    "semantic_hash": "cd7cd00937a211c70f59261c1cbdc039"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_darp_cpsat.py": {
+    "mtime": 1785065712.2987707,
+    "ast_hash": "33c6171889383c2d2bcb81c7b063015c",
+    "semantic_hash": "33c6171889383c2d2bcb81c7b063015c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_decide_portfolio.py": {
+    "mtime": 1785065712.2987707,
+    "ast_hash": "1cfa31a935e38d2fdc024cc62ec05014",
+    "semantic_hash": "1cfa31a935e38d2fdc024cc62ec05014"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_decide_solver.py": {
+    "mtime": 1785065712.3152113,
+    "ast_hash": "9a3635502b97967d09cb0127c959c9b4",
+    "semantic_hash": "9a3635502b97967d09cb0127c959c9b4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_decision_alternatives.py": {
+    "mtime": 1785065712.3180501,
+    "ast_hash": "cbbe7b00e2973d22318ce27908ff521e",
+    "semantic_hash": "cbbe7b00e2973d22318ce27908ff521e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_decision_episode.py": {
+    "mtime": 1785078343.9192204,
+    "ast_hash": "83dee7ddc65f2d5801366a4322ec7191",
+    "semantic_hash": "83dee7ddc65f2d5801366a4322ec7191"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_decision_snapshot.py": {
+    "mtime": 1785065712.34883,
+    "ast_hash": "5d6925f50813f87d4062aa193cd1fb74",
+    "semantic_hash": "5d6925f50813f87d4062aa193cd1fb74"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_demo_walkthrough.py": {
+    "mtime": 1785065712.3600893,
+    "ast_hash": "acdcad0f8d360ef43e6a0911c896cc58",
+    "semantic_hash": "acdcad0f8d360ef43e6a0911c896cc58"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_dependency_direction.py": {
+    "mtime": 1785078890.5958793,
+    "ast_hash": "e5bbf55861dfb3b61f5707576320e1d9",
+    "semantic_hash": "e5bbf55861dfb3b61f5707576320e1d9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_drift.py": {
+    "mtime": 1785065712.3654854,
+    "ast_hash": "c3bae41b9ea1ef87e8f04fb2585cac07",
+    "semantic_hash": "c3bae41b9ea1ef87e8f04fb2585cac07"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_estate_acquisition.py": {
+    "mtime": 1785065712.368869,
+    "ast_hash": "b548095f5bf916f9b9f7be91cafcdff0",
+    "semantic_hash": "b548095f5bf916f9b9f7be91cafcdff0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_estate_calitp_manifests.py": {
+    "mtime": 1785065712.3765354,
+    "ast_hash": "d62d491293fd3f27de6faeb290cf4652",
+    "semantic_hash": "d62d491293fd3f27de6faeb290cf4652"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_estate_minio_backing.py": {
+    "mtime": 1785073968.9870663,
+    "ast_hash": "258a3648e084a680b7516c108baf2068",
+    "semantic_hash": "258a3648e084a680b7516c108baf2068"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_event_log_properties.py": {
+    "mtime": 1785065712.38597,
+    "ast_hash": "b204cfbc164da9d55898623e7b1615f5",
+    "semantic_hash": "b204cfbc164da9d55898623e7b1615f5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_evidence_packet.py": {
+    "mtime": 1785065712.396555,
+    "ast_hash": "7c17a71899a5341cf3fc7728d5ea627e",
+    "semantic_hash": "7c17a71899a5341cf3fc7728d5ea627e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_evidence_packet_verification.py": {
+    "mtime": 1785065712.3987796,
+    "ast_hash": "3766501158127014259ef6008f2a6c7e",
+    "semantic_hash": "3766501158127014259ef6008f2a6c7e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_evidence_pack_export.py": {
+    "mtime": 1785065712.3902483,
+    "ast_hash": "9b21b63e2faff107335dd6ae9ad6eb4c",
+    "semantic_hash": "9b21b63e2faff107335dd6ae9ad6eb4c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_evidence_registry.py": {
+    "mtime": 1785066007.800826,
+    "ast_hash": "7864ec530fd42208f827478744b58cfa",
+    "semantic_hash": "7864ec530fd42208f827478744b58cfa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_exposure_attribution.py": {
+    "mtime": 1785065712.4222786,
+    "ast_hash": "5f021ba0ebfc5ac878e02e2b0c6a1d30",
+    "semantic_hash": "5f021ba0ebfc5ac878e02e2b0c6a1d30"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_feature_store.py": {
+    "mtime": 1785065712.4222786,
+    "ast_hash": "99f7d587daf70594f8e374324b35567a",
+    "semantic_hash": "99f7d587daf70594f8e374324b35567a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_forecast_all_models.py": {
+    "mtime": 1785065712.4331715,
+    "ast_hash": "e8c570fb5311b57baa034578875fe968",
+    "semantic_hash": "e8c570fb5311b57baa034578875fe968"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_forecast_leaderboard.py": {
+    "mtime": 1785065712.4382038,
+    "ast_hash": "9c85f25a772076ae2aeb950e389bc4a5",
+    "semantic_hash": "9c85f25a772076ae2aeb950e389bc4a5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_forecast_runtime.py": {
+    "mtime": 1785065712.4422126,
+    "ast_hash": "a1882414198ab91a66ef745d5cfad6b5",
+    "semantic_hash": "a1882414198ab91a66ef745d5cfad6b5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_formal_smt.py": {
+    "mtime": 1785065712.4452436,
+    "ast_hash": "49b7241d280f50bd38373f5f6d46c75b",
+    "semantic_hash": "49b7241d280f50bd38373f5f6d46c75b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_golden_path_demo.py": {
+    "mtime": 1785065712.448216,
+    "ast_hash": "f4669ed35d600d38f38f9ceb0775222e",
+    "semantic_hash": "f4669ed35d600d38f38f9ceb0775222e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_gtfs_block_deadhead.py": {
+    "mtime": 1785066007.800826,
+    "ast_hash": "e40e3fc45d6e01f33603aaf01e0595c7",
+    "semantic_hash": "e40e3fc45d6e01f33603aaf01e0595c7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_intervention_eval.py": {
+    "mtime": 1785065712.4821758,
+    "ast_hash": "8ab42c405dec7b2d729f2cfbca805e65",
+    "semantic_hash": "8ab42c405dec7b2d729f2cfbca805e65"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_intervention_ntd.py": {
+    "mtime": 1785065712.4821758,
+    "ast_hash": "21fcea35e8249bbdf5c7fffb523e2210",
+    "semantic_hash": "21fcea35e8249bbdf5c7fffb523e2210"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_layer_argus.py": {
+    "mtime": 1785078576.785063,
+    "ast_hash": "dfac03e64f3580548978ea377f11ef9e",
+    "semantic_hash": "dfac03e64f3580548978ea377f11ef9e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_layer_metis.py": {
+    "mtime": 1785078209.4379816,
+    "ast_hash": "465b2f2438815acb132b4b6f2036bf51",
+    "semantic_hash": "465b2f2438815acb132b4b6f2036bf51"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_layer_themis.py": {
+    "mtime": 1785078320.838482,
+    "ast_hash": "18202284c6b204b14a0b5fe78af959eb",
+    "semantic_hash": "18202284c6b204b14a0b5fe78af959eb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_lifecycle_immutability.py": {
+    "mtime": 1785065712.5259109,
+    "ast_hash": "b6d82582ab7f19a14abbd37c48bbea7a",
+    "semantic_hash": "b6d82582ab7f19a14abbd37c48bbea7a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_lifecycle_record.py": {
+    "mtime": 1785065712.5692308,
+    "ast_hash": "aa22d1d01f5fed59685e7382dc7540d6",
+    "semantic_hash": "aa22d1d01f5fed59685e7382dc7540d6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_lifecycle_rls.py": {
+    "mtime": 1785065712.5866454,
+    "ast_hash": "c4ccc1681ed6ac2634622820a63b3cc6",
+    "semantic_hash": "c4ccc1681ed6ac2634622820a63b3cc6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_messy_operator_data.py": {
+    "mtime": 1785065712.5942168,
+    "ast_hash": "d2af6afd4c5a5fd0f0e2d49385a17e29",
+    "semantic_hash": "d2af6afd4c5a5fd0f0e2d49385a17e29"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_model_registry.py": {
+    "mtime": 1785065712.5942168,
+    "ast_hash": "d87da227bf1b0eb427af5af53c10187f",
+    "semantic_hash": "d87da227bf1b0eb427af5af53c10187f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_model_registry_persistence.py": {
+    "mtime": 1785065712.6357799,
+    "ast_hash": "96aa2467a49bdf612943601eefe9fd89",
+    "semantic_hash": "96aa2467a49bdf612943601eefe9fd89"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_object_store.py": {
+    "mtime": 1785065712.6377752,
+    "ast_hash": "a58e935dfc2cc9bcfa1b5ca566342300",
+    "semantic_hash": "a58e935dfc2cc9bcfa1b5ca566342300"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_online_commitment.py": {
+    "mtime": 1785065712.6549077,
+    "ast_hash": "42e9a47c2e61b1ce371fd1fc9f8ca79a",
+    "semantic_hash": "42e9a47c2e61b1ce371fd1fc9f8ca79a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_ontology_store.py": {
+    "mtime": 1785065712.6719966,
+    "ast_hash": "3aa11f74044dce045dafddeb9091f40c",
+    "semantic_hash": "3aa11f74044dce045dafddeb9091f40c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_ontology_v1.py": {
+    "mtime": 1785065712.6881225,
+    "ast_hash": "ab1c59539886eb2c717e2447711a8a03",
+    "semantic_hash": "ab1c59539886eb2c717e2447711a8a03"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_operator_contract.py": {
+    "mtime": 1785078813.518099,
+    "ast_hash": "30f8aab0c1dc1296c9abe88b1c6d6752",
+    "semantic_hash": "30f8aab0c1dc1296c9abe88b1c6d6752"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_operator_export.py": {
+    "mtime": 1785065712.7048404,
+    "ast_hash": "95dac77da572f8c9b7846e3a8481d683",
+    "semantic_hash": "95dac77da572f8c9b7846e3a8481d683"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_operator_export_runref_wiring.py": {
+    "mtime": 1785065712.7261183,
+    "ast_hash": "3f360f64fe3ac5efdcd9b0eb6675dbea",
+    "semantic_hash": "3f360f64fe3ac5efdcd9b0eb6675dbea"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_pack_third_party_verification.py": {
+    "mtime": 1785066104.760493,
+    "ast_hash": "64d13e3380593f2d7e66bd0dc5b3f2dd",
+    "semantic_hash": "64d13e3380593f2d7e66bd0dc5b3f2dd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_panel_findings.py": {
+    "mtime": 1785065712.7765832,
+    "ast_hash": "64d01c1473fe122d4fb7e03fe0542709",
+    "semantic_hash": "64d01c1473fe122d4fb7e03fe0542709"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_period_incident_packs.py": {
+    "mtime": 1785065712.7826786,
+    "ast_hash": "5b54060123e14428260d4c8af52282ed",
+    "semantic_hash": "5b54060123e14428260d4c8af52282ed"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_platform_tenant.py": {
+    "mtime": 1785065712.8055909,
+    "ast_hash": "4d58157b0b1fa8c3c5e75b3c5c722fb4",
+    "semantic_hash": "4d58157b0b1fa8c3c5e75b3c5c722fb4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_pooling_decision.py": {
+    "mtime": 1785065712.8154867,
+    "ast_hash": "2386dcbf6d68f0d3eb211a56d2d4f18d",
+    "semantic_hash": "2386dcbf6d68f0d3eb211a56d2d4f18d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_postgis_observation.py": {
+    "mtime": 1785065712.8154867,
+    "ast_hash": "9d6444106dd199802a1b366039eebb4f",
+    "semantic_hash": "9d6444106dd199802a1b366039eebb4f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_postgis_rls.py": {
+    "mtime": 1785065712.8351593,
+    "ast_hash": "0242b989d91ee9982051f9b17594201a",
+    "semantic_hash": "0242b989d91ee9982051f9b17594201a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_postgres_event_log_properties.py": {
+    "mtime": 1785065712.8351593,
+    "ast_hash": "6ea93255c973c03611741f15f1e18f93",
+    "semantic_hash": "6ea93255c973c03611741f15f1e18f93"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_promotion.py": {
+    "mtime": 1785065712.848412,
+    "ast_hash": "9e6f5b1ad2401943ab4fa7e9f0a0d83c",
+    "semantic_hash": "9e6f5b1ad2401943ab4fa7e9f0a0d83c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_realdata_governance.py": {
+    "mtime": 1785065712.86167,
+    "ast_hash": "d3e1a1639f6a8606b71747f31687e79b",
+    "semantic_hash": "d3e1a1639f6a8606b71747f31687e79b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_redaction.py": {
+    "mtime": 1785065712.8681028,
+    "ast_hash": "b0782d401f783b99608430a6f123c823",
+    "semantic_hash": "b0782d401f783b99608430a6f123c823"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_replay_comparison.py": {
+    "mtime": 1785065712.8681028,
+    "ast_hash": "af50eaf796cbb9dfd1ffae7cb28df60c",
+    "semantic_hash": "af50eaf796cbb9dfd1ffae7cb28df60c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_run_reference.py": {
+    "mtime": 1785065712.88211,
+    "ast_hash": "b80d934ab52bbc6a445a1e4633e8147b",
+    "semantic_hash": "b80d934ab52bbc6a445a1e4633e8147b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_rust_verifier_parity.py": {
+    "mtime": 1785065712.88211,
+    "ast_hash": "504c9fb7b4468e46f9e4331a87f5cc6e",
+    "semantic_hash": "504c9fb7b4468e46f9e4331a87f5cc6e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_scheduling_family.py": {
+    "mtime": 1785065712.9154358,
+    "ast_hash": "de157674691f6755b9d6a87abcb1f81e",
+    "semantic_hash": "de157674691f6755b9d6a87abcb1f81e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_sdk_loop.py": {
+    "mtime": 1785065712.9154358,
+    "ast_hash": "ce4d187275dea9b04849738314f7c4ed",
+    "semantic_hash": "ce4d187275dea9b04849738314f7c4ed"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_serve_time_drift.py": {
+    "mtime": 1785065712.932077,
+    "ast_hash": "5c1d32e10dc8ef70d64ac1c3dd47fb01",
+    "semantic_hash": "5c1d32e10dc8ef70d64ac1c3dd47fb01"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_state_machine_anchors.py": {
+    "mtime": 1785065712.932077,
+    "ast_hash": "89ca02e8dbd3bb61007c86f5b9963b30",
+    "semantic_hash": "89ca02e8dbd3bb61007c86f5b9963b30"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_state_transitions.py": {
+    "mtime": 1785065712.947471,
+    "ast_hash": "fa708d4390bdb2a1e1eff0695db2b053",
+    "semantic_hash": "fa708d4390bdb2a1e1eff0695db2b053"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_stop_time_observation_store.py": {
+    "mtime": 1785065712.9523945,
+    "ast_hash": "9f4d028b781a0e2493aa004869ad2081",
+    "semantic_hash": "9f4d028b781a0e2493aa004869ad2081"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_teardown.py": {
+    "mtime": 1785065712.9787614,
+    "ast_hash": "b26c3b4e9e1b3d994279e39784656b91",
+    "semantic_hash": "b26c3b4e9e1b3d994279e39784656b91"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_teardown_evidence.py": {
+    "mtime": 1785066104.758491,
+    "ast_hash": "6676b6bc08d5f7634d49c07b7124f99a",
+    "semantic_hash": "6676b6bc08d5f7634d49c07b7124f99a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_teardown_scale.py": {
+    "mtime": 1785065712.9986775,
+    "ast_hash": "9cabd686265051dd84e361556d9ce99d",
+    "semantic_hash": "9cabd686265051dd84e361556d9ce99d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_us_opendata_manifests.py": {
+    "mtime": 1785065713.01539,
+    "ast_hash": "e7476ba0edbfec93a4724bc4385ebf4c",
+    "semantic_hash": "e7476ba0edbfec93a4724bc4385ebf4c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\property-tests\\test_vehicle_observation.py": {
+    "mtime": 1785065713.01539,
+    "ast_hash": "48c667f1f2a64ed800f4a1410233c73d",
+    "semantic_hash": "48c667f1f2a64ed800f4a1410233c73d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\builder.py": {
+    "mtime": 1785065713.029726,
+    "ast_hash": "943a74077e7707802021619d39dff9c4",
+    "semantic_hash": "943a74077e7707802021619d39dff9c4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\export.py": {
+    "mtime": 1785065713.0523617,
+    "ast_hash": "1eb5f0100fc54c92e4813d296b85207d",
+    "semantic_hash": "1eb5f0100fc54c92e4813d296b85207d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\models.py": {
+    "mtime": 1785065713.059312,
+    "ast_hash": "7c9ca4745f5623b8a381356e3f8ea327",
+    "semantic_hash": "7c9ca4745f5623b8a381356e3f8ea327"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\packs.py": {
+    "mtime": 1785065713.0817268,
+    "ast_hash": "6947a616249a8cdf3c133ead3ba5bca0",
+    "semantic_hash": "6947a616249a8cdf3c133ead3ba5bca0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\pack_file.py": {
+    "mtime": 1785065713.0731592,
+    "ast_hash": "d538b54747e4be5ecb8151a7d37337ce",
+    "semantic_hash": "d538b54747e4be5ecb8151a7d37337ce"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\standalone_verifier.py": {
+    "mtime": 1785065713.114722,
+    "ast_hash": "6489d7fb125791b5a43d0e52a1ac6463",
+    "semantic_hash": "6489d7fb125791b5a43d0e52a1ac6463"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\teardown_capture.py": {
+    "mtime": 1785065713.1197848,
+    "ast_hash": "9a0dfb25fb7a908353b8b372c217dad2",
+    "semantic_hash": "9a0dfb25fb7a908353b8b372c217dad2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\teardown_evidence.py": {
+    "mtime": 1785065713.1359515,
+    "ast_hash": "2063491956ebbfd82ce97f02cf24c067",
+    "semantic_hash": "2063491956ebbfd82ce97f02cf24c067"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\evidence\\__init__.py": {
+    "mtime": 1785065713.0222661,
+    "ast_hash": "06f1c179cf97bdbbed3f6c0f90d75fe6",
+    "semantic_hash": "06f1c179cf97bdbbed3f6c0f90d75fe6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\replay\\comparison.py": {
+    "mtime": 1785065713.1469173,
+    "ast_hash": "18de3d058d8520d29f341dff099a597e",
+    "semantic_hash": "18de3d058d8520d29f341dff099a597e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\replay\\intervention.py": {
+    "mtime": 1785065713.1820066,
+    "ast_hash": "89353e5834e5050d4a3a0027309a02f7",
+    "semantic_hash": "89353e5834e5050d4a3a0027309a02f7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\replay\\intervention_demo.py": {
+    "mtime": 1785065713.1987414,
+    "ast_hash": "254f789430e73ebd82bb137770d11b52",
+    "semantic_hash": "254f789430e73ebd82bb137770d11b52"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\replay\\replay.py": {
+    "mtime": 1785065713.1987414,
+    "ast_hash": "1cc45e489e0ca429cabce1491f1940f3",
+    "semantic_hash": "1cc45e489e0ca429cabce1491f1940f3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\replay\\teardown.py": {
+    "mtime": 1785065713.2153728,
+    "ast_hash": "d9f1612feedd8bce72c9b5f4458ddb5a",
+    "semantic_hash": "d9f1612feedd8bce72c9b5f4458ddb5a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\replay\\__init__.py": {
+    "mtime": 1785065713.1389146,
+    "ast_hash": "33210d3cffab0b4fa29bb480e0fed06d",
+    "semantic_hash": "33210d3cffab0b4fa29bb480e0fed06d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\verify\\formal.py": {
+    "mtime": 1785065713.232082,
+    "ast_hash": "899723fb88778d6bc962c46d946ce829",
+    "semantic_hash": "899723fb88778d6bc962c46d946ce829"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\verify\\hash_chain_verifier.py": {
+    "mtime": 1785065713.2381458,
+    "ast_hash": "4381e6ec6b4b6ea2269bfc6e51137ebe",
+    "semantic_hash": "4381e6ec6b4b6ea2269bfc6e51137ebe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\verify\\schema_verifier.py": {
+    "mtime": 1785065713.239119,
+    "ast_hash": "fd6fbc6a2f380f65ebe6d519ad53b346",
+    "semantic_hash": "fd6fbc6a2f380f65ebe6d519ad53b346"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\verify\\state_verifier.py": {
+    "mtime": 1785065713.241122,
+    "ast_hash": "e67bded8a926a6882670945aa695db20",
+    "semantic_hash": "e67bded8a926a6882670945aa695db20"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\verify\\__init__.py": {
+    "mtime": 1785065713.2153728,
+    "ast_hash": "8a3ce36acd758e93d72ff5cc08c230b9",
+    "semantic_hash": "8a3ce36acd758e93d72ff5cc08c230b9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\api\\app.py": {
+    "mtime": 1785065713.2661333,
+    "ast_hash": "ab1dc994228210101dc9b46a01dc22a0",
+    "semantic_hash": "ab1dc994228210101dc9b46a01dc22a0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\api\\__init__.py": {
+    "mtime": 1785065713.2421207,
+    "ast_hash": "dcbdb3154c642e6f780e6721b027b6fd",
+    "semantic_hash": "dcbdb3154c642e6f780e6721b027b6fd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\command_centre\\attribution.py": {
+    "mtime": 1785077598.2254186,
+    "ast_hash": "03fc207c0f81834d5ac0f1c73301929a",
+    "semantic_hash": "03fc207c0f81834d5ac0f1c73301929a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\command_centre\\picture.py": {
+    "mtime": 1785079982.5051854,
+    "ast_hash": "05a61e7395056160b16ec547dc47f613",
+    "semantic_hash": "05a61e7395056160b16ec547dc47f613"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\command_centre\\render.py": {
+    "mtime": 1785078598.3853188,
+    "ast_hash": "1a24cdf1a168ec10fef2ea5051f3a889",
+    "semantic_hash": "1a24cdf1a168ec10fef2ea5051f3a889"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\command_centre\\__init__.py": {
+    "mtime": 1785077219.7269514,
+    "ast_hash": "d4eca4212184bc70a3df255eea6dfd8d",
+    "semantic_hash": "d4eca4212184bc70a3df255eea6dfd8d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\command_centre\\__main__.py": {
+    "mtime": 1785077230.3883078,
+    "ast_hash": "9edeb723887b32e173263b167c1f233e",
+    "semantic_hash": "9edeb723887b32e173263b167c1f233e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\demo\\golden_path.py": {
+    "mtime": 1785065756.559327,
+    "ast_hash": "b0752cb2b06e2d001e26185613c258c8",
+    "semantic_hash": "b0752cb2b06e2d001e26185613c258c8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\demo\\verify_pack.py": {
+    "mtime": 1785065713.2820525,
+    "ast_hash": "9154906f9c8714f3162c7a6e87f8fadc",
+    "semantic_hash": "9154906f9c8714f3162c7a6e87f8fadc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\demo\\walkthrough.py": {
+    "mtime": 1785065756.559327,
+    "ast_hash": "bf8edfa61f624f57cf657b07cadb051d",
+    "semantic_hash": "bf8edfa61f624f57cf657b07cadb051d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\demo\\__init__.py": {
+    "mtime": 1785065713.2671385,
+    "ast_hash": "4a5b7fa9df4755f1e99f317918d167de",
+    "semantic_hash": "4a5b7fa9df4755f1e99f317918d167de"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\demo\\__main__.py": {
+    "mtime": 1785065713.2688344,
+    "ast_hash": "37c7a6eaf8b9d83fefba28b1b593a277",
+    "semantic_hash": "37c7a6eaf8b9d83fefba28b1b593a277"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk\\client.py": {
+    "mtime": 1785065713.4142091,
+    "ast_hash": "2f3a0055714e312829f609ebbe4a23ca",
+    "semantic_hash": "2f3a0055714e312829f609ebbe4a23ca"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk\\example.py": {
+    "mtime": 1785065713.4224358,
+    "ast_hash": "7bc95775b1d9e746afe0bb32d6698b70",
+    "semantic_hash": "7bc95775b1d9e746afe0bb32d6698b70"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk\\__init__.py": {
+    "mtime": 1785065713.3993063,
+    "ast_hash": "390144bb8c9ecab4df0137cfb3397782",
+    "semantic_hash": "390144bb8c9ecab4df0137cfb3397782"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\package.json": {
+    "mtime": 1785065713.3319738,
+    "ast_hash": "e03e6de33400f4fd0c85c62bcd79c7a0",
+    "semantic_hash": "e03e6de33400f4fd0c85c62bcd79c7a0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\tsconfig.build.json": {
+    "mtime": 1784905606.3216846,
+    "ast_hash": "8a2adc2d8e4ab0f602d7584df1ffff3a",
+    "semantic_hash": "8a2adc2d8e4ab0f602d7584df1ffff3a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\tsconfig.json": {
+    "mtime": 1784905601.9968748,
+    "ast_hash": "96773acb09a3b93a7a991be313ca319f",
+    "semantic_hash": "96773acb09a3b93a7a991be313ca319f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\src\\client.ts": {
+    "mtime": 1784905828.7655177,
+    "ast_hash": "fcbfca6b06bd087da581f2ba3f2b2d07",
+    "semantic_hash": "fcbfca6b06bd087da581f2ba3f2b2d07"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\src\\index.ts": {
+    "mtime": 1784905837.4358306,
+    "ast_hash": "675fbe2dd4eb9b7a742cb9b4ccd949dd",
+    "semantic_hash": "675fbe2dd4eb9b7a742cb9b4ccd949dd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\src\\types.ts": {
+    "mtime": 1785065713.3868806,
+    "ast_hash": "b8e1e2f6d8255982787bfd9981d94b4d",
+    "semantic_hash": "b8e1e2f6d8255982787bfd9981d94b4d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\src\\generated\\openapi.ts": {
+    "mtime": 1785065713.3819578,
+    "ast_hash": "9e6feda89fb13d16c9a50d611346d728",
+    "semantic_hash": "9e6feda89fb13d16c9a50d611346d728"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\test\\client.test.ts": {
+    "mtime": 1784905892.754955,
+    "ast_hash": "79c60c1b8d8263e1181b09c58351796c",
+    "semantic_hash": "79c60c1b8d8263e1181b09c58351796c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\test\\generated-drift.test.ts": {
+    "mtime": 1785065713.3953176,
+    "ast_hash": "8f7db04c0c05ee6e27526eb052becc81",
+    "semantic_hash": "8f7db04c0c05ee6e27526eb052becc81"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-agency.acquired.json": {
+    "mtime": 1785072492.6705742,
+    "ast_hash": "35707826983a42a9ec6ea840264a09d3",
+    "semantic_hash": "35707826983a42a9ec6ea840264a09d3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-agency.manifest.json": {
+    "mtime": 1785065713.4824817,
+    "ast_hash": "0237b701aad6a4c4e239dc385efa8a84",
+    "semantic_hash": "0237b701aad6a4c4e239dc385efa8a84"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-datasets.acquired.json": {
+    "mtime": 1785072492.6742594,
+    "ast_hash": "e584c9f6ca7af97937a070ff66372b6d",
+    "semantic_hash": "e584c9f6ca7af97937a070ff66372b6d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-datasets.manifest.json": {
+    "mtime": 1785065713.4924774,
+    "ast_hash": "6d36adb48b89bf53b98f9a1d5cb145f1",
+    "semantic_hash": "6d36adb48b89bf53b98f9a1d5cb145f1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-frequencies.acquired.json": {
+    "mtime": 1785072492.6762564,
+    "ast_hash": "c2f183613af6650d3ff387104c51912d",
+    "semantic_hash": "c2f183613af6650d3ff387104c51912d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-frequencies.manifest.json": {
+    "mtime": 1785065713.5014207,
+    "ast_hash": "845e1b3979de9b959c04fb8ba6daaf3d",
+    "semantic_hash": "845e1b3979de9b959c04fb8ba6daaf3d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-routes.acquired.json": {
+    "mtime": 1785072492.6828039,
+    "ast_hash": "11d2df3c3165bc45cc8f50c1ccc7b152",
+    "semantic_hash": "11d2df3c3165bc45cc8f50c1ccc7b152"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-routes.manifest.json": {
+    "mtime": 1785065713.510162,
+    "ast_hash": "4bff77e081d45e46082de74e1b3633f8",
+    "semantic_hash": "4bff77e081d45e46082de74e1b3633f8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-stop-times.acquired.json": {
+    "mtime": 1785072503.943129,
+    "ast_hash": "f56f97a135a273f73fcaf1ab7ae8fabe",
+    "semantic_hash": "f56f97a135a273f73fcaf1ab7ae8fabe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-stop-times.manifest.json": {
+    "mtime": 1785065713.5189884,
+    "ast_hash": "2be29b94dee9e21ff5a5d00f01723394",
+    "semantic_hash": "2be29b94dee9e21ff5a5d00f01723394"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-stops.acquired.json": {
+    "mtime": 1785072504.017658,
+    "ast_hash": "890e456a4a874ae919ffd71ad607bbc6",
+    "semantic_hash": "890e456a4a874ae919ffd71ad607bbc6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-stops.manifest.json": {
+    "mtime": 1785065713.5251722,
+    "ast_hash": "720169d43cfbb066645b9f71430ef4c7",
+    "semantic_hash": "720169d43cfbb066645b9f71430ef4c7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-trips.acquired.json": {
+    "mtime": 1785072504.283941,
+    "ast_hash": "745a0a7a60981b8b7227b8f5f0ec028e",
+    "semantic_hash": "745a0a7a60981b8b7227b8f5f0ec028e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-gtfs-trips.manifest.json": {
+    "mtime": 1785065713.5341842,
+    "ast_hash": "58e5a0eae8b5ad91e30abfdfc679ca5c",
+    "semantic_hash": "58e5a0eae8b5ad91e30abfdfc679ca5c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\calitp-scheduled-deadhead.summary.json": {
+    "mtime": 1785065713.587638,
+    "ast_hash": "d1298f18b681e467b6aa6b65d9c2ed75",
+    "semantic_hash": "d1298f18b681e467b6aa6b65d9c2ed75"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\cordeau-darp.acquired.json": {
+    "mtime": 1785072504.2879007,
+    "ast_hash": "ff263e736942b7fd8eb1fe4888782df4",
+    "semantic_hash": "ff263e736942b7fd8eb1fe4888782df4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\cordeau-darp.manifest.json": {
+    "mtime": 1785065713.5942726,
+    "ast_hash": "6d50fcc776f584a3e14514b23b9514f4",
+    "semantic_hash": "6d50fcc776f584a3e14514b23b9514f4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\gtfs-flex-on-demand.acquired.json": {
+    "mtime": 1785072504.2913823,
+    "ast_hash": "e890dfba567001c2f57c28bf93cdebcb",
+    "semantic_hash": "e890dfba567001c2f57c28bf93cdebcb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\gtfs-flex-on-demand.manifest.json": {
+    "mtime": 1785065713.5942726,
+    "ast_hash": "a79b73a6d00410b87c1e259fe30d9715",
+    "semantic_hash": "a79b73a6d00410b87c1e259fe30d9715"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\gtfs-rt-mbta-vehiclepositions.acquired.json": {
+    "mtime": 1785072504.2954879,
+    "ast_hash": "c9d03dc3d096b3ae811d187ce2624084",
+    "semantic_hash": "c9d03dc3d096b3ae811d187ce2624084"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\gtfs-rt-mbta-vehiclepositions.manifest.json": {
+    "mtime": 1785065713.5992742,
+    "ast_hash": "12ba773eb6dfa649304135dbb20f4efb",
+    "semantic_hash": "12ba773eb6dfa649304135dbb20f4efb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\gtfs-rt-tripupdates-example.acquired.json": {
+    "mtime": 1785072504.298502,
+    "ast_hash": "b234d65cd648a88e8d2466875a78e9fe",
+    "semantic_hash": "b234d65cd648a88e8d2466875a78e9fe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\gtfs-rt-tripupdates-example.manifest.json": {
+    "mtime": 1785065713.6012752,
+    "ast_hash": "2c20164c25aa3aeadd94ced0deb3e2e9",
+    "semantic_hash": "2c20164c25aa3aeadd94ced0deb3e2e9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\mobility-database-catalog.acquired.json": {
+    "mtime": 1785072504.307217,
+    "ast_hash": "c2b53d6cf013942761360d642e65de12",
+    "semantic_hash": "c2b53d6cf013942761360d642e65de12"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\mobility-database-catalog.manifest.json": {
+    "mtime": 1785065713.6042755,
+    "ast_hash": "5e9e1d43ec14a8f6a1b81f88210f70ff",
+    "semantic_hash": "5e9e1d43ec14a8f6a1b81f88210f70ff"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntd-gtfs-weblinks.acquired.json": {
+    "mtime": 1785072504.3142452,
+    "ast_hash": "6e64ee00269dffb1a415d8d582e9a553",
+    "semantic_hash": "6e64ee00269dffb1a415d8d582e9a553"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntd-gtfs-weblinks.manifest.json": {
+    "mtime": 1785065713.6042755,
+    "ast_hash": "17036feffe58f23a6c28d7a9506d2ec3",
+    "semantic_hash": "17036feffe58f23a6c28d7a9506d2ec3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntd-monthly-ridership-all-modes.acquired.json": {
+    "mtime": 1785072504.5798767,
+    "ast_hash": "dffd4795076b778b36df8f3338bf5f98",
+    "semantic_hash": "dffd4795076b778b36df8f3338bf5f98"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntd-monthly-ridership-all-modes.manifest.json": {
+    "mtime": 1785065713.6042755,
+    "ast_hash": "5a9e7da910ce71e73b4dc52f15687fa4",
+    "semantic_hash": "5a9e7da910ce71e73b4dc52f15687fa4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntd-service-opex-by-mode-timeseries.acquired.json": {
+    "mtime": 1785072504.8500788,
+    "ast_hash": "3040241c4a552e887499f84a971ea3db",
+    "semantic_hash": "3040241c4a552e887499f84a971ea3db"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntd-service-opex-by-mode-timeseries.manifest.json": {
+    "mtime": 1785065713.6179535,
+    "ast_hash": "69d0dd4f543b1fad8cccb36ebd8616f8",
+    "semantic_hash": "69d0dd4f543b1fad8cccb36ebd8616f8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntm-routes-national.acquired.json": {
+    "mtime": 1785072504.8903458,
+    "ast_hash": "4f3c4427e2d80e8940e2680fd299d5ff",
+    "semantic_hash": "4f3c4427e2d80e8940e2680fd299d5ff"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntm-routes-national.manifest.json": {
+    "mtime": 1785065713.6214707,
+    "ast_hash": "7d53b934b05cdc7cc9f8d250ecc63f36",
+    "semantic_hash": "7d53b934b05cdc7cc9f8d250ecc63f36"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntm-stops-national.acquired.json": {
+    "mtime": 1785072505.3923144,
+    "ast_hash": "0e5671cdb904d0721de24cdc8844ad08",
+    "semantic_hash": "0e5671cdb904d0721de24cdc8844ad08"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\ntm-stops-national.manifest.json": {
+    "mtime": 1785065713.6251059,
+    "ast_hash": "1527268f3d1a2a8955637877d6aa4644",
+    "semantic_hash": "1527268f3d1a2a8955637877d6aa4644"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\osm-dc.acquired.json": {
+    "mtime": 1785072505.4846816,
+    "ast_hash": "2dcec145df45e47432af2832876bbbea",
+    "semantic_hash": "2dcec145df45e47432af2832876bbbea"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\osm-dc.manifest.json": {
+    "mtime": 1784818531.859655,
+    "ast_hash": "7064ee24e86284a2882e9e3ad8bc4b5a",
+    "semantic_hash": "7064ee24e86284a2882e9e3ad8bc4b5a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\realdata-chicago-tnp-trips.manifest.json": {
+    "mtime": 1785065713.6282198,
+    "ast_hash": "9e3662c8e0c4ea8ddb350df9ed76989d",
+    "semantic_hash": "9e3662c8e0c4ea8ddb350df9ed76989d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\realdata-mta-afc-ridership.manifest.json": {
+    "mtime": 1785065713.6282198,
+    "ast_hash": "ff6097df12ea10efcf8c6d4ddf756676",
+    "semantic_hash": "ff6097df12ea10efcf8c6d4ddf756676"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\realdata-ntd-agency-economics.manifest.json": {
+    "mtime": 1785065713.6322205,
+    "ast_hash": "d19257e63754ec6cd04c5624486ef8f4",
+    "semantic_hash": "d19257e63754ec6cd04c5624486ef8f4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\realdata-nyc-aar-paratransit.manifest.json": {
+    "mtime": 1785065713.6352272,
+    "ast_hash": "e12a66cabc409e53abb8c00e0adaf749",
+    "semantic_hash": "e12a66cabc409e53abb8c00e0adaf749"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\realdata-nyc-tlc-trip-records.manifest.json": {
+    "mtime": 1785065713.636227,
+    "ast_hash": "dfec796013a0456b47f641908c5c8a63",
+    "semantic_hash": "dfec796013a0456b47f641908c5c8a63"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\tides-sample.acquired.json": {
+    "mtime": 1785072505.4877896,
+    "ast_hash": "98fbfbb70d3840f5da42a557654edf9d",
+    "semantic_hash": "98fbfbb70d3840f5da42a557654edf9d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\catalog\\tides-sample.manifest.json": {
+    "mtime": 1785065713.6382294,
+    "ast_hash": "97498306db83f7b5bf09d9026ba3c7ed",
+    "semantic_hash": "97498306db83f7b5bf09d9026ba3c7ed"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\aggregate_tlc.py": {
+    "mtime": 1785065713.6532316,
+    "ast_hash": "5a01b75cf8a77645e138b4286afe6b31",
+    "semantic_hash": "5a01b75cf8a77645e138b4286afe6b31"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\backtest_aar.json": {
+    "mtime": 1784625123.47612,
+    "ast_hash": "6dc0a78ae31d20fb0983222423304d31",
+    "semantic_hash": "6dc0a78ae31d20fb0983222423304d31"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\backtest_and_explain.py": {
+    "mtime": 1785065713.659228,
+    "ast_hash": "90313680354c10851a2ea677269c4132",
+    "semantic_hash": "90313680354c10851a2ea677269c4132"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\explanations_aar.json": {
+    "mtime": 1784622616.5670714,
+    "ast_hash": "5bfd1803f5f84e2b529636008bf492e3",
+    "semantic_hash": "5bfd1803f5f84e2b529636008bf492e3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_chicago_panel.py": {
+    "mtime": 1785065713.6693704,
+    "ast_hash": "8cb204ec9dde361e85dd55dfe7f7deea",
+    "semantic_hash": "8cb204ec9dde361e85dd55dfe7f7deea"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_mta_apc.py": {
+    "mtime": 1785065713.6743658,
+    "ast_hash": "50921ab1bee1c82892cd82396f77bdb0",
+    "semantic_hash": "50921ab1bee1c82892cd82396f77bdb0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_ntd_monthly.py": {
+    "mtime": 1785065713.6753664,
+    "ast_hash": "a9d93e977d4260161dc76ebfaf24aae7",
+    "semantic_hash": "a9d93e977d4260161dc76ebfaf24aae7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_nyc_aar.py": {
+    "mtime": 1785065713.6773643,
+    "ast_hash": "f7c7bd46a3c2b42e00ba93d45daf3af2",
+    "semantic_hash": "f7c7bd46a3c2b42e00ba93d45daf3af2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_tlc_parquet.py": {
+    "mtime": 1785065713.679556,
+    "ast_hash": "4f780983cd8ad9e0535daf1d6a921eb1",
+    "semantic_hash": "4f780983cd8ad9e0535daf1d6a921eb1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_tlc_yellow_green.py": {
+    "mtime": 1785065713.6826267,
+    "ast_hash": "101e3acd79dd5f65c98dd8204e7ba94f",
+    "semantic_hash": "101e3acd79dd5f65c98dd8204e7ba94f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_weather.py": {
+    "mtime": 1785065713.6848557,
+    "ast_hash": "6db6d7cdf3aecb7244ad59f8355380e6",
+    "semantic_hash": "6db6d7cdf3aecb7244ad59f8355380e6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\fetch_weather_hourly.py": {
+    "mtime": 1785065713.6868968,
+    "ast_hash": "db39b1735989038bc3da92cf55fa7911",
+    "semantic_hash": "db39b1735989038bc3da92cf55fa7911"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\leakage_audit.py": {
+    "mtime": 1785065713.6910312,
+    "ast_hash": "5842cfb823d5d913d86cb5a9f52e4a11",
+    "semantic_hash": "5842cfb823d5d913d86cb5a9f52e4a11"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\leakage_audit_report.json": {
+    "mtime": 1784709192.1952264,
+    "ast_hash": "ca0b0eef7a8b2d416729e54135fe40a4",
+    "semantic_hash": "ca0b0eef7a8b2d416729e54135fe40a4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\make_real_demo_assets.py": {
+    "mtime": 1785065756.559327,
+    "ast_hash": "5199e57a49577719ae5c5f2fc057e0a5",
+    "semantic_hash": "5199e57a49577719ae5c5f2fc057e0a5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\metrics_ntd_monthly.json": {
+    "mtime": 1784708057.695377,
+    "ast_hash": "d6a9eb3a483a074a7b5808ba2be3cc6e",
+    "semantic_hash": "d6a9eb3a483a074a7b5808ba2be3cc6e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\metrics_objective_bakeoff.json": {
+    "mtime": 1784708407.077563,
+    "ast_hash": "04b8df26a9f2b4ca071dd447bdbce331",
+    "semantic_hash": "04b8df26a9f2b4ca071dd447bdbce331"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\metrics_real.json": {
+    "mtime": 1784702671.0552347,
+    "ast_hash": "694f61693d54198e6e3f6ae92dfe6dbb",
+    "semantic_hash": "694f61693d54198e6e3f6ae92dfe6dbb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\metrics_weather_ablation.json": {
+    "mtime": 1784711795.2771628,
+    "ast_hash": "b3737956931f3c597f3f7537dadc5a09",
+    "semantic_hash": "b3737956931f3c597f3f7537dadc5a09"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\model_ntd_monthly.py": {
+    "mtime": 1785065713.716038,
+    "ast_hash": "ea02dac8b15982ed56632b69c75f0bbd",
+    "semantic_hash": "ea02dac8b15982ed56632b69c75f0bbd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\objective_bakeoff.py": {
+    "mtime": 1785065713.7180238,
+    "ast_hash": "9e965a7c59103e74b69a68a10498eed3",
+    "semantic_hash": "9e965a7c59103e74b69a68a10498eed3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\pretrain_finetune_results.json": {
+    "mtime": 1784713175.9026632,
+    "ast_hash": "c0ff017edb1d54ea9881acb073183abc",
+    "semantic_hash": "c0ff017edb1d54ea9881acb073183abc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\pretrain_finetune_xgboost.py": {
+    "mtime": 1785065713.729576,
+    "ast_hash": "8cd1f9ab4f29fb147a0e7777858aeb1b",
+    "semantic_hash": "8cd1f9ab4f29fb147a0e7777858aeb1b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\train_real_models.py": {
+    "mtime": 1785065713.73233,
+    "ast_hash": "c8b53440793b21b02ab3c8686252b1ea",
+    "semantic_hash": "c8b53440793b21b02ab3c8686252b1ea"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\transfer_control.py": {
+    "mtime": 1785065713.73233,
+    "ast_hash": "f4a31447534b9d1d0cdf1a1e4eb1df1a",
+    "semantic_hash": "f4a31447534b9d1d0cdf1a1e4eb1df1a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\weather_ablation.py": {
+    "mtime": 1785065713.7423587,
+    "ast_hash": "ddecc9c5b7650b46c4cc585a13fbb0aa",
+    "semantic_hash": "ddecc9c5b7650b46c4cc585a13fbb0aa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\aar_daily.csv.json": {
+    "mtime": 1785065713.697038,
+    "ast_hash": "a50db576d31f95204c36a2de38172cd8",
+    "semantic_hash": "a50db576d31f95204c36a2de38172cd8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\aar_hourly_borough.csv.gz.json": {
+    "mtime": 1785065713.6980371,
+    "ast_hash": "5e63968fe3040113fa59e5a471dc18ba",
+    "semantic_hash": "5e63968fe3040113fa59e5a471dc18ba"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\chicago_tnp_zone_hour.csv.gz.json": {
+    "mtime": 1785065713.6990373,
+    "ast_hash": "caa1b4f90a21194cd8f70bf02cc09999",
+    "semantic_hash": "caa1b4f90a21194cd8f70bf02cc09999"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\index.json": {
+    "mtime": 1784908794.8235843,
+    "ast_hash": "ea403983514ca0069602c1593c163d8a",
+    "semantic_hash": "ea403983514ca0069602c1593c163d8a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\mta_bus_route_hour.csv.gz.json": {
+    "mtime": 1785065713.7010374,
+    "ast_hash": "74d2449268032573cd0488f72ff45b78",
+    "semantic_hash": "74d2449268032573cd0488f72ff45b78"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\mta_subway_station_hour.csv.gz.json": {
+    "mtime": 1785065713.7020354,
+    "ast_hash": "e815eaaf6acfeaf27421e206a01c9bf5",
+    "semantic_hash": "e815eaaf6acfeaf27421e206a01c9bf5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\ntd_monthly_dr.csv.gz.json": {
+    "mtime": 1785065713.7030375,
+    "ast_hash": "e28f9e239298ed26f990d6bed521ebd6",
+    "semantic_hash": "e28f9e239298ed26f990d6bed521ebd6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\weather_daily.csv.json": {
+    "mtime": 1785065713.7040367,
+    "ast_hash": "d23b6a64f0890a503a2e3987b4bc58c1",
+    "semantic_hash": "d23b6a64f0890a503a2e3987b4bc58c1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\manifests\\weather_hourly.csv.gz.json": {
+    "mtime": 1785065713.7060368,
+    "ast_hash": "2686596065b1dba45755d8c25fd074a1",
+    "semantic_hash": "2686596065b1dba45755d8c25fd074a1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\build_economics.py": {
+    "mtime": 1785065713.7491083,
+    "ast_hash": "b6942b967be0721ae3e141e4448f3dd4",
+    "semantic_hash": "b6942b967be0721ae3e141e4448f3dd4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\build_outreach_targets.py": {
+    "mtime": 1785065713.7552373,
+    "ast_hash": "ebd0b4de194db96f27c6e3ef618c6e2c",
+    "semantic_hash": "ebd0b4de194db96f27c6e3ef618c6e2c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\fetch_census_latent_demand.py": {
+    "mtime": 1785065756.559327,
+    "ast_hash": "7eafa61aba6088b77971926356ab3c5f",
+    "semantic_hash": "7eafa61aba6088b77971926356ab3c5f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\fetch_ntd.py": {
+    "mtime": 1785065713.7572417,
+    "ast_hash": "a3e45c2207ed507ddaa43f0b191739aa",
+    "semantic_hash": "a3e45c2207ed507ddaa43f0b191739aa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\fetch_osm_poi.py": {
+    "mtime": 1785065713.762317,
+    "ast_hash": "3fe37f6621ed45b6c9db108cd279a05c",
+    "semantic_hash": "3fe37f6621ed45b6c9db108cd279a05c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\peer_position.py": {
+    "mtime": 1785065713.7749598,
+    "ast_hash": "23bd16a476677951fa7b93024c47fa54",
+    "semantic_hash": "23bd16a476677951fa7b93024c47fa54"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\build_contact_worksheet.py": {
+    "mtime": 1785065713.7988958,
+    "ast_hash": "4511b6eaa8f02155f5d5d2ebed845415",
+    "semantic_hash": "4511b6eaa8f02155f5d5d2ebed845415"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\build_panel_findings.py": {
+    "mtime": 1785065756.5756423,
+    "ast_hash": "79b37d185c42a47efa5ad4ad24de336d",
+    "semantic_hash": "79b37d185c42a47efa5ad4ad24de336d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\build_peer_insight.py": {
+    "mtime": 1785065756.576325,
+    "ast_hash": "81d6eb4def7afee96de59ece083212ae",
+    "semantic_hash": "81d6eb4def7afee96de59ece083212ae"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\generate_design_partner_emails.py": {
+    "mtime": 1785065713.9712403,
+    "ast_hash": "134161ae507c1f28c522a53034ce8fb3",
+    "semantic_hash": "134161ae507c1f28c522a53034ce8fb3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\generate_expert_emails.py": {
+    "mtime": 1785065756.576325,
+    "ast_hash": "206efbd95fe5dd44b9444c463aad88e9",
+    "semantic_hash": "206efbd95fe5dd44b9444c463aad88e9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\generate_v3_emails.py": {
+    "mtime": 1785065756.576325,
+    "ast_hash": "e65e20450f8b1acb6392fcc3a8c895e6",
+    "semantic_hash": "e65e20450f8b1acb6392fcc3a8c895e6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\panel_findings.json": {
+    "mtime": 1785065714.0528936,
+    "ast_hash": "b94eab384423a982316ab0ce1ba287f3",
+    "semantic_hash": "b94eab384423a982316ab0ce1ba287f3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\peer_insights.json": {
+    "mtime": 1785065714.119975,
+    "ast_hash": "d9363471586bc73f95ee8c632ab11635",
+    "semantic_hash": "d9363471586bc73f95ee8c632ab11635"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\reference_agency\\generate_trips.py": {
+    "mtime": 1785065714.1806839,
+    "ast_hash": "b901d9a00d014e2c5e98099a9dde26b3",
+    "semantic_hash": "b901d9a00d014e2c5e98099a9dde26b3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\reference_agency\\make_demo_assets.py": {
+    "mtime": 1785065756.576325,
+    "ast_hash": "7fb5005d05399ba56195f6c70de683c6",
+    "semantic_hash": "7fb5005d05399ba56195f6c70de683c6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\reference_agency\\schedule_trips.py": {
+    "mtime": 1785065714.2114587,
+    "ast_hash": "e232e445d3b2b627a9362d2c48e14e26",
+    "semantic_hash": "e232e445d3b2b627a9362d2c48e14e26"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\reference_agency\\train_demand.py": {
+    "mtime": 1785065714.2146373,
+    "ast_hash": "ba25c2fab9c0f571ece7e62eb2dcc6e4",
+    "semantic_hash": "ba25c2fab9c0f571ece7e62eb2dcc6e4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\contracts\\canonical-v0.1.json": {
+    "mtime": 1785065714.2325044,
+    "ast_hash": "f95e1ef800b4e1b05fbf761f9b1bdb7a",
+    "semantic_hash": "f95e1ef800b4e1b05fbf761f9b1bdb7a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\formal\\hash_chain_smt.py": {
+    "mtime": 1785065714.5657978,
+    "ast_hash": "77bbc57a8f988a55b565cecf5b67657a",
+    "semantic_hash": "77bbc57a8f988a55b565cecf5b67657a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\formal\\state_machine_smt.py": {
+    "mtime": 1785065714.5806637,
+    "ast_hash": "0d41e0f629b1dceb1b55955e77f13298",
+    "semantic_hash": "0d41e0f629b1dceb1b55955e77f13298"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\crates\\verifier\\src\\lib.rs": {
+    "mtime": 1785065715.2514417,
+    "ast_hash": "2f5a2bcd5101058faad1692f64adfedf",
+    "semantic_hash": "2f5a2bcd5101058faad1692f64adfedf"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\crates\\verifier\\src\\main.rs": {
+    "mtime": 1785065715.2514417,
+    "ast_hash": "813a7eb90ca89c0131e9b3d395c09b95",
+    "semantic_hash": "813a7eb90ca89c0131e9b3d395c09b95"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\kaggle\\results\\finetune_metrics_testmode.json": {
+    "mtime": 1784696870.3964849,
+    "ast_hash": "c874c1c3d71c4cd1857e9929dd8369b9",
+    "semantic_hash": "c874c1c3d71c4cd1857e9929dd8369b9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\kaggle\\results\\pretrain_metrics_testmode.json": {
+    "mtime": 1784696870.3544831,
+    "ast_hash": "7b724a065866471d04d4a7077b60142e",
+    "semantic_hash": "7b724a065866471d04d4a7077b60142e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\build_dr_panel.py": {
+    "mtime": 1785065715.430529,
+    "ast_hash": "72ed12ab2bc9e938daa8c37800abf211",
+    "semantic_hash": "72ed12ab2bc9e938daa8c37800abf211"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h1_deadhead_gap.json": {
+    "mtime": 1785026092.568192,
+    "ast_hash": "967d9f9f334a99f91a6b36cded3131d5",
+    "semantic_hash": "967d9f9f334a99f91a6b36cded3131d5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h1_deadhead_gap.py": {
+    "mtime": 1785065756.576325,
+    "ast_hash": "0c16c10fb4656e5f8562519b0df960c5",
+    "semantic_hash": "0c16c10fb4656e5f8562519b0df960c5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h2b_ablation.json": {
+    "mtime": 1785026446.3873038,
+    "ast_hash": "13f6313e7a7848e5f21fc95d659a33ee",
+    "semantic_hash": "13f6313e7a7848e5f21fc95d659a33ee"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h2b_ablation.py": {
+    "mtime": 1785065715.4914594,
+    "ast_hash": "b4db69b67c9a21f354bb4ff5f75c82c8",
+    "semantic_hash": "b4db69b67c9a21f354bb4ff5f75c82c8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h2_deterioration.json": {
+    "mtime": 1785026175.233676,
+    "ast_hash": "65c56397eb931a9982db000dc5ce21bb",
+    "semantic_hash": "65c56397eb931a9982db000dc5ce21bb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h2_deterioration.py": {
+    "mtime": 1785065715.4682672,
+    "ast_hash": "1362189d60d709c6c87c40205878d2c4",
+    "semantic_hash": "1362189d60d709c6c87c40205878d2c4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h3b_seasonality.json": {
+    "mtime": 1785026458.1171138,
+    "ast_hash": "6fdb271d04c383ee3786f3a36344bf00",
+    "semantic_hash": "6fdb271d04c383ee3786f3a36344bf00"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h3b_seasonality.py": {
+    "mtime": 1785065715.683854,
+    "ast_hash": "e56cecbf0e523833e218c2fd5b8ca49b",
+    "semantic_hash": "e56cecbf0e523833e218c2fd5b8ca49b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h3_weather.json": {
+    "mtime": 1785065715.5011744,
+    "ast_hash": "f860c1c6f01c821018cb0d25ba45a730",
+    "semantic_hash": "f860c1c6f01c821018cb0d25ba45a730"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h3_weather.py": {
+    "mtime": 1785065715.5317488,
+    "ast_hash": "14fb2743dbe212410cc3d03b006f7036",
+    "semantic_hash": "14fb2743dbe212410cc3d03b006f7036"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h3_weather_observations.json": {
+    "mtime": 1785065715.668694,
+    "ast_hash": "4337c355d58727118e92c41b58a67977",
+    "semantic_hash": "4337c355d58727118e92c41b58a67977"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h4_census_unmet_need.json": {
+    "mtime": 1785026464.961355,
+    "ast_hash": "5a87b9e1e8dfe21f855d917ae8950f0a",
+    "semantic_hash": "5a87b9e1e8dfe21f855d917ae8950f0a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h4_census_unmet_need.py": {
+    "mtime": 1785065715.9483144,
+    "ast_hash": "7942813dc893f8554d5d4f0722ccd802",
+    "semantic_hash": "7942813dc893f8554d5d4f0722ccd802"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5a_reporting_discontinuities.json": {
+    "mtime": 1785026465.976755,
+    "ast_hash": "4bad5236b02e6f8b54ce346785d64251",
+    "semantic_hash": "4bad5236b02e6f8b54ce346785d64251"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5a_reporting_discontinuities.py": {
+    "mtime": 1785065716.1846037,
+    "ast_hash": "025b2cced86f6d9a15af61863de582fa",
+    "semantic_hash": "025b2cced86f6d9a15af61863de582fa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5b_structure_vs_cost.json": {
+    "mtime": 1785026467.3278563,
+    "ast_hash": "4c205e3780ce0504d7a4b2d59839eddf",
+    "semantic_hash": "4c205e3780ce0504d7a4b2d59839eddf"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5b_structure_vs_cost.py": {
+    "mtime": 1785065716.1971855,
+    "ast_hash": "588e2d1bb949e4fed05051b0ecfa46a1",
+    "semantic_hash": "588e2d1bb949e4fed05051b0ecfa46a1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5c_cost_decomposition.json": {
+    "mtime": 1785026468.9086258,
+    "ast_hash": "c301c24f912b78e8469dae77998e44b1",
+    "semantic_hash": "c301c24f912b78e8469dae77998e44b1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5c_cost_decomposition.py": {
+    "mtime": 1785065716.2180972,
+    "ast_hash": "5e82e9a7ca886acf5f126c6ef5fb72c0",
+    "semantic_hash": "5e82e9a7ca886acf5f126c6ef5fb72c0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5d_productivity_anatomy.json": {
+    "mtime": 1785026470.247581,
+    "ast_hash": "c34f2a04c93365ae21b5db1a5dd67083",
+    "semantic_hash": "c34f2a04c93365ae21b5db1a5dd67083"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5d_productivity_anatomy.py": {
+    "mtime": 1785065716.2322137,
+    "ast_hash": "249567bd9f48ec56d582cddb8de7a900",
+    "semantic_hash": "249567bd9f48ec56d582cddb8de7a900"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5e_ridesharing.json": {
+    "mtime": 1785026471.5279162,
+    "ast_hash": "7bd6c1010f0cde14baceb34ea7d19277",
+    "semantic_hash": "7bd6c1010f0cde14baceb34ea7d19277"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\h5e_ridesharing.py": {
+    "mtime": 1785065716.2498865,
+    "ast_hash": "c23112d5be11a9bd6fd5cc98f870688f",
+    "semantic_hash": "c23112d5be11a9bd6fd5cc98f870688f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\lib.py": {
+    "mtime": 1785065756.5746331,
+    "ast_hash": "c6f34815a0fe23670f860171aa987b26",
+    "semantic_hash": "c6f34815a0fe23670f860171aa987b26"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\capability.py": {
+    "mtime": 1785065716.2744207,
+    "ast_hash": "4874fe088224b1498e2fc81fb39fac50",
+    "semantic_hash": "4874fe088224b1498e2fc81fb39fac50"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\capacity_value.py": {
+    "mtime": 1785065716.3070998,
+    "ast_hash": "6d908cc498417cc1c6cc45f5dfd88faf",
+    "semantic_hash": "6d908cc498417cc1c6cc45f5dfd88faf"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\commingled.py": {
+    "mtime": 1785065716.3451953,
+    "ast_hash": "ab4dba79b8a2cdea78b7c24d0c0f4c60",
+    "semantic_hash": "ab4dba79b8a2cdea78b7c24d0c0f4c60"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\compatibility.py": {
+    "mtime": 1785065716.410737,
+    "ast_hash": "8aa07ea9761abcfa01b4fad8ca93b2ac",
+    "semantic_hash": "8aa07ea9761abcfa01b4fad8ca93b2ac"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\cpsat.py": {
+    "mtime": 1785065716.4288619,
+    "ast_hash": "9856f50607b8c5588dfcc78bdfbab94c",
+    "semantic_hash": "9856f50607b8c5588dfcc78bdfbab94c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\cpsat_darp.py": {
+    "mtime": 1785065716.4511032,
+    "ast_hash": "e19324b2d6d8e3176486c4f56215918f",
+    "semantic_hash": "e19324b2d6d8e3176486c4f56215918f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\darp_bridge.py": {
+    "mtime": 1785065716.4652786,
+    "ast_hash": "f93d14999fce5988c33411b5593691fa",
+    "semantic_hash": "f93d14999fce5988c33411b5593691fa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\darp_ir.py": {
+    "mtime": 1785065716.474468,
+    "ast_hash": "bb1397eb0af82d5de0548d00e46226b6",
+    "semantic_hash": "bb1397eb0af82d5de0548d00e46226b6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\darp_loader.py": {
+    "mtime": 1785065716.4826636,
+    "ast_hash": "6a88099c100ba4b142fa911b90c7ddaa",
+    "semantic_hash": "6a88099c100ba4b142fa911b90c7ddaa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\darp_solver.py": {
+    "mtime": 1785065716.5027096,
+    "ast_hash": "a5b9264ac27dd213d81fc0c9394eaec9",
+    "semantic_hash": "a5b9264ac27dd213d81fc0c9394eaec9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\exposure.py": {
+    "mtime": 1785065716.5256956,
+    "ast_hash": "690ef14f59f7882997763f1ca04ca36b",
+    "semantic_hash": "690ef14f59f7882997763f1ca04ca36b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\feasibility.py": {
+    "mtime": 1785065716.541636,
+    "ast_hash": "b0aaf140dc21674c735b11a2cad56638",
+    "semantic_hash": "b0aaf140dc21674c735b11a2cad56638"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\ir.py": {
+    "mtime": 1785065716.547634,
+    "ast_hash": "dac6773976d4d8353866021767faaab9",
+    "semantic_hash": "dac6773976d4d8353866021767faaab9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\online.py": {
+    "mtime": 1785065716.5645907,
+    "ast_hash": "5b044c876b2726b471cef313d36ed59c",
+    "semantic_hash": "5b044c876b2726b471cef313d36ed59c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\pooling.py": {
+    "mtime": 1785065716.6029434,
+    "ast_hash": "0376572b5d86be16180e0b1e247f8e51",
+    "semantic_hash": "0376572b5d86be16180e0b1e247f8e51"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\portfolio.py": {
+    "mtime": 1785065716.6254532,
+    "ast_hash": "285e5048b053076661e8166c1b575ad0",
+    "semantic_hash": "285e5048b053076661e8166c1b575ad0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\solver.py": {
+    "mtime": 1785065716.6326675,
+    "ast_hash": "65d40633c2a31c2b9fd6be3518530ca8",
+    "semantic_hash": "65d40633c2a31c2b9fd6be3518530ca8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\decide\\__init__.py": {
+    "mtime": 1785065716.2704046,
+    "ast_hash": "cc2503709e8479b8e0a32321c952e65e",
+    "semantic_hash": "cc2503709e8479b8e0a32321c952e65e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\forecast\\capacity.py": {
+    "mtime": 1785065716.6710894,
+    "ast_hash": "92da13f35d7dd6eb1a9330b8ec06b566",
+    "semantic_hash": "92da13f35d7dd6eb1a9330b8ec06b566"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\forecast\\conformal.py": {
+    "mtime": 1785065716.683637,
+    "ast_hash": "426f36b04073416dccc62ba903767be0",
+    "semantic_hash": "426f36b04073416dccc62ba903767be0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\forecast\\features.py": {
+    "mtime": 1785065716.683637,
+    "ast_hash": "6e2fd183d8c16ac4f117819aeea0a0b4",
+    "semantic_hash": "6e2fd183d8c16ac4f117819aeea0a0b4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\forecast\\runtime.py": {
+    "mtime": 1785065716.698879,
+    "ast_hash": "f741d4c909bf16d93da85b775f156f7a",
+    "semantic_hash": "f741d4c909bf16d93da85b775f156f7a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\forecast\\serve_drift.py": {
+    "mtime": 1785065716.715874,
+    "ast_hash": "0f085c836aa5a88b098ee496f28322a4",
+    "semantic_hash": "0f085c836aa5a88b098ee496f28322a4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\metis\\forecast\\__init__.py": {
+    "mtime": 1785065716.6326675,
+    "ast_hash": "cc36a3d26015f79b6256704d83e4f4c3",
+    "semantic_hash": "cc36a3d26015f79b6256704d83e4f4c3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\generate.py": {
+    "mtime": 1785076598.6463666,
+    "ast_hash": "e85418d20c681b00863e775bc6ea8881",
+    "semantic_hash": "e85418d20c681b00863e775bc6ea8881"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\operator_contract.py": {
+    "mtime": 1785077879.8037808,
+    "ast_hash": "8a2cd561fd4ffd4cb56a38561aa3061f",
+    "semantic_hash": "8a2cd561fd4ffd4cb56a38561aa3061f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\validate_operator_export.py": {
+    "mtime": 1785078882.163102,
+    "ast_hash": "8c514c535783b92e8c6f5cd4b6c6cdf6",
+    "semantic_hash": "8c514c535783b92e8c6f5cd4b6c6cdf6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\jsonschema\\canonical-v0.1.json": {
+    "mtime": 1785079389.3110175,
+    "ast_hash": "0e02d64f45ddecdb73ae7cb845f172ce",
+    "semantic_hash": "0e02d64f45ddecdb73ae7cb845f172ce"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\jsonschema\\operator-data-contract-v0.1.json": {
+    "mtime": 1785079395.971325,
+    "ast_hash": "31b841dc81f59cce176871c4a5693e4d",
+    "semantic_hash": "31b841dc81f59cce176871c4a5693e4d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\openapi\\milexium-api-v0.1.json": {
+    "mtime": 1785079395.955927,
+    "ast_hash": "325cf4be617a6367aa24e3caae2966a0",
+    "semantic_hash": "325cf4be617a6367aa24e3caae2966a0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\infra\\compose\\initdb\\01-app-role.sh": {
+    "mtime": 1785065716.908296,
+    "ast_hash": "d2ba0b52b7a6e1d011884fd94b9694cc",
+    "semantic_hash": "d2ba0b52b7a6e1d011884fd94b9694cc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\infra\\compose\\initdb\\02-lifecycle-ledger-bootstrap.sql": {
+    "mtime": 1785065716.914864,
+    "ast_hash": "670f598157ad3fc95f5a7971d07b20ee",
+    "semantic_hash": "670f598157ad3fc95f5a7971d07b20ee"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\tools\\audit_repository.py": {
+    "mtime": 1785065716.9365132,
+    "ast_hash": "8ee79938cdf65368ff3f728038bc4ea4",
+    "semantic_hash": "8ee79938cdf65368ff3f728038bc4ea4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\tools\\build_evidence_registry.py": {
+    "mtime": 1785065716.9481802,
+    "ast_hash": "92e2c907c588479bc6a931ed5e55cd85",
+    "semantic_hash": "92e2c907c588479bc6a931ed5e55cd85"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\tools\\build_manifests.py": {
+    "mtime": 1785065716.964818,
+    "ast_hash": "fdb323f792a9318ea74d888efa6a55f1",
+    "semantic_hash": "fdb323f792a9318ea74d888efa6a55f1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\tools\\build_model_cards.py": {
+    "mtime": 1785065716.964818,
+    "ast_hash": "3a3286b3f09301f5bf284c234eb48583",
+    "semantic_hash": "3a3286b3f09301f5bf284c234eb48583"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\tools\\build_realdata_manifests.py": {
+    "mtime": 1785065716.9880235,
+    "ast_hash": "90aef368952520a3ad37b3b7be16d809",
+    "semantic_hash": "90aef368952520a3ad37b3b7be16d809"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\tools\\derive_scheduled_deadhead.py": {
+    "mtime": 1785065717.022837,
+    "ast_hash": "807605c71f744b890ebe59c37610ac8d",
+    "semantic_hash": "807605c71f744b890ebe59c37610ac8d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\__init__.py": {
+    "mtime": 1784812718.5971677,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\entities.py": {
+    "mtime": 1785065717.0564833,
+    "ast_hash": "67da556f5a00bc6b0e1450c92a2bfe99",
+    "semantic_hash": "67da556f5a00bc6b0e1450c92a2bfe99"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\events.py": {
+    "mtime": 1785065717.0564833,
+    "ast_hash": "75b7cab7acdcf3c1422c28d5a78d3b94",
+    "semantic_hash": "75b7cab7acdcf3c1422c28d5a78d3b94"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\ids.py": {
+    "mtime": 1785065717.0653982,
+    "ast_hash": "fd253c026f4ea015e47c9eee9e561483",
+    "semantic_hash": "fd253c026f4ea015e47c9eee9e561483"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\lifecycle.py": {
+    "mtime": 1785065717.0987024,
+    "ast_hash": "58218c85759f08e0b7e0e5b0ae3a135b",
+    "semantic_hash": "58218c85759f08e0b7e0e5b0ae3a135b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\lifecycle_verify.py": {
+    "mtime": 1785065717.0987024,
+    "ast_hash": "bbcde52cae1be089353d17b03e3e63c1",
+    "semantic_hash": "bbcde52cae1be089353d17b03e3e63c1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\observation_store.py": {
+    "mtime": 1785065717.1294713,
+    "ast_hash": "2847c2070f42d8f7d66269588c3dc895",
+    "semantic_hash": "2847c2070f42d8f7d66269588c3dc895"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\postgres_storage.py": {
+    "mtime": 1785065717.1648526,
+    "ast_hash": "aee95ad5b9b3990f25a9b2de743c7ade",
+    "semantic_hash": "aee95ad5b9b3990f25a9b2de743c7ade"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\semantic_index.py": {
+    "mtime": 1785065717.1648526,
+    "ast_hash": "f54be29ff614c77e762fc5635df3b396",
+    "semantic_hash": "f54be29ff614c77e762fc5635df3b396"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\state_machine.py": {
+    "mtime": 1785065717.225256,
+    "ast_hash": "d0f73e90824aae4d9aabe781efb3d853",
+    "semantic_hash": "d0f73e90824aae4d9aabe781efb3d853"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\storage.py": {
+    "mtime": 1785065717.2647667,
+    "ast_hash": "c293d3517bc2c6d15e8ede343ec0a0be",
+    "semantic_hash": "c293d3517bc2c6d15e8ede343ec0a0be"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\time.py": {
+    "mtime": 1784812775.1435163,
+    "ast_hash": "5e997072a9666e6554076e99b52442ca",
+    "semantic_hash": "5e997072a9666e6554076e99b52442ca"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\transaction_clock.py": {
+    "mtime": 1785055267.2708447,
+    "ast_hash": "c9e4c4054e9cc1213c16ffc3e63f5424",
+    "semantic_hash": "c9e4c4054e9cc1213c16ffc3e63f5424"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\vocab.py": {
+    "mtime": 1785065717.272807,
+    "ast_hash": "0d017eb5cf9948c359cf5c2c5e3f52e9",
+    "semantic_hash": "0d017eb5cf9948c359cf5c2c5e3f52e9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\__init__.py": {
+    "mtime": 1785065717.031386,
+    "ast_hash": "1b02d3af4dc00670e4d3c2b499a139e0",
+    "semantic_hash": "1b02d3af4dc00670e4d3c2b499a139e0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\sql\\lifecycle_immutability_postgres.sql": {
+    "mtime": 1785065717.1648526,
+    "ast_hash": "0f567ea2358b04198989cfe849bad269",
+    "semantic_hash": "0f567ea2358b04198989cfe849bad269"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\sql\\lifecycle_immutability_sqlite.sql": {
+    "mtime": 1785065717.1648526,
+    "ast_hash": "29a5d52367b5e2c48f6d1ce66d404512",
+    "semantic_hash": "29a5d52367b5e2c48f6d1ce66d404512"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\sql\\postgis_postgres.sql": {
+    "mtime": 1785065717.181494,
+    "ast_hash": "32e9469c984a293651766c30497fd926",
+    "semantic_hash": "32e9469c984a293651766c30497fd926"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\sql\\rls_postgres.sql": {
+    "mtime": 1785065717.1981063,
+    "ast_hash": "547f229c1377f39b85d391ce8adf92a5",
+    "semantic_hash": "547f229c1377f39b85d391ce8adf92a5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\canonical\\sql\\schema_v0_1.sql": {
+    "mtime": 1785065717.221235,
+    "ast_hash": "a5dadd7cf99405840ef05085be2c2039",
+    "semantic_hash": "a5dadd7cf99405840ef05085be2c2039"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\adapter.py": {
+    "mtime": 1784814616.9466543,
+    "ast_hash": "e945581755cbb5ba16d26cbc6daab264",
+    "semantic_hash": "e945581755cbb5ba16d26cbc6daab264"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\gtfs_flex.py": {
+    "mtime": 1785065717.3108814,
+    "ast_hash": "fcf1781a811a2d9eb8a2dd8b01ba4772",
+    "semantic_hash": "fcf1781a811a2d9eb8a2dd8b01ba4772"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\gtfs_realtime.py": {
+    "mtime": 1785065717.3501997,
+    "ast_hash": "b6c5a2a494a4a69aa6ad44d7c2383a9e",
+    "semantic_hash": "b6c5a2a494a4a69aa6ad44d7c2383a9e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\ingest_report.py": {
+    "mtime": 1785065717.3885376,
+    "ast_hash": "46c372272591b7bd36a0170dabac1874",
+    "semantic_hash": "46c372272591b7bd36a0170dabac1874"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\operator_export.py": {
+    "mtime": 1785065717.4735043,
+    "ast_hash": "9b28291c6707a771ab777f04e6b90ffe",
+    "semantic_hash": "9b28291c6707a771ab777f04e6b90ffe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\reference_agency_trips.py": {
+    "mtime": 1785065717.4815083,
+    "ast_hash": "43d90476820236fdbeda1cdb2351684b",
+    "semantic_hash": "43d90476820236fdbeda1cdb2351684b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\tides_trips.py": {
+    "mtime": 1785065717.525046,
+    "ast_hash": "5fd9e6af8acd8e7dd56a61ad383dfb22",
+    "semantic_hash": "5fd9e6af8acd8e7dd56a61ad383dfb22"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\tlc_trips.py": {
+    "mtime": 1785065717.5643792,
+    "ast_hash": "80f10cdcece712a670b2fb0865f182f8",
+    "semantic_hash": "80f10cdcece712a670b2fb0865f182f8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\connect\\__init__.py": {
+    "mtime": 1785065717.2774305,
+    "ast_hash": "1f1e3a0ffa127663149ca2cca0a8f27f",
+    "semantic_hash": "1f1e3a0ffa127663149ca2cca0a8f27f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\drift.py": {
+    "mtime": 1784917991.799601,
+    "ast_hash": "d530fc84969f2e4cc5bdd24901efa3d8",
+    "semantic_hash": "d530fc84969f2e4cc5bdd24901efa3d8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\feature_store.py": {
+    "mtime": 1785065717.6281004,
+    "ast_hash": "03569472cca8aa0273e990650aa1b2dd",
+    "semantic_hash": "03569472cca8aa0273e990650aa1b2dd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\migrations.py": {
+    "mtime": 1785065717.6937642,
+    "ast_hash": "7e335c302d49f37719ded3f64ba8e4c8",
+    "semantic_hash": "7e335c302d49f37719ded3f64ba8e4c8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\model_registry.py": {
+    "mtime": 1785065717.7285953,
+    "ast_hash": "d635556e900f826813026e35805807a5",
+    "semantic_hash": "d635556e900f826813026e35805807a5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\promotion.py": {
+    "mtime": 1785065717.7824314,
+    "ast_hash": "30bedc9e34b1f4f9f8adf7a41c8dd390",
+    "semantic_hash": "30bedc9e34b1f4f9f8adf7a41c8dd390"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\task_registry.py": {
+    "mtime": 1785065717.8576608,
+    "ast_hash": "b7ed735c7750304052e663da86b5624f",
+    "semantic_hash": "b7ed735c7750304052e663da86b5624f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\__init__.py": {
+    "mtime": 1785065717.5668852,
+    "ast_hash": "c94ad7e6e9313ed1dbcd43772b60c909",
+    "semantic_hash": "c94ad7e6e9313ed1dbcd43772b60c909"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\sql\\core_rls_postgres.sql": {
+    "mtime": 1785065717.80937,
+    "ast_hash": "92b4bc50ddcab488661e0354ae2ee067",
+    "semantic_hash": "92b4bc50ddcab488661e0354ae2ee067"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\sql\\core_schema_migrations.sql": {
+    "mtime": 1785065717.8148496,
+    "ast_hash": "3f29be27a3858a859a78b43d431c2b6e",
+    "semantic_hash": "3f29be27a3858a859a78b43d431c2b6e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\sql\\core_v0_1.sql": {
+    "mtime": 1785065717.8314462,
+    "ast_hash": "cad457fa0e9c215a5a135614d369029d",
+    "semantic_hash": "cad457fa0e9c215a5a135614d369029d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\sql\\legacy\\core_v0_1_pre_tenant.sql": {
+    "mtime": 1785065717.8438554,
+    "ast_hash": "bb1a758d3bcf3177c7b4fed5e8587bbe",
+    "semantic_hash": "bb1a758d3bcf3177c7b4fed5e8587bbe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\core\\sql\\legacy\\core_v0_2_pre_catalog.sql": {
+    "mtime": 1785065717.851631,
+    "ast_hash": "2d11773097797e35aacc98e26f0f7eec",
+    "semantic_hash": "2d11773097797e35aacc98e26f0f7eec"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\estate\\acquire.py": {
+    "mtime": 1785072598.8118935,
+    "ast_hash": "d09b412a81558e8576329e8c1e4b4135",
+    "semantic_hash": "d09b412a81558e8576329e8c1e4b4135"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\estate\\catalog.py": {
+    "mtime": 1785072598.8128984,
+    "ast_hash": "f89f06ea3499aafa1dc5b4944baeea89",
+    "semantic_hash": "f89f06ea3499aafa1dc5b4944baeea89"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\estate\\manifest.py": {
+    "mtime": 1785065717.900228,
+    "ast_hash": "0b000c8a521581ea3d1133bd8b1709b8",
+    "semantic_hash": "0b000c8a521581ea3d1133bd8b1709b8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\estate\\object_store.py": {
+    "mtime": 1785065717.909484,
+    "ast_hash": "06d2e74c95a6394e16739ae5b708e25c",
+    "semantic_hash": "06d2e74c95a6394e16739ae5b708e25c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\estate\\__init__.py": {
+    "mtime": 1785065717.8628964,
+    "ast_hash": "f0e2fee3881660fe3455f97d8ae78ac3",
+    "semantic_hash": "f0e2fee3881660fe3455f97d8ae78ac3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\actions.py": {
+    "mtime": 1785078646.654006,
+    "ast_hash": "e3ad0ae6f8121889c1d650943e56277b",
+    "semantic_hash": "e3ad0ae6f8121889c1d650943e56277b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\episode.py": {
+    "mtime": 1785078565.4831026,
+    "ast_hash": "16375616b247df291a4718495a4ede2d",
+    "semantic_hash": "16375616b247df291a4718495a4ede2d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\events.py": {
+    "mtime": 1785065717.9507947,
+    "ast_hash": "274f65466574b922e9c6058f445326b0",
+    "semantic_hash": "274f65466574b922e9c6058f445326b0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\graph.py": {
+    "mtime": 1785065717.9644177,
+    "ast_hash": "983d7d7b6ce481f3019414647c2c92f3",
+    "semantic_hash": "983d7d7b6ce481f3019414647c2c92f3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\ids.py": {
+    "mtime": 1785065717.974418,
+    "ast_hash": "12716686b064687166969fcd3e5ebe23",
+    "semantic_hash": "12716686b064687166969fcd3e5ebe23"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\provenance.py": {
+    "mtime": 1785065718.0193322,
+    "ast_hash": "db5968d4a11e826ffcf2c1c7eb088c7b",
+    "semantic_hash": "db5968d4a11e826ffcf2c1c7eb088c7b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\receipt.py": {
+    "mtime": 1785065718.0352447,
+    "ast_hash": "4d44d38a17fdc2dba21030a7167aa202",
+    "semantic_hash": "4d44d38a17fdc2dba21030a7167aa202"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\snapshot.py": {
+    "mtime": 1785065718.089146,
+    "ast_hash": "e3c6c144cf03755a8ea121f76ff54488",
+    "semantic_hash": "e3c6c144cf03755a8ea121f76ff54488"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\store.py": {
+    "mtime": 1785078264.8146508,
+    "ast_hash": "c908b2aeacbe0c2a2bb79164a6609e12",
+    "semantic_hash": "c908b2aeacbe0c2a2bb79164a6609e12"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\vocab.py": {
+    "mtime": 1785076021.4126904,
+    "ast_hash": "025e1e7091f80907da12afbb0f6c26a0",
+    "semantic_hash": "025e1e7091f80907da12afbb0f6c26a0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\__init__.py": {
+    "mtime": 1785076634.6639526,
+    "ast_hash": "b2841554b93452f3c973a72806ee2614",
+    "semantic_hash": "b2841554b93452f3c973a72806ee2614"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\sql\\ontology_immutability_postgres.sql": {
+    "mtime": 1785060218.6550324,
+    "ast_hash": "1a09e6f9efc33705755bd34c6315809b",
+    "semantic_hash": "1a09e6f9efc33705755bd34c6315809b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\sql\\ontology_immutability_sqlite.sql": {
+    "mtime": 1785065718.112047,
+    "ast_hash": "b1f7c771633c13e91ad9a95b3b51ff67",
+    "semantic_hash": "b1f7c771633c13e91ad9a95b3b51ff67"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\sql\\ontology_rls_postgres.sql": {
+    "mtime": 1785065718.1185281,
+    "ast_hash": "67bf6fa14b6a48f233a5ef28c55eefcd",
+    "semantic_hash": "67bf6fa14b6a48f233a5ef28c55eefcd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\ontology\\sql\\ontology_v0_1.sql": {
+    "mtime": 1785078161.055904,
+    "ast_hash": "ad25837c76d84f44b9cfb7581f16dc67",
+    "semantic_hash": "ad25837c76d84f44b9cfb7581f16dc67"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\IMPLEMENTATION_STATUS.md": {
+    "mtime": 1785080510.4451602,
+    "ast_hash": "99623e2f4c4b18d8124bc20c06da25f8",
+    "semantic_hash": "99623e2f4c4b18d8124bc20c06da25f8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\MILEXIUM_INTERNAL_AUDIT_2026-07-26.md": {
+    "mtime": 1785063179.620511,
+    "ast_hash": "1a93b2012a95ea505dea052c9d82811d",
+    "semantic_hash": "1a93b2012a95ea505dea052c9d82811d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\README.md": {
+    "mtime": 1785080374.6184552,
+    "ast_hash": "a91d406a437ff9d64a375870177891c5",
+    "semantic_hash": "a91d406a437ff9d64a375870177891c5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\.github\\workflows\\ci.yml": {
+    "mtime": 1785066080.5462525,
+    "ast_hash": "e64a0b1eb1970d3227232c7587c7f006",
+    "semantic_hash": "e64a0b1eb1970d3227232c7587c7f006"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\README.md": {
+    "mtime": 1784701166.1494737,
+    "ast_hash": "ba43b640119c3095243af0e5f9c056f2",
+    "semantic_hash": "ba43b640119c3095243af0e5f9c056f2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\command-centre\\index.html": {
+    "mtime": 1785080337.0403676,
+    "ast_hash": "3498766e2cd17ee1be8c6e34cd48117b",
+    "semantic_hash": "3498766e2cd17ee1be8c6e34cd48117b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\evidence-registry\\README.md": {
+    "mtime": 1785065711.0990405,
+    "ast_hash": "ba22eb0518acd8d5e3da46334b22ff79",
+    "semantic_hash": "ba22eb0518acd8d5e3da46334b22ff79"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\knowledge-graph\\2026-07-21\\graph.html": {
+    "mtime": 1784624340.9973087,
+    "ast_hash": "3707a571f7f49ca36b92d31eb76a5da5",
+    "semantic_hash": "3707a571f7f49ca36b92d31eb76a5da5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\knowledge-graph\\2026-07-21\\GRAPH_REPORT.md": {
+    "mtime": 1784624297.0488887,
+    "ast_hash": "9a375b0b0c202ae04a29dbca82679cc2",
+    "semantic_hash": "9a375b0b0c202ae04a29dbca82679cc2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\README.md": {
+    "mtime": 1785065711.1153507,
+    "ast_hash": "bbdf328f3204038851164bf78d42da60",
+    "semantic_hash": "bbdf328f3204038851164bf78d42da60"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\optimization\\pooling_summary.md": {
+    "mtime": 1785065711.1656716,
+    "ast_hash": "075fde5f3f4aeb41f979acc8ec0163b7",
+    "semantic_hash": "075fde5f3f4aeb41f979acc8ec0163b7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\optimization\\portfolio_summary.md": {
+    "mtime": 1785065711.19866,
+    "ast_hash": "00780b7a0380b6f051ddcac444cc9819",
+    "semantic_hash": "00780b7a0380b6f051ddcac444cc9819"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\performance\\teardown_scale.md": {
+    "mtime": 1785065711.19866,
+    "ast_hash": "d42d8bb29a790a3946326401ccad62f7",
+    "semantic_hash": "d42d8bb29a790a3946326401ccad62f7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\capacity_backtest.md": {
+    "mtime": 1785065836.9245353,
+    "ast_hash": "53cc371ea9f1742ea4203ae78bb218f7",
+    "semantic_hash": "53cc371ea9f1742ea4203ae78bb218f7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\darp_summary.md": {
+    "mtime": 1785065711.9515953,
+    "ast_hash": "10d2cb04ad1913b30d2f70a9037c30fd",
+    "semantic_hash": "10d2cb04ad1913b30d2f70a9037c30fd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\benchmarks\\quality\\forecast_leaderboard.md": {
+    "mtime": 1785080106.1476662,
+    "ast_hash": "8f7fbd33af9a3d62b6f26d2bbb9f1778",
+    "semantic_hash": "8f7fbd33af9a3d62b6f26d2bbb9f1778"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\conformance\\README.md": {
+    "mtime": 1785065711.969214,
+    "ast_hash": "a6103ae3184df9c6b697c18cfe558377",
+    "semantic_hash": "a6103ae3184df9c6b697c18cfe558377"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\argus\\sdk-typescript\\README.md": {
+    "mtime": 1785065713.3319738,
+    "ast_hash": "be18b9300b8c9af8dbd25e46dee550d0",
+    "semantic_hash": "be18b9300b8c9af8dbd25e46dee550d0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\ACQUISITION_PLAN.md": {
+    "mtime": 1785065713.4550664,
+    "ast_hash": "cc13e35cdf0035d104ee4945692b14d1",
+    "semantic_hash": "cc13e35cdf0035d104ee4945692b14d1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\README.md": {
+    "mtime": 1785065713.459761,
+    "ast_hash": "b4049ec6726cb3bdd91441fe40f9effa",
+    "semantic_hash": "b4049ec6726cb3bdd91441fe40f9effa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\acquired\\US_OPEN_DATA_SURVEY.md": {
+    "mtime": 1785065713.4824817,
+    "ast_hash": "8e887ebed8564db7cf33dd265176eb2f",
+    "semantic_hash": "8e887ebed8564db7cf33dd265176eb2f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\LEAKAGE_AUDIT.md": {
+    "mtime": 1784709228.5485778,
+    "ast_hash": "1e06111eb7c0b098c69799c9a297821a",
+    "semantic_hash": "1e06111eb7c0b098c69799c9a297821a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\NTD_MONTHLY_RESULTS.md": {
+    "mtime": 1784708143.176325,
+    "ast_hash": "aa6de78bc6421ff3e40e2b4b34eb6547",
+    "semantic_hash": "aa6de78bc6421ff3e40e2b4b34eb6547"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\OBJECTIVE_BAKEOFF_RESULTS.md": {
+    "mtime": 1784708454.5388603,
+    "ast_hash": "aa5c0f34e01182e4acb7b16bd5d4ce40",
+    "semantic_hash": "aa5c0f34e01182e4acb7b16bd5d4ce40"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\README.md": {
+    "mtime": 1785065713.6482317,
+    "ast_hash": "df24bffd6069c358cfb9ead730c5d4bf",
+    "semantic_hash": "df24bffd6069c358cfb9ead730c5d4bf"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\TRANSFER_RESULTS.md": {
+    "mtime": 1784713537.2530048,
+    "ast_hash": "93e4ba6abdbbb6a369f1130133cf38fc",
+    "semantic_hash": "93e4ba6abdbbb6a369f1130133cf38fc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\data\\curated\\WEATHER_ABLATION_RESULTS.md": {
+    "mtime": 1784711830.515083,
+    "ast_hash": "e3dc342be5b3bce9a2a7ad93357c6d60",
+    "semantic_hash": "e3dc342be5b3bce9a2a7ad93357c6d60"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\market_sizing.md": {
+    "mtime": 1785065713.7679198,
+    "ast_hash": "3e92ced9e0e6c772af4b4b124badaacf",
+    "semantic_hash": "3e92ced9e0e6c772af4b4b124badaacf"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\ntd\\README.md": {
+    "mtime": 1785065713.7423587,
+    "ast_hash": "9d5010483517130ff6962454b36efaea",
+    "semantic_hash": "9d5010483517130ff6962454b36efaea"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\cold_email_template.md": {
+    "mtime": 1783685920.0700424,
+    "ast_hash": "02781a58c8eb4a35714ad5e245624355",
+    "semantic_hash": "02781a58c8eb4a35714ad5e245624355"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\craft_notes.md": {
+    "mtime": 1784922863.973803,
+    "ast_hash": "40705e393983450f7306fdf1410a4821",
+    "semantic_hash": "40705e393983450f7306fdf1410a4821"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\design_partner_pitch.md": {
+    "mtime": 1785065713.9416163,
+    "ast_hash": "7b793e3e2031f5df75bc787b119e92a9",
+    "semantic_hash": "7b793e3e2031f5df75bc787b119e92a9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\README.md": {
+    "mtime": 1785065713.7824724,
+    "ast_hash": "fda30e34c8f923b13644289107745e32",
+    "semantic_hash": "fda30e34c8f923b13644289107745e32"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\startup_integrator_template.md": {
+    "mtime": 1784920529.8976612,
+    "ast_hash": "75ea3576fb5ef96d3f9581b4ea651fa6",
+    "semantic_hash": "75ea3576fb5ef96d3f9581b4ea651fa6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\archive\\exemplars_v2.md": {
+    "mtime": 1784922895.8445415,
+    "ast_hash": "b9091dba409a555d8a3add437b15c73b",
+    "semantic_hash": "b9091dba409a555d8a3add437b15c73b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\outreach\\research\\christian_kent_brief.md": {
+    "mtime": 1785065714.153303,
+    "ast_hash": "2758ea08f7f915dcab9403c63a6b71a2",
+    "semantic_hash": "2758ea08f7f915dcab9403c63a6b71a2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\business\\reference_agency\\README.md": {
+    "mtime": 1785065714.1678224,
+    "ast_hash": "f0c86e90cb9bc1342e2fa9fe1486a268",
+    "semantic_hash": "f0c86e90cb9bc1342e2fa9fe1486a268"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\README.md": {
+    "mtime": 1785065714.2175133,
+    "ast_hash": "dee7648b86b60511312d929d77aa047e",
+    "semantic_hash": "dee7648b86b60511312d929d77aa047e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0001-adopt-expansion-blueprint-and-control-plane.md": {
+    "mtime": 1785065714.2462654,
+    "ast_hash": "9af378c43a291f8bac814a0803184e85",
+    "semantic_hash": "9af378c43a291f8bac814a0803184e85"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0002-canonical-schema-technology.md": {
+    "mtime": 1785065714.2501614,
+    "ast_hash": "06b80b0053f63c41a3341e6d317d01c1",
+    "semantic_hash": "06b80b0053f63c41a3341e6d317d01c1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0003-append-only-hash-chained-event-log.md": {
+    "mtime": 1785065714.2531605,
+    "ast_hash": "5b1dcb06d31340b78cedfbd50ff6e139",
+    "semantic_hash": "5b1dcb06d31340b78cedfbd50ff6e139"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0004-sqlite-now-postgres-production.md": {
+    "mtime": 1785065714.2541654,
+    "ast_hash": "3eb7a4546cba1d185a6db1f7c09062f2",
+    "semantic_hash": "3eb7a4546cba1d185a6db1f7c09062f2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0005-semantic-index-interface.md": {
+    "mtime": 1785065714.2541654,
+    "ast_hash": "fe5d24effb025483647cbbc24ded6ac7",
+    "semantic_hash": "fe5d24effb025483647cbbc24ded6ac7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0006-dedicated-postgres-dev-role.md": {
+    "mtime": 1785065714.2541654,
+    "ast_hash": "c425d77e9796147a2da37ab4a388c9c2",
+    "semantic_hash": "c425d77e9796147a2da37ab4a388c9c2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0007-connect-adapter-contract-v0-1.md": {
+    "mtime": 1785065714.2648482,
+    "ast_hash": "4d08b530df0b1470821bf6972df5d6c0",
+    "semantic_hash": "4d08b530df0b1470821bf6972df5d6c0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0008-postgres-test-isolation-strategy.md": {
+    "mtime": 1785065714.2678654,
+    "ast_hash": "99b8125110bc83332df02d9e84e66471",
+    "semantic_hash": "99b8125110bc83332df02d9e84e66471"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0009-evidence-ir-v0-1-conventions.md": {
+    "mtime": 1785065714.2716103,
+    "ast_hash": "86486c643128dda7da0500b4b44d3f29",
+    "semantic_hash": "86486c643128dda7da0500b4b44d3f29"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0010-model-registry-platform-tenant.md": {
+    "mtime": 1785065714.2716103,
+    "ast_hash": "0ba517b94e18f1f6d6f932f84b11317f",
+    "semantic_hash": "0ba517b94e18f1f6d6f932f84b11317f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0011-tlc-adapter-design-decisions.md": {
+    "mtime": 1785065714.2815282,
+    "ast_hash": "cce70101e699d50ded49b9bd984ed251",
+    "semantic_hash": "cce70101e699d50ded49b9bd984ed251"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0012-evidence-state-check-structural-gap.md": {
+    "mtime": 1785065714.285537,
+    "ast_hash": "4faf7b77fd64834ca792a6e05805d5c0",
+    "semantic_hash": "4faf7b77fd64834ca792a6e05805d5c0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0013-governed-data-estate.md": {
+    "mtime": 1785065714.287859,
+    "ast_hash": "f65cee1c0c832f68d17b1bbd095e1ff4",
+    "semantic_hash": "f65cee1c0c832f68d17b1bbd095e1ff4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0014-standards-adapters-tides-gtfs-flex.md": {
+    "mtime": 1785065714.287859,
+    "ast_hash": "e2e303f0eca40d0b2ee0f2b9c3f3fe24",
+    "semantic_hash": "e2e303f0eca40d0b2ee0f2b9c3f3fe24"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0015-milexium-sdk-facade.md": {
+    "mtime": 1785065714.2954867,
+    "ast_hash": "2ddb521c2cb35992d9ddd167d2e8c9af",
+    "semantic_hash": "2ddb521c2cb35992d9ddd167d2e8c9af"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0016-forecast-runtime.md": {
+    "mtime": 1785065714.2991884,
+    "ast_hash": "9e4337d965beab5868c9248ef539d921",
+    "semantic_hash": "9e4337d965beab5868c9248ef539d921"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0017-evidence-pack-export.md": {
+    "mtime": 1785065714.3021886,
+    "ast_hash": "916dffa68d3f34fe32d77a7dc8fd8d03",
+    "semantic_hash": "916dffa68d3f34fe32d77a7dc8fd8d03"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0018-postgres-row-level-security.md": {
+    "mtime": 1785065714.3041863,
+    "ast_hash": "428e9fe574429960176519d5499324ca",
+    "semantic_hash": "428e9fe574429960176519d5499324ca"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0019-replay-and-baseline-comparison.md": {
+    "mtime": 1785065714.3087983,
+    "ast_hash": "e7bc7eed9310ac8f1c7ed23e28ae37a4",
+    "semantic_hash": "e7bc7eed9310ac8f1c7ed23e28ae37a4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0020-period-incident-procurement-packs.md": {
+    "mtime": 1785065714.3108046,
+    "ast_hash": "f88c7f9b0454379eb59539403216b889",
+    "semantic_hash": "f88c7f9b0454379eb59539403216b889"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0021-http-api-and-sdk-forecast-export.md": {
+    "mtime": 1785065714.3128123,
+    "ast_hash": "7fec769c80f84946c6fa3ccc362f5f9d",
+    "semantic_hash": "7fec769c80f84946c6fa3ccc362f5f9d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0022-decision-program-slice.md": {
+    "mtime": 1785065714.317837,
+    "ast_hash": "a6f5304085a7a9d56f3570f2e4891f19",
+    "semantic_hash": "a6f5304085a7a9d56f3570f2e4891f19"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0023-golden-path-real-data-demo.md": {
+    "mtime": 1785065714.3208354,
+    "ast_hash": "95bb14e935f45cc55177b358b3d74b5e",
+    "semantic_hash": "95bb14e935f45cc55177b358b3d74b5e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0024-darp-solver-benchmark.md": {
+    "mtime": 1785065714.3213506,
+    "ast_hash": "c426d9f66aad919f7cbfe369d54aed54",
+    "semantic_hash": "c426d9f66aad919f7cbfe369d54aed54"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0025-machine-checkable-evidence-artifacts.md": {
+    "mtime": 1785065714.3213506,
+    "ast_hash": "2728d6c1f5bff19a9eb32dcb1edec35c",
+    "semantic_hash": "2728d6c1f5bff19a9eb32dcb1edec35c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0026-polyglot-strategy-language-ownership.md": {
+    "mtime": 1785065714.331485,
+    "ast_hash": "8ce122c92bcba4c3767de3a134edce89",
+    "semantic_hash": "8ce122c92bcba4c3767de3a134edce89"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0027-contract-layer-and-codegen.md": {
+    "mtime": 1785065714.333505,
+    "ast_hash": "8059ce40aafecb549722f7cee2e33b14",
+    "semantic_hash": "8059ce40aafecb549722f7cee2e33b14"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0028-rust-verifier-parity.md": {
+    "mtime": 1785065714.3365552,
+    "ast_hash": "24d8bb1c89d3580fe46a2dc3d31a172e",
+    "semantic_hash": "24d8bb1c89d3580fe46a2dc3d31a172e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0029-typescript-sdk.md": {
+    "mtime": 1785065714.3378813,
+    "ast_hash": "9e170f3607688dbd93d6fde1e39831c6",
+    "semantic_hash": "9e170f3607688dbd93d6fde1e39831c6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0030-forecast-depth-conformal-all-models.md": {
+    "mtime": 1785065714.3422475,
+    "ast_hash": "685d6707a67a8266e4f684c9f8e41d80",
+    "semantic_hash": "685d6707a67a8266e4f684c9f8e41d80"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0031-gtfs-realtime-adapter-and-operational-entity-gap.md": {
+    "mtime": 1785065714.3422475,
+    "ast_hash": "db76b7acf790337f0dfb9a6b58e65f82",
+    "semantic_hash": "db76b7acf790337f0dfb9a6b58e65f82"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0032-compose-stack-and-object-storage.md": {
+    "mtime": 1785065714.349899,
+    "ast_hash": "92cc63ca4dbd37825237273c2be5c33f",
+    "semantic_hash": "92cc63ca4dbd37825237273c2be5c33f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0033-formal-smt-invariants.md": {
+    "mtime": 1785065714.3538976,
+    "ast_hash": "e4c2cad6c13d8f976adb2a65228eb148",
+    "semantic_hash": "e4c2cad6c13d8f976adb2a65228eb148"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0034-adaptive-memory-feature-store-promotion-drift.md": {
+    "mtime": 1785065714.358613,
+    "ast_hash": "05b3d794902939d65a459709f47cf7dc",
+    "semantic_hash": "05b3d794902939d65a459709f47cf7dc"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0035-canonical-operational-entity-postgis.md": {
+    "mtime": 1785065714.358613,
+    "ast_hash": "cde56005241996c1292592bc86bd4418",
+    "semantic_hash": "cde56005241996c1292592bc86bd4418"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0036-minio-backed-estate-raw-zone.md": {
+    "mtime": 1785065714.3668406,
+    "ast_hash": "dbda5b7ec07c243c808662f166c06270",
+    "semantic_hash": "dbda5b7ec07c243c808662f166c06270"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0037-canonical-debt-alternatives-observations-rls.md": {
+    "mtime": 1784930277.366797,
+    "ast_hash": "340ae0bdfa1be4d98becd3d6e88ce135",
+    "semantic_hash": "340ae0bdfa1be4d98becd3d6e88ce135"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0038-operator-data-intake.md": {
+    "mtime": 1785065714.3708372,
+    "ast_hash": "403aed2e210f16790618a43acbf44bc8",
+    "semantic_hash": "403aed2e210f16790618a43acbf44bc8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0039-deadhead-teardown.md": {
+    "mtime": 1785065714.38148,
+    "ast_hash": "376e4dd177d690693e587c6e13f73a63",
+    "semantic_hash": "376e4dd177d690693e587c6e13f73a63"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0040-platform-tenant-convention.md": {
+    "mtime": 1785065714.3854878,
+    "ast_hash": "3ba45f395ea399c2cc0b0e39443ecac2",
+    "semantic_hash": "3ba45f395ea399c2cc0b0e39443ecac2"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0041-core-persistence.md": {
+    "mtime": 1785065714.3878312,
+    "ast_hash": "070728f707c689a4e192c0d0f55b3bef",
+    "semantic_hash": "070728f707c689a4e192c0d0f55b3bef"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0042-teardown-api-surface.md": {
+    "mtime": 1785065714.3878312,
+    "ast_hash": "26497bb4650e4e86900022bac49457fa",
+    "semantic_hash": "26497bb4650e4e86900022bac49457fa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0043-runref-home-and-platform-tenant-deny-all.md": {
+    "mtime": 1785065714.4021647,
+    "ast_hash": "1288929f25bdd5496e6d8ad4d63ca6a4",
+    "semantic_hash": "1288929f25bdd5496e6d8ad4d63ca6a4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0044-teardown-evidence.md": {
+    "mtime": 1785065714.406164,
+    "ast_hash": "b80e89419896408bcd0231a9e92bd712",
+    "semantic_hash": "b80e89419896408bcd0231a9e92bd712"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0045-redaction-fix.md": {
+    "mtime": 1785065714.4111643,
+    "ast_hash": "d29aa439d9d0925bed1a3ed2fb469856",
+    "semantic_hash": "d29aa439d9d0925bed1a3ed2fb469856"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0046-container-store-rls.md": {
+    "mtime": 1784940107.7240224,
+    "ast_hash": "23d6368f5acb4b3d02541419fa8ca368",
+    "semantic_hash": "23d6368f5acb4b3d02541419fa8ca368"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0047-scheduling-entity-family.md": {
+    "mtime": 1785065714.4221642,
+    "ast_hash": "de5141ad9102924e397fb03d75a491a6",
+    "semantic_hash": "de5141ad9102924e397fb03d75a491a6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0048-core-tenant-isolation.md": {
+    "mtime": 1785065714.432034,
+    "ast_hash": "b0bef3e7b1741ee3fb4520979ee32f7f",
+    "semantic_hash": "b0bef3e7b1741ee3fb4520979ee32f7f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0049-serve-time-drift.md": {
+    "mtime": 1785065714.4375103,
+    "ast_hash": "ec07a8bed6a17d189956127a1eedba7c",
+    "semantic_hash": "ec07a8bed6a17d189956127a1eedba7c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0050-us-open-data-survey.md": {
+    "mtime": 1785065714.4428847,
+    "ast_hash": "9472c1740a6d3dd54992c427a2e789c6",
+    "semantic_hash": "9472c1740a6d3dd54992c427a2e789c6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0051-graduated-repair-messy-data.md": {
+    "mtime": 1785065714.4489245,
+    "ast_hash": "a6748d9d12647197030fca6aff020918",
+    "semantic_hash": "a6748d9d12647197030fca6aff020918"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0052-container-app-role.md": {
+    "mtime": 1785065714.449581,
+    "ast_hash": "9957fbb3520c51e5377b98a9705f68cb",
+    "semantic_hash": "9957fbb3520c51e5377b98a9705f68cb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0053-realdata-governance-unification.md": {
+    "mtime": 1785065714.449581,
+    "ast_hash": "6b999b850ed77d1e17bc67d09edcf618",
+    "semantic_hash": "6b999b850ed77d1e17bc67d09edcf618"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0054-runref-wiring.md": {
+    "mtime": 1784994277.6433659,
+    "ast_hash": "97ccd2dea4ff98971c87bc7b666f8288",
+    "semantic_hash": "97ccd2dea4ff98971c87bc7b666f8288"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0055-core-migrations.md": {
+    "mtime": 1785065714.4658382,
+    "ast_hash": "1743caaf1dbeb81f14d14ee4c6270097",
+    "semantic_hash": "1743caaf1dbeb81f14d14ee4c6270097"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0056-teardown-scale-measurement.md": {
+    "mtime": 1785065714.4658382,
+    "ast_hash": "2ffa867ff02298e2470206ae48b96ebe",
+    "semantic_hash": "2ffa867ff02298e2470206ae48b96ebe"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0057-adapter-vehicle-references.md": {
+    "mtime": 1785003532.9539537,
+    "ast_hash": "b3fff72c7313543813bc8699f3214b6e",
+    "semantic_hash": "b3fff72c7313543813bc8699f3214b6e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0058-panel-findings-gate.md": {
+    "mtime": 1785065714.4851322,
+    "ast_hash": "ab67373d2dee3ceeff1a2fff442cc0b4",
+    "semantic_hash": "ab67373d2dee3ceeff1a2fff442cc0b4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0059-model-registry-persistence.md": {
+    "mtime": 1785065714.4851322,
+    "ast_hash": "4ab3942fb42bda24bcee228706712209",
+    "semantic_hash": "4ab3942fb42bda24bcee228706712209"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0060-solver-portfolio-cpsat.md": {
+    "mtime": 1785065714.497229,
+    "ast_hash": "6c4a55ff87511750ecabda048a3a2edb",
+    "semantic_hash": "6c4a55ff87511750ecabda048a3a2edb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0061-teardown-surface-latency.md": {
+    "mtime": 1785007338.4031866,
+    "ast_hash": "d8648308810ef6eb347d1f499f2d3891",
+    "semantic_hash": "d8648308810ef6eb347d1f499f2d3891"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0062-scheduled-deadhead-from-gtfs.md": {
+    "mtime": 1785065714.5015512,
+    "ast_hash": "cc5ffc79924896187195709166ba898b",
+    "semantic_hash": "cc5ffc79924896187195709166ba898b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0063-lifecycle-decision-record.md": {
+    "mtime": 1785054396.4440417,
+    "ast_hash": "0d2f0261332221c2649968becaf5621f",
+    "semantic_hash": "0d2f0261332221c2649968becaf5621f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0064-intervention-evaluation.md": {
+    "mtime": 1785065714.5015512,
+    "ast_hash": "180aade57421ea987369583b4db91aae",
+    "semantic_hash": "180aade57421ea987369583b4db91aae"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0065-commingled-exposure.md": {
+    "mtime": 1785023173.3775506,
+    "ast_hash": "9ade9fcd553624f62eaa3530a256c6a6",
+    "semantic_hash": "9ade9fcd553624f62eaa3530a256c6a6"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0066-standalone-pack-verification.md": {
+    "mtime": 1785065714.5157728,
+    "ast_hash": "1f0fd5ac619ff2d01295459fd8c62ea1",
+    "semantic_hash": "1f0fd5ac619ff2d01295459fd8c62ea1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0067-capacity-forecast.md": {
+    "mtime": 1785023281.3291311,
+    "ast_hash": "9adec1354122cc5517ac11c704a3084a",
+    "semantic_hash": "9adec1354122cc5517ac11c704a3084a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0068-demo-walkthrough.md": {
+    "mtime": 1785065714.529647,
+    "ast_hash": "5f114555f788f7b7d5eed680b9e5ce7e",
+    "semantic_hash": "5f114555f788f7b7d5eed680b9e5ce7e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0069-claim-discipline.md": {
+    "mtime": 1785065714.5338657,
+    "ast_hash": "b8cd2f0721b8f6ddb9b887ca66a06b2d",
+    "semantic_hash": "b8cd2f0721b8f6ddb9b887ca66a06b2d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0070-dollar-claim-removal.md": {
+    "mtime": 1785065714.5360763,
+    "ast_hash": "44fb2346ac0722b6274667109a261e2b",
+    "semantic_hash": "44fb2346ac0722b6274667109a261e2b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0071-governance-hole-and-pinned-research.md": {
+    "mtime": 1785065714.5412412,
+    "ast_hash": "b49a2a64c0d0f7c9e47b2572d6ca77f7",
+    "semantic_hash": "b49a2a64c0d0f7c9e47b2572d6ca77f7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0072-transport-ontology-decision-snapshot.md": {
+    "mtime": 1785065714.548022,
+    "ast_hash": "59af922442344f371f1885417631f4ca",
+    "semantic_hash": "59af922442344f371f1885417631f4ca"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0073-pooling-and-capacity-value.md": {
+    "mtime": 1785060686.2777696,
+    "ast_hash": "f6f57b8fb8fcd7321f8e25ecc1013362",
+    "semantic_hash": "f6f57b8fb8fcd7321f8e25ecc1013362"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0074-lifecycle-immutability.md": {
+    "mtime": 1785061156.655414,
+    "ast_hash": "538978791454aeb4bc3d4c98a6511a98",
+    "semantic_hash": "538978791454aeb4bc3d4c98a6511a98"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0075-repository-reorganisation.md": {
+    "mtime": 1785064462.2533216,
+    "ast_hash": "13edd43bb8f6565c7cc23489b0d4cb59",
+    "semantic_hash": "13edd43bb8f6565c7cc23489b0d4cb59"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0076-authority-rename-and-data-merge.md": {
+    "mtime": 1785074152.8028033,
+    "ast_hash": "76e3eabe0f67cb48b50610d6e1c4f0cd",
+    "semantic_hash": "76e3eabe0f67cb48b50610d6e1c4f0cd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0077-layer-prohibitions-enforced.md": {
+    "mtime": 1785079308.0549202,
+    "ast_hash": "dcd5646c875dc771dec0d96eb6c3eb1d",
+    "semantic_hash": "dcd5646c875dc771dec0d96eb6c3eb1d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0078-operator-data-contract.md": {
+    "mtime": 1785079361.4987204,
+    "ast_hash": "bab6052e1e9725f255fba950a70b2a15",
+    "semantic_hash": "bab6052e1e9725f255fba950a70b2a15"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0079-decision-episode.md": {
+    "mtime": 1785079752.7481678,
+    "ast_hash": "74db90e85528ef6d5f100add0730cd91",
+    "semantic_hash": "74db90e85528ef6d5f100add0730cd91"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\decisions\\0080-argus-command-centre.md": {
+    "mtime": 1785080400.164298,
+    "ast_hash": "d9fa08544b36b1e9d6a552c7fc62595b",
+    "semantic_hash": "d9fa08544b36b1e9d6a552c7fc62595b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\architecture\\formal\\README.md": {
+    "mtime": 1785065714.5647874,
+    "ast_hash": "52a897a2d6f8d12ba6169f183965adfd",
+    "semantic_hash": "52a897a2d6f8d12ba6169f183965adfd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\COMPETITIVE_POSITIONING.md": {
+    "mtime": 1785065714.5846257,
+    "ast_hash": "fa0d82ee5c3882000d1d28889eb99e2b",
+    "semantic_hash": "fa0d82ee5c3882000d1d28889eb99e2b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\DATA_SOURCES.md": {
+    "mtime": 1785065714.5846257,
+    "ast_hash": "f74fee5171c96ebe99b1b5a2f654d48a",
+    "semantic_hash": "f74fee5171c96ebe99b1b5a2f654d48a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\DATA_STORAGE.md": {
+    "mtime": 1785065714.5991342,
+    "ast_hash": "84cd260033dfb4eaeb7bc1d036af7040",
+    "semantic_hash": "84cd260033dfb4eaeb7bc1d036af7040"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\HANDOFF.md": {
+    "mtime": 1785065714.61598,
+    "ast_hash": "51a28f784b5a1baa32498f3b2bb353db",
+    "semantic_hash": "51a28f784b5a1baa32498f3b2bb353db"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\JOURNAL.md": {
+    "mtime": 1785074203.0754812,
+    "ast_hash": "7f72b02abd4753f15986eaca19d22f85",
+    "semantic_hash": "7f72b02abd4753f15986eaca19d22f85"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\MASTER_ROADMAP.md": {
+    "mtime": 1785065714.6300693,
+    "ast_hash": "b9bc169a6a3394c9dcdaa9e44b648027",
+    "semantic_hash": "b9bc169a6a3394c9dcdaa9e44b648027"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\MODEL_CARDS.md": {
+    "mtime": 1785065714.6369598,
+    "ast_hash": "90fe13374afc7e57a36fba1ba93142eb",
+    "semantic_hash": "90fe13374afc7e57a36fba1ba93142eb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\OPERATOR_DATA_INTAKE.md": {
+    "mtime": 1785065714.6663747,
+    "ast_hash": "38257e043fc68f4e166ea99af5b57cde",
+    "semantic_hash": "38257e043fc68f4e166ea99af5b57cde"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\README.md": {
+    "mtime": 1785065714.6699507,
+    "ast_hash": "01872b0ae8b40bd4c83bbd19ab3bdb51",
+    "semantic_hash": "01872b0ae8b40bd4c83bbd19ab3bdb51"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\RND_QUESTIONS.md": {
+    "mtime": 1785065714.676351,
+    "ast_hash": "b25e527870297d6505c30809e24d0c4d",
+    "semantic_hash": "b25e527870297d6505c30809e24d0c4d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\archive\\2026-07-20-session-handoff.md": {
+    "mtime": 1784569999.9938846,
+    "ast_hash": "2e7e21160dde73c16d2bd7899736d2bd",
+    "semantic_hash": "2e7e21160dde73c16d2bd7899736d2bd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\archive\\2026-07-22-enterprise-roadmap-draft.md": {
+    "mtime": 1784697698.3036172,
+    "ast_hash": "2ac5370c83d5dd78d51af88fe1d3a24b",
+    "semantic_hash": "2ac5370c83d5dd78d51af88fe1d3a24b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\archive\\2026-07-outreach-target-list-initial.md": {
+    "mtime": 1783680406.441864,
+    "ast_hash": "0d0a48d6ce1a1acd1dc1a53cf22d665a",
+    "semantic_hash": "0d0a48d6ce1a1acd1dc1a53cf22d665a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\archive\\2026-07-website-brief.md": {
+    "mtime": 1784568356.4944053,
+    "ast_hash": "0e91c65d7db721acaf8ead2a38853d85",
+    "semantic_hash": "0e91c65d7db721acaf8ead2a38853d85"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\archive\\2026-07-yc-application-notes.md": {
+    "mtime": 1783680311.5516312,
+    "ast_hash": "3d65bdc720d5e591e12fdbc7fdb3c986",
+    "semantic_hash": "3d65bdc720d5e591e12fdbc7fdb3c986"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\archive\\2026-07-yc-plan-initial.md": {
+    "mtime": 1784570892.0754583,
+    "ast_hash": "aaf19fd8f88cfe4d37d0f06ca9cca9de",
+    "semantic_hash": "aaf19fd8f88cfe4d37d0f06ca9cca9de"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\docs\\yc\\application-draft.md": {
+    "mtime": 1785065714.687456,
+    "ast_hash": "53457d87f8dcf5d2daa5a5fe57385d32",
+    "semantic_hash": "53457d87f8dcf5d2daa5a5fe57385d32"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\DOSSIER_COVERAGE.md": {
+    "mtime": 1785065714.704393,
+    "ast_hash": "25a797c9af48c93317e0c3ec07f0ddae",
+    "semantic_hash": "25a797c9af48c93317e0c3ec07f0ddae"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\README.md": {
+    "mtime": 1785065714.704393,
+    "ast_hash": "a2e6e2b7a10d619573463844156e533a",
+    "semantic_hash": "a2e6e2b7a10d619573463844156e533a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-CANONICAL-DEBT-003.yaml": {
+    "mtime": 1785066117.1711726,
+    "ast_hash": "5f091ae74a7027ba105101532515770a",
+    "semantic_hash": "5f091ae74a7027ba105101532515770a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-CANONICAL-SUBSTRATE-001.yaml": {
+    "mtime": 1785065714.7147486,
+    "ast_hash": "a01af04601e8ab812cd4171f5245caba",
+    "semantic_hash": "a01af04601e8ab812cd4171f5245caba"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-LIFECYCLE-IMMUTABILITY-012.yaml": {
+    "mtime": 1785066117.1837084,
+    "ast_hash": "ec95536ca36dcf68f2dd487c5339773d",
+    "semantic_hash": "ec95536ca36dcf68f2dd487c5339773d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-LIFECYCLE-RECORD-010.yaml": {
+    "mtime": 1785066117.1866398,
+    "ast_hash": "4f3da61a4d9548636663e52e45b04569",
+    "semantic_hash": "4f3da61a4d9548636663e52e45b04569"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-OPS-ENTITY-002.yaml": {
+    "mtime": 1785066117.1866398,
+    "ast_hash": "6a8947893013e3fd9190e14f817a077a",
+    "semantic_hash": "6a8947893013e3fd9190e14f817a077a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-RUNREF-PLATFORM-TENANT-004.yaml": {
+    "mtime": 1785066117.1922977,
+    "ast_hash": "9b6a9d6534712871c4687abcd4dc7963",
+    "semantic_hash": "9b6a9d6534712871c4687abcd4dc7963"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-A-SCHEDULING-FAMILY-006.yaml": {
+    "mtime": 1785066117.1952417,
+    "ast_hash": "cf7c04c838911855e68584197e01ae32",
+    "semantic_hash": "cf7c04c838911855e68584197e01ae32"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-ARCH-PROHIBITIONS-016.yaml": {
+    "mtime": 1785078985.0509126,
+    "ast_hash": "7b815f42dd35e9e6b195d7c07382ebe7",
+    "semantic_hash": "7b815f42dd35e9e6b195d7c07382ebe7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-ARGUS-COMMAND-CENTRE-016.yaml": {
+    "mtime": 1785079958.956284,
+    "ast_hash": "856ec79c8b6e8fefd715f34c852e388c",
+    "semantic_hash": "856ec79c8b6e8fefd715f34c852e388c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-ADAPTER-REFS-009.yaml": {
+    "mtime": 1785065714.7873957,
+    "ast_hash": "301337b09bbad1bdc595c9976607fbf7",
+    "semantic_hash": "301337b09bbad1bdc595c9976607fbf7"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-CONNECT-ADAPTER-SKELETON-001.yaml": {
+    "mtime": 1785065714.7925143,
+    "ast_hash": "5521b64c1c1746c76a041ab35cd49e07",
+    "semantic_hash": "5521b64c1c1746c76a041ab35cd49e07"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-GTFS-REALTIME-004.yaml": {
+    "mtime": 1785065714.7925143,
+    "ast_hash": "99be3f7a98a40e055056b9e76e1e6297",
+    "semantic_hash": "99be3f7a98a40e055056b9e76e1e6297"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-MESSY-DATA-006.yaml": {
+    "mtime": 1785065714.7980785,
+    "ast_hash": "8ed076f08c622743dbe4881960b562e1",
+    "semantic_hash": "8ed076f08c622743dbe4881960b562e1"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-RUNREF-WIRING-008.yaml": {
+    "mtime": 1785066117.204254,
+    "ast_hash": "3830b09bb8ab14cb33f72a7cc10895df",
+    "semantic_hash": "3830b09bb8ab14cb33f72a7cc10895df"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-STANDARDS-ADAPTERS-003.yaml": {
+    "mtime": 1785065714.8044393,
+    "ast_hash": "16f762a82ef21f19c5f5c5d75d87778b",
+    "semantic_hash": "16f762a82ef21f19c5f5c5d75d87778b"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-B-TLC-ADAPTER-002.yaml": {
+    "mtime": 1785065714.810983,
+    "ast_hash": "0218e63bbcb5b396d9e922e42a6c6854",
+    "semantic_hash": "0218e63bbcb5b396d9e922e42a6c6854"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-CONTAINER-RLS-005.yaml": {
+    "mtime": 1785066117.206916,
+    "ast_hash": "893688bc8a69f29c9205f38f25d3692f",
+    "semantic_hash": "893688bc8a69f29c9205f38f25d3692f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-DATA-ESTATE-GOVERNANCE-001.yaml": {
+    "mtime": 1785065714.82076,
+    "ast_hash": "4840eeb4b9c596e899dbb88ddb19999d",
+    "semantic_hash": "4840eeb4b9c596e899dbb88ddb19999d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-GTFS-BLOCK-HARVEST-010.yaml": {
+    "mtime": 1785065714.8377578,
+    "ast_hash": "06b33908c520e38be5d93e6922fd4d85",
+    "semantic_hash": "06b33908c520e38be5d93e6922fd4d85"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-MINIO-ESTATE-002.yaml": {
+    "mtime": 1785066117.2096734,
+    "ast_hash": "71cedf9996292826ca69941afc12add9",
+    "semantic_hash": "71cedf9996292826ca69941afc12add9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-OPERATOR-INTAKE-003.yaml": {
+    "mtime": 1785066117.2112255,
+    "ast_hash": "958d0fd25e4d9bf11849507f7b35fc98",
+    "semantic_hash": "958d0fd25e4d9bf11849507f7b35fc98"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-POSTGRES-RLS-002.yaml": {
+    "mtime": 1785065714.8475845,
+    "ast_hash": "6725c952f1a8f38735a19866b1fe6810",
+    "semantic_hash": "6725c952f1a8f38735a19866b1fe6810"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-POSTGRES-STORE-001.yaml": {
+    "mtime": 1785065714.8496835,
+    "ast_hash": "33d1fb7c8c17fdb9b708a18700d73c3d",
+    "semantic_hash": "33d1fb7c8c17fdb9b708a18700d73c3d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-C-US-OPENDATA-006.yaml": {
+    "mtime": 1785066117.2145605,
+    "ast_hash": "70603775631f68106ecce9813865a44c",
+    "semantic_hash": "70603775631f68106ecce9813865a44c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-CLAIMS-DOLLAR-SWEEP-013.yaml": {
+    "mtime": 1785065714.8782246,
+    "ast_hash": "909033d3f14566633fd37781bb7f11c5",
+    "semantic_hash": "909033d3f14566633fd37781bb7f11c5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-CONF-GOVERNANCE-HOLE-012.yaml": {
+    "mtime": 1785065714.882011,
+    "ast_hash": "ee44b4e7bf803ee5e85a74d9ef285832",
+    "semantic_hash": "ee44b4e7bf803ee5e85a74d9ef285832"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-D-ADAPTIVE-MEMORY-002.yaml": {
+    "mtime": 1785066117.2205734,
+    "ast_hash": "1075cd4021fbf5221ad6fcb709c6b16f",
+    "semantic_hash": "1075cd4021fbf5221ad6fcb709c6b16f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-D-MIGRATIONS-008.yaml": {
+    "mtime": 1785066117.2225726,
+    "ast_hash": "1f43562476f6af240b85db5ba2c8f7fa",
+    "semantic_hash": "1f43562476f6af240b85db5ba2c8f7fa"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-D-MODEL-TASK-REGISTRY-001.yaml": {
+    "mtime": 1785065714.8984458,
+    "ast_hash": "1b2e556d886b829819976ef6298d8225",
+    "semantic_hash": "1b2e556d886b829819976ef6298d8225"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-D-PERSISTENCE-004.yaml": {
+    "mtime": 1785066117.2255738,
+    "ast_hash": "ead8897abc8cebbc350090474247d3db",
+    "semantic_hash": "ead8897abc8cebbc350090474247d3db"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-D-REGISTRY-PERSISTENCE-009.yaml": {
+    "mtime": 1785066117.2275753,
+    "ast_hash": "931097fd7ab1361b88bc4670da8f463c",
+    "semantic_hash": "931097fd7ab1361b88bc4670da8f463c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-D-TENANT-ISOLATION-006.yaml": {
+    "mtime": 1785066117.2295759,
+    "ast_hash": "4bd099d56bd1709dfd1b91d43c0469e3",
+    "semantic_hash": "4bd099d56bd1709dfd1b91d43c0469e3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-DEMO-GOLDEN-PATH-001.yaml": {
+    "mtime": 1785065714.9578233,
+    "ast_hash": "3af1e0e2338ec76c8ece36541cf847d5",
+    "semantic_hash": "3af1e0e2338ec76c8ece36541cf847d5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-DOCS-CLAIM-SWEEP-012.yaml": {
+    "mtime": 1785065714.9655054,
+    "ast_hash": "0dd73837c74e7a643f3b0396da124cc5",
+    "semantic_hash": "0dd73837c74e7a643f3b0396da124cc5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-E-FORECAST-DEPTH-003.yaml": {
+    "mtime": 1785065714.9655054,
+    "ast_hash": "7a9625514b26353fe0e2e6f04b42ea4a",
+    "semantic_hash": "7a9625514b26353fe0e2e6f04b42ea4a"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-E-FORECAST-LEADERBOARD-002.yaml": {
+    "mtime": 1785065714.9655054,
+    "ast_hash": "464e7ad291e593bd88cab00c0048fa08",
+    "semantic_hash": "464e7ad291e593bd88cab00c0048fa08"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-E-FORECAST-RUNTIME-001.yaml": {
+    "mtime": 1785065714.9749348,
+    "ast_hash": "72c7967f4b792d9e38b81988f92c3a1d",
+    "semantic_hash": "72c7967f4b792d9e38b81988f92c3a1d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-E-SERVE-TIME-DRIFT-007.yaml": {
+    "mtime": 1785066117.2343256,
+    "ast_hash": "ddf404ea9111937687d1b501d01b08ad",
+    "semantic_hash": "ddf404ea9111937687d1b501d01b08ad"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-EVIDENCE-REGISTRY-001.yaml": {
+    "mtime": 1785065714.9861078,
+    "ast_hash": "951693767175efc0f9f4441ca407b8ac",
+    "semantic_hash": "951693767175efc0f9f4441ca407b8ac"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-F-DARP-BENCHMARK-002.yaml": {
+    "mtime": 1785065714.9881155,
+    "ast_hash": "519d0838576d853283bdc0446b6f2855",
+    "semantic_hash": "519d0838576d853283bdc0446b6f2855"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-F-DECISION-SLICE-001.yaml": {
+    "mtime": 1785065714.9881155,
+    "ast_hash": "be81f3bedec00cb89f5a5162e4e35b01",
+    "semantic_hash": "be81f3bedec00cb89f5a5162e4e35b01"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-F-POOLING-CAPACITY-VALUE-013.yaml": {
+    "mtime": 1785065715.0156896,
+    "ast_hash": "acfd9e62a36397d3a546b1baf3b96fa4",
+    "semantic_hash": "acfd9e62a36397d3a546b1baf3b96fa4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-F-SOLVER-PORTFOLIO-009.yaml": {
+    "mtime": 1785066117.2343256,
+    "ast_hash": "e0d6122307aaed1d66863f968216d448",
+    "semantic_hash": "e0d6122307aaed1d66863f968216d448"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-G-FORMAL-SMT-002.yaml": {
+    "mtime": 1785065715.0564387,
+    "ast_hash": "8ac4a90a7c0fae966c97173fa547a0f4",
+    "semantic_hash": "8ac4a90a7c0fae966c97173fa547a0f4"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-G-VERIFY-CORE-001.yaml": {
+    "mtime": 1785065715.0584533,
+    "ast_hash": "0d4fb353dbfebf34f07a3aae14bd26d3",
+    "semantic_hash": "0d4fb353dbfebf34f07a3aae14bd26d3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-H-DEADHEAD-TEARDOWN-003.yaml": {
+    "mtime": 1785066117.2343256,
+    "ast_hash": "015f276a5b0190aefa78c41dd38d71a9",
+    "semantic_hash": "015f276a5b0190aefa78c41dd38d71a9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-H-INTERVENTION-EVAL-010.yaml": {
+    "mtime": 1785065715.0714362,
+    "ast_hash": "b7aa81355d51bdb3cb3c7530cbdb0f46",
+    "semantic_hash": "b7aa81355d51bdb3cb3c7530cbdb0f46"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-H-REPLAY-COMPARISON-001.yaml": {
+    "mtime": 1785065715.0813904,
+    "ast_hash": "51b5f230aa7cfdebb314f0872efec5cd",
+    "semantic_hash": "51b5f230aa7cfdebb314f0872efec5cd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-H-SCALE-BENCHMARK-008.yaml": {
+    "mtime": 1785066117.2343256,
+    "ast_hash": "e8de0bcb44d0a7cd303c21820fefe59e",
+    "semantic_hash": "e8de0bcb44d0a7cd303c21820fefe59e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-I-EVIDENCE-EXPERIENCE-IR-001.yaml": {
+    "mtime": 1785065715.098067,
+    "ast_hash": "d434e50fbb7062f7538147fefad812f9",
+    "semantic_hash": "d434e50fbb7062f7538147fefad812f9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-I-EVIDENCE-PACK-EXPORT-003.yaml": {
+    "mtime": 1785065715.1010797,
+    "ast_hash": "f81aca14a1398b4ce4b9ffb6adf51c83",
+    "semantic_hash": "f81aca14a1398b4ce4b9ffb6adf51c83"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-I-PERIOD-INCIDENT-PACKS-004.yaml": {
+    "mtime": 1785065715.1040788,
+    "ast_hash": "139743666facd8baec21f557deeadbd9",
+    "semantic_hash": "139743666facd8baec21f557deeadbd9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-I-REDACTION-FIX-005.yaml": {
+    "mtime": 1785066117.2503333,
+    "ast_hash": "5e7e086dd2853d4bd79fcc9cf356d1d8",
+    "semantic_hash": "5e7e086dd2853d4bd79fcc9cf356d1d8"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-I-TEARDOWN-EVIDENCE-004.yaml": {
+    "mtime": 1785066117.2509098,
+    "ast_hash": "fb8687a41ad2936db6df5ff4c9c4d5ea",
+    "semantic_hash": "fb8687a41ad2936db6df5ff4c9c4d5ea"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-I-VERIFICATION-FOLD-IN-002.yaml": {
+    "mtime": 1785065715.1222594,
+    "ast_hash": "b39825a81f5fa69d2914ad9123bbe671",
+    "semantic_hash": "b39825a81f5fa69d2914ad9123bbe671"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-M-HTTP-API-002.yaml": {
+    "mtime": 1785065715.129386,
+    "ast_hash": "626932bb8987f14478f2c947b7c226af",
+    "semantic_hash": "626932bb8987f14478f2c947b7c226af"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-M-INTERACTIVE-LATENCY-009.yaml": {
+    "mtime": 1785066117.2509098,
+    "ast_hash": "1a97809e7ca510a1d3dbbbb93a7198d5",
+    "semantic_hash": "1a97809e7ca510a1d3dbbbb93a7198d5"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-M-SDK-FACADE-001.yaml": {
+    "mtime": 1785065715.146677,
+    "ast_hash": "85189356c35cd9c2363e6cd280ce5fba",
+    "semantic_hash": "85189356c35cd9c2363e6cd280ce5fba"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-M-TEARDOWN-SURFACE-004.yaml": {
+    "mtime": 1785066117.2509098,
+    "ast_hash": "710e05bc9a56267edb1ba69f39c39eca",
+    "semantic_hash": "710e05bc9a56267edb1ba69f39c39eca"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-ONT-DECISION-EPISODE-016.yaml": {
+    "mtime": 1785078530.6249301,
+    "ast_hash": "d49b8efb718ddc0823664ee9a340ec59",
+    "semantic_hash": "d49b8efb718ddc0823664ee9a340ec59"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-ONT-DECISION-SNAPSHOT-013.yaml": {
+    "mtime": 1785066117.2509098,
+    "ast_hash": "c122f4a17a9c8e4285ab2ffcf2a2aa25",
+    "semantic_hash": "c122f4a17a9c8e4285ab2ffcf2a2aa25"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-OUTREACH-PANEL-FINDINGS-009.yaml": {
+    "mtime": 1785065715.2073627,
+    "ast_hash": "3b1ba1cb9928361cef5f87342432fdfb",
+    "semantic_hash": "3b1ba1cb9928361cef5f87342432fdfb"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-RND-HYPOTHESIS-MINING-011.yaml": {
+    "mtime": 1785065715.2273612,
+    "ast_hash": "de62432986355ec2094930e1680c0f04",
+    "semantic_hash": "de62432986355ec2094930e1680c0f04"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-RUST-VERIFIER-001.yaml": {
+    "mtime": 1785065715.2303987,
+    "ast_hash": "3b2cbdc8bb29522ec68b76a1d20b9031",
+    "semantic_hash": "3b2cbdc8bb29522ec68b76a1d20b9031"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-TALOS-OPERATOR-CONTRACT-016.yaml": {
+    "mtime": 1785079139.797807,
+    "ast_hash": "5b616c260e64c59a7644562b37bab281",
+    "semantic_hash": "5b616c260e64c59a7644562b37bab281"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\knowledge\\workstreams\\packets\\MX-TS-SDK-001.yaml": {
+    "mtime": 1785065715.2318022,
+    "ast_hash": "8f3cefa612ce143d43301551cfddd46f",
+    "semantic_hash": "8f3cefa612ce143d43301551cfddd46f"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\kaggle\\README.md": {
+    "mtime": 1785065715.2720528,
+    "ast_hash": "66d20865e690cd443a9be70d54dea7bd",
+    "semantic_hash": "66d20865e690cd443a9be70d54dea7bd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\kaggle\\results\\README.md": {
+    "mtime": 1785065715.2780879,
+    "ast_hash": "1ef70a2357e58603f3c64bf504f2fe57",
+    "semantic_hash": "1ef70a2357e58603f3c64bf504f2fe57"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\third_party\\README.md": {
+    "mtime": 1785065715.4085555,
+    "ast_hash": "325c64ed49b6928f3a7db177eebc2d56",
+    "semantic_hash": "325c64ed49b6928f3a7db177eebc2d56"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\legacy\\third_party\\VENDORING_PROCESS.md": {
+    "mtime": 1785065715.4151926,
+    "ast_hash": "caecc9a7dc9ca9e73f5b0fa239125f56",
+    "semantic_hash": "caecc9a7dc9ca9e73f5b0fa239125f56"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\forge\\research\\README.md": {
+    "mtime": 1785065715.4207375,
+    "ast_hash": "73fa449ecabfe96149060171bf95ee50",
+    "semantic_hash": "73fa449ecabfe96149060171bf95ee50"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\OPERATOR_DATA_CONTRACT.md": {
+    "mtime": 1785079395.9752882,
+    "ast_hash": "c4ab2698f74a04e7c33659871431a17e",
+    "semantic_hash": "c4ab2698f74a04e7c33659871431a17e"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\README.md": {
+    "mtime": 1785077418.1243045,
+    "ast_hash": "c9b6e802d0fddae04f231c3bc7523722",
+    "semantic_hash": "c9b6e802d0fddae04f231c3bc7523722"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\contracts\\sql\\README.md": {
+    "mtime": 1785065716.8969972,
+    "ast_hash": "fa445509b200a175564b2c5f6f172ef9",
+    "semantic_hash": "fa445509b200a175564b2c5f6f172ef9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\infra\\README.md": {
+    "mtime": 1785065716.9017444,
+    "ast_hash": "9eb239dd92ca8bce466e413d26cff94c",
+    "semantic_hash": "9eb239dd92ca8bce466e413d26cff94c"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\infra\\compose\\docker-compose.yml": {
+    "mtime": 1785065716.9026892,
+    "ast_hash": "591173890e9bd61ba5d1ec80d4bb9b2d",
+    "semantic_hash": "591173890e9bd61ba5d1ec80d4bb9b2d"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\infra\\compose\\otel-collector-config.yaml": {
+    "mtime": 1784905545.127215,
+    "ast_hash": "ee0cac3fb4a7788e4bd37f1efb955292",
+    "semantic_hash": "ee0cac3fb4a7788e4bd37f1efb955292"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\talos\\ops\\README.md": {
+    "mtime": 1785065716.924232,
+    "ast_hash": "58acc7134c3bf0221b1e20d39db094bd",
+    "semantic_hash": "58acc7134c3bf0221b1e20d39db094bd"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\themis\\README.md": {
+    "mtime": 1785065717.031386,
+    "ast_hash": "2fef7951d35b574424249991f37f7e39",
+    "semantic_hash": "2fef7951d35b574424249991f37f7e39"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\capacity_alert.png": {
+    "mtime": 1784702093.0722835,
+    "ast_hash": "cc38dc72545f1c6de33b3ed2189e1ac9",
+    "semantic_hash": "cc38dc72545f1c6de33b3ed2189e1ac9"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\demand_curve.png": {
+    "mtime": 1784702095.4652438,
+    "ast_hash": "0d01b629a4ee8e976e2f704a6a2aa520",
+    "semantic_hash": "0d01b629a4ee8e976e2f704a6a2aa520"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\demand_curve_real.png": {
+    "mtime": 1784702111.54225,
+    "ast_hash": "b371bfdf843191a097b317ff589c3675",
+    "semantic_hash": "b371bfdf843191a097b317ff589c3675"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\fleet_timeline.png": {
+    "mtime": 1784702097.2913685,
+    "ast_hash": "0de295614620ca3d10b7d40a16ce5cf0",
+    "semantic_hash": "0de295614620ca3d10b7d40a16ce5cf0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\why_this_forecast.png": {
+    "mtime": 1784702094.9199572,
+    "ast_hash": "b6a0bee39b1b0710116c326ff88b07b0",
+    "semantic_hash": "b6a0bee39b1b0710116c326ff88b07b0"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\why_this_forecast_real.png": {
+    "mtime": 1784702110.4002917,
+    "ast_hash": "0785b4c0b818d00bad8851f9bfc1d8a3",
+    "semantic_hash": "0785b4c0b818d00bad8851f9bfc1d8a3"
+  },
+  "C:\\Users\\aryaa\\Documents\\Milexium\\aletheia\\artifacts\\demo-assets\\why_this_trip.png": {
+    "mtime": 1784702092.928752,
+    "ast_hash": "3e868e6384240b5b73ba638fd91b20ae",
+    "semantic_hash": "3e868e6384240b5b73ba638fd91b20ae"
+  }
+}

@@ -1,0 +1,288 @@
+{
+  "built_at_commit": "85b1550b397a3b4ff9c50f68684b8035898d42ea",
+  "nodes": 12498,
+  "edges": 21753,
+  "communities": 856,
+  "largest_communities": [
+    {
+      "id": 0,
+      "size": 188,
+      "sample": [
+        "test_enumerated_and_empty_contradict_each_other_in_both_directions()",
+        "test_a_result_cannot_both_serve_and_deny_the_same_request()",
+        "All four combinations, because a one-directional check passes on the half     of",
+        "RuntimeError",
+        "LookupError",
+        "Requirement",
+        "str",
+        "Enum"
+      ]
+    },
+    {
+      "id": 1,
+      "size": 139,
+      "sample": [
+        "test_model_registry_persistence.py",
+        "_model_version()",
+        "_seed_version_2()",
+        "_apply_version_2_row_level_security()",
+        "_rls_bits()",
+        "_Engine",
+        ".__init__()",
+        ".raw()"
+      ]
+    },
+    {
+      "id": 2,
+      "size": 129,
+      "sample": [
+        "test_the_seam_reads_a_real_decision_solution_not_a_stand_in()",
+        "The adapter is exercised against `metis.decide.ir.DecisionSolution` itself.",
+        "ValueError",
+        "SolverUnavailable",
+        "An optional solver backend was called on a machine that cannot run it.",
+        "commingled.py",
+        "DenialPenaltyTooWeak",
+        "CommingledFleet"
+      ]
+    },
+    {
+      "id": 3,
+      "size": 114,
+      "sample": [
+        "platform_tenant()",
+        "The reserved platform tenant as a canonical `Tenant` row (ADR-0040).      The",
+        "RequestTransitionId",
+        "Identifies one row of a ServiceRequest's durable lifecycle record -- a     sing",
+        "lifecycle.py",
+        "LateRecordingReason",
+        "BackdatedRecordError",
+        "UndeclaredLateRecordError"
+      ]
+    },
+    {
+      "id": 4,
+      "size": 112,
+      "sample": [
+        "models.py",
+        "_Evidence",
+        "KnownInput",
+        "ExperiencePacket",
+        "Evidence IR and Experience IR models (Program I, v0.1 slice).  blueprint/07-expl",
+        "What was known when one RECOMMENDATION event was generated -- that     event's o",
+        "Experience IR v0.1: a compact precedent record -- situation features,     the de",
+        "StateViolation"
+      ]
+    },
+    {
+      "id": 5,
+      "size": 111,
+      "sample": [
+        "test_core_migrations.py",
+        "_utc()",
+        "_seed_version_1()",
+        "_index_exists()",
+        "_Engine",
+        ".__init__()",
+        ".raw()",
+        ".create_version_1()"
+      ]
+    },
+    {
+      "id": 6,
+      "size": 106,
+      "sample": [
+        "test_lifecycle_record.py",
+        "_utc()",
+        "_recent()",
+        "_transition_fields()",
+        "_raw_insert()",
+        "_raw_values()",
+        "store()",
+        "pg()"
+      ]
+    },
+    {
+      "id": 7,
+      "size": 104,
+      "sample": [
+        "ScriptedClock",
+        ".__init__()",
+        ".__call__()",
+        "store()",
+        "A deterministic receipt clock, driven only FORWARD.      One-SECOND steps rather",
+        "ScriptedClock",
+        ".__init__()",
+        ".__call__()"
+      ]
+    },
+    {
+      "id": 8,
+      "size": 94,
+      "sample": [
+        "test_compatibility_graph.py",
+        "_load()",
+        "_toy()",
+        "_simultaneous()",
+        "_toy_profile()",
+        "test_every_certificate_names_both_independent_checkers()",
+        "test_a_certificates_witness_schedule_survives_re_derivation_from_the_raw_instance()",
+        "test_a_tampered_witness_schedule_fails_recheck()"
+      ]
+    },
+    {
+      "id": 9,
+      "size": 92,
+      "sample": [
+        "CoreDatabase",
+        ".__init__()",
+        "A connection to a database carrying `themis/core/sql/core_v0_1.sql`.      The si",
+        "migrations.py",
+        "CoreSchemaError",
+        "FutureSchemaVersionError",
+        "UnknownSchemaVersionError",
+        "SchemaShapeMismatchError"
+      ]
+    },
+    {
+      "id": 10,
+      "size": 87,
+      "sample": [
+        "test_pooling_decision.py",
+        "_load()",
+        "_toy()",
+        "test_the_baseline_plan_violates_nothing()",
+        "test_the_capacity_aware_plan_violates_nothing()",
+        "test_every_committed_route_is_re_verifiable_from_the_raw_instance()",
+        "test_a_policy_that_declines_a_servable_rider_makes_the_run_produce_nothing()",
+        "test_the_rationing_guard_is_the_same_exception_type_as_the_commingled_harness()"
+      ]
+    },
+    {
+      "id": 11,
+      "size": 80,
+      "sample": [
+        "test_scheduling_family.py",
+        "_utc()",
+        "_tenant()",
+        "_block()",
+        "_run_piece()",
+        "_deadhead()",
+        "test_a_rider_request_key_cannot_be_attached_to_a_scheduling_entity()",
+        "test_no_scheduling_entity_declares_a_request_field_at_all()"
+      ]
+    },
+    {
+      "id": 12,
+      "size": 78,
+      "sample": [
+        "attribution.py",
+        "UnattributedFigure",
+        "Source",
+        ".__post_init__()",
+        "label()",
+        ".to_record()",
+        "Figure",
+        ".__post_init__()"
+      ]
+    },
+    {
+      "id": 13,
+      "size": 75,
+      "sample": [
+        ".__init__()",
+        "events.py",
+        "canonical_json()",
+        "compute_hash()",
+        "SequenceError",
+        "DuplicateEventError",
+        "HashChainAppender",
+        ".__init__()"
+      ]
+    },
+    {
+      "id": 14,
+      "size": 73,
+      "sample": [
+        "test_decision_snapshot.py",
+        ".advance()",
+        "_episode()",
+        "_poison_after()",
+        "_contains_poison()",
+        "_numeric_values()",
+        "_probes()",
+        "_deprecated()"
+      ]
+    },
+    {
+      "id": 15,
+      "size": 69,
+      "sample": [
+        "build_panel_findings.py",
+        "Check",
+        ".as_dict()",
+        "Finding",
+        ".add()",
+        ".as_dict()",
+        "_pct_change()",
+        "check_effect()"
+      ]
+    },
+    {
+      "id": 16,
+      "size": 68,
+      "sample": [
+        "test_darp_cpsat.py",
+        "_one_route_solution()",
+        "_schedule_is_accepted()",
+        "_synth_instance()",
+        "_cheapest_single_route()",
+        "_brute_force_optimum()",
+        "test_exact_scheduler_solves_a_sequence_the_eight_step_heuristic_rejects()",
+        "test_exact_scheduler_absorbs_waiting_instead_of_giving_up()"
+      ]
+    },
+    {
+      "id": 17,
+      "size": 67,
+      "sample": [
+        "test_platform_tenant.py",
+        "_utc()",
+        "_tenant()",
+        "_model_version()",
+        "test_the_platform_tenant_id_is_a_valid_tenant_id()",
+        "test_the_platform_tenant_id_literal_is_pinned()",
+        "test_the_platform_tenant_id_cannot_collide_with_a_minted_tenant()",
+        "test_the_platform_exception_is_confined_to_model_versions()"
+      ]
+    },
+    {
+      "id": 18,
+      "size": 65,
+      "sample": [
+        "PackManifest",
+        "BaseModel",
+        "EvidencePack",
+        ".to_json()",
+        "PackVerification",
+        "_TeardownCheck",
+        "A portable, JSON-serializable evidence bundle for one aggregate.",
+        "Internal: the teardown half of a pack verification, kept separate so     \"the fi"
+      ]
+    },
+    {
+      "id": 19,
+      "size": 59,
+      "sample": [
+        "test_connect_gtfs_realtime_malformed.py",
+        "test_in_transit_vehicle_now_maps_not_quarantined()",
+        "test_stopped_vehicle_missing_stop_id_still_maps()",
+        "test_vehicle_with_no_timestamp_is_quarantined()",
+        "test_invalid_epoch_timestamp_is_quarantined()",
+        "test_out_of_range_latitude_is_quarantined_by_the_validator()",
+        "test_half_present_coordinate_is_quarantined_by_the_validator()",
+        "test_alert_entity_is_quarantined_as_no_observation_home()"
+      ]
+    }
+  ]
+}

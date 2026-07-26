@@ -91,3 +91,8 @@ forge/business/outreach/drafts/
 forge/research/dr_panel.json
 forge/research/acs_urban_area_disability.json
 forge/research/__pycache__/
+
+# graphify working directory. The 13MB graph.json and 17MB extraction cache
+# regenerate for free from AST in ~1 minute (0 tokens); the committed record
+# lives in aletheia/artifacts/knowledge-graph/<date>/.
+graphify-out/
