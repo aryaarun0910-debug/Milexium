@@ -237,16 +237,23 @@ def test_a_good_pack_verifies_in_an_interpreter_where_milexium_does_not_exist(tm
     script = write_verifier_script(document, tmp_path)
 
     control = subprocess.run(
-        [sys.executable, "-I", "-c", "import packages"],
+        [sys.executable, "-I", "-S", "-c", "import packages"],
         capture_output=True, text=True, cwd=str(tmp_path),
     )
     assert control.returncode != 0, (
         "Milexium is importable in the subprocess, so this test cannot show the "
         "verifier ran without it"
     )
+    # `-S` is load-bearing and not decoration. `-I` alone leaves `site` enabled,
+    # so an editable install (`pip install -e .`, which is exactly what CI does)
+    # drops a .pth file that puts the repo root back on sys.path -- and this
+    # control then FAILS on CI while passing locally, where cwd alone was enough.
+    # `-S` skips site processing entirely, so the isolation is real on both.
+    # The verifier imports only argparse/hashlib/json/sys/dataclasses/datetime,
+    # so losing site-packages costs it nothing.
 
     run = subprocess.run(
-        [sys.executable, "-I", str(script), str(pack_path)],
+        [sys.executable, "-I", "-S", str(script), str(pack_path)],
         capture_output=True, text=True, cwd=str(tmp_path),
     )
     assert run.returncode == 0, run.stdout + run.stderr
@@ -264,7 +271,7 @@ def test_a_tampered_pack_fails_in_that_same_interpreter(tmp_path) -> None:
     script = write_verifier_script(document, tmp_path)
 
     run = subprocess.run(
-        [sys.executable, "-I", str(script), str(pack_path)],
+        [sys.executable, "-I", "-S", str(script), str(pack_path)],
         capture_output=True, text=True, cwd=str(tmp_path),
     )
     assert run.returncode == 1, run.stdout + run.stderr
@@ -279,7 +286,7 @@ def test_the_verifier_exits_two_on_an_unreadable_file(tmp_path) -> None:
     bad.write_text("{ this is not json", encoding="utf-8")
 
     run = subprocess.run(
-        [sys.executable, "-I", str(script), str(bad)], capture_output=True, text=True
+        [sys.executable, "-I", "-S", str(script), str(bad)], capture_output=True, text=True
     )
     assert run.returncode == 2
 
