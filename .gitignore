@@ -77,8 +77,16 @@ outreach/drafts/
 
 # R&D derived panels and API caches (MX-RND-HYPOTHESIS-MINING-011).
 # Regenerate with research/build_dr_panel.py; the hypothesis RESULT jsons are
-# committed, the 15MB intermediate panel and the NOAA/ACS caches are not.
+# committed, the 15MB intermediate panel and the ACS cache are not.
+#
+# research/noaa_gsom_cache.json is deliberately gone (MX-CONF-GOVERNANCE-HOLE-012).
+# Ignoring it is what made research/h3_weather.json unreproducible: the analysed
+# sample lived only on one machine, and a rerun that silently lost one station
+# reported 1,886 observations across 19 agencies against the published 1,994
+# across 20. The 150 KB observation set the published result was actually computed
+# from is COMMITTED instead, as research/h3_weather_observations.json. Evidence a
+# conclusion rests on belongs in git; 150 KB is a smaller price than a result
+# nobody can regenerate.
 research/dr_panel.json
-research/noaa_gsom_cache.json
 research/acs_urban_area_disability.json
 research/__pycache__/

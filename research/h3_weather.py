@@ -1,6 +1,8 @@
 """H3 -- does weather explain demand-response demand at monthly resolution?
 
-Run:  py -3 research/h3_weather.py
+Run:      py -3 research/h3_weather.py            # reproduce from the pinned set
+Verify:   py -3 research/h3_weather.py --verify   # fail if the artifact drifted
+Refresh:  py -3 research/h3_weather.py --refresh  # re-fetch and REPLACE the pin
 
 Prior, stated before looking: weather SHOULD matter (bad weather suppresses
 discretionary trips and raises no-shows) but monthly aggregation may destroy the
@@ -23,23 +25,105 @@ covarying with demand.
 
 COVID years 2020-2021 are excluded throughout: a service collapse would
 masquerade as an enormous weather-independent shock.
+
+Reproducibility (MX-CONF-GOVERNANCE-HOLE-012)
+---------------------------------------------
+This script used to fetch NOAA live and fall back to a gitignored cache, so what
+it analysed depended on when you ran it and what was on your disk. It was not
+reproducible, and an audit measured the drift: the committed artifact rests on
+1,994 complete observations across 20 agencies, and a 2026-07-26 re-fetch of the
+same stations, years and data types returned 1,886 across 19. The finding did
+not move -- weather is null at monthly resolution either way -- but the SAMPLE
+moved, so the committed JSON could not be regenerated from the committed code.
+
+So the observation set is now PINNED in `h3_weather_observations.json`, which is
+committed, content-hashed, and the only weather input a normal run reads. There
+is no network call on the default path and no cache fallback. Re-fetching is
+`--refresh`: a separate, explicit action that rewrites the pin, prints exactly
+which stations and months changed, and deliberately does NOT touch the result
+artifact -- regenerating that is a second, visible step.
+
+WHY THE SAMPLE ACTUALLY MOVED. The obvious story is that NOAA revised its
+history, and it is the wrong one. A full controlled re-fetch of the identical
+request on 2026-07-26T09:01:15Z returned an observation set BYTE-IDENTICAL to the
+pinned one -- 25 stations, 3,300 station-months, same sha256. The arithmetic
+names the real cause: every agency in this panel contributes exactly 108 complete
+agency-months, 1,994 - 1,886 = 108, and 20 - 19 = 1. The audit's rerun lost one
+station whole. The old code dropped any station whose fetch raised, kept whatever
+else came back, and wrote THAT to the cache -- so a single transient HTTP failure
+silently redefined the sample and then froze it as the input of record.
+
+GSOM remains a revisable series in principle, so a refresh may legitimately move
+the sample; that possibility is recorded in the pin and in the artifact's
+provenance instead of being asserted as the explanation for this incident. The
+failure that did occur is now structurally blocked: `--refresh` refuses to write
+a pin missing any declared station unless `--allow-partial` says so in the open,
+and records the loss in the pin when it does.
+
+The second input, the NTD monthly ridership table, is already immutable: it is
+content-addressed in the governed estate and its sha256 is verified on every run.
+Its bytes are gitignored (70 MB), so a checkout without them cannot run this
+script at all -- it says so and stops, rather than quietly analysing less.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import sys
 import urllib.error
 import urllib.request
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from lib import MONTHLY, env, mean, ols, parse_month, pearson, say  # noqa: E402
 
-CACHE = HERE / "noaa_gsom_cache.json"
+PINNED = HERE / "h3_weather_observations.json"
+ARTIFACT = HERE / "h3_weather.json"
+
+# The governed, content-addressed NTD monthly ridership table. Verified every
+# run: if this table is ever re-acquired, the numbers below stop being the
+# numbers this file describes, and that must be loud rather than silent.
+MONTHLY_SHA256 = "529952083544f257a8dd27d034f5481309f3d604c4dd3999d635ea71a148bb66"
+MONTHLY_CATALOG_RECORD = "data/catalog/ntd-monthly-ridership-all-modes.acquired.json"
+
+SOURCE = "NOAA NCEI global-summary-of-the-month (GSOM), TAVG/PRCP/SNOW, standard units"
+
+# Measured, not assumed. Written into the pin and the artifact so the next reader
+# inherits the measurement rather than the plausible story.
+SOURCE_STABILITY = {
+    "revisable_in_principle": True,
+    "revisability_note": (
+        "GSOM publishes late reports and QC revisions, so a --refresh is allowed to "
+        "return a different sample. That is why the analysed set is pinned rather "
+        "than re-derived."
+    ),
+    "observed_discrepancy": (
+        "The 2026-07-26 audit rerun produced 1,886 complete agency-months across 19 "
+        "agencies against the published 1,994 across 20."
+    ),
+    "controlled_refetch": (
+        "2026-07-26T09:01:15Z: a full re-fetch of the identical request (25 stations, "
+        "2015-2025, TAVG/PRCP/SNOW, standard units) returned an observation set "
+        "byte-identical to the pinned one -- 25 stations, 3,300 station-months, "
+        "sha256 e735059a15789871...."
+    ),
+    "attribution": (
+        "NOT an upstream revision. Every agency contributes exactly 108 complete "
+        "agency-months; 1,994 - 1,886 = 108 and 20 - 19 = 1, so the rerun lost one "
+        "station whole. The pre-pin code dropped any station whose fetch raised, kept "
+        "the rest, and cached the incomplete set -- one transient HTTP failure "
+        "silently redefined the sample and froze it."
+    ),
+    "guard": (
+        "--refresh refuses to write a pin missing any declared station; "
+        "--allow-partial overrides it and records the loss in the pin."
+    ),
+}
 
 # NTD ID -> (label, GHCND station at the metro's primary airport)
 AGENCIES = {
@@ -73,6 +157,62 @@ AGENCIES = {
 YEARS = list(range(2015, 2020)) + list(range(2022, 2026))
 
 
+# --------------------------------------------------------------------------
+# the pinned observation set
+# --------------------------------------------------------------------------
+def observations_digest(observations: dict) -> str:
+    """Content hash of the observations, independent of file layout.
+
+    Canonical form: sorted keys, no whitespace. Reformatting the pin file cannot
+    change this; changing a single reading must.
+    """
+    canonical = json.dumps(observations, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def write_pin(observations: dict, pin: dict) -> None:
+    """Write the pin with one agency per line -- a refresh diff names the
+    stations that moved instead of rewriting 3,300 lines."""
+    pin = dict(pin, observations_sha256=observations_digest(observations))
+    lines = ['{', '  "pin": ' + json.dumps(pin, indent=2).replace("\n", "\n  ") + ",", '  "observations": {']
+    keys = sorted(observations)
+    for i, nid in enumerate(keys):
+        body = json.dumps(observations[nid], sort_keys=True, separators=(",", ":"))
+        lines.append(f'    {json.dumps(nid)}: {body}' + ("," if i < len(keys) - 1 else ""))
+    lines += ["  }", "}"]
+    PINNED.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def load_pinned() -> tuple[dict, dict]:
+    """Read the pinned observations and prove they are the ones that were pinned."""
+    if not PINNED.exists():
+        die(
+            f"pinned observation set missing: {PINNED.name}. This script does not "
+            "fetch on the default path -- restore the file from git, or run with "
+            "--refresh to build a NEW pin, which is a deliberate change of evidence "
+            "and may not reproduce the committed artifact."
+        )
+    payload = json.loads(PINNED.read_text(encoding="utf-8"))
+    pin, observations = payload["pin"], payload["observations"]
+    actual = observations_digest(observations)
+    if actual != pin["observations_sha256"]:
+        die(
+            f"{PINNED.name} has been edited: observations hash {actual[:16]}... does "
+            f"not match the recorded {pin['observations_sha256'][:16]}.... The pin is "
+            "the record of what was analysed; regenerate it with --refresh rather "
+            "than editing it by hand."
+        )
+    return pin, observations
+
+
+def die(msg: str) -> None:
+    say(f"\nFATAL: {msg}")
+    raise SystemExit(2)
+
+
+# --------------------------------------------------------------------------
+# fetching -- reached ONLY by --refresh
+# --------------------------------------------------------------------------
 def fetch_ncei(station: str, y0: int, y1: int):
     """NCEI access API -- global-summary-of-the-month. No account required."""
     sid = station.split(":", 1)[1]
@@ -126,13 +266,9 @@ def _one(item):
     return nid, label, station, None
 
 
-def load_weather():
-    if CACHE.exists():
-        return json.loads(CACHE.read_text(encoding="utf-8"))
+def shape(fetched) -> dict:
+    """Rows as returned by NOAA -> {ntd_id: {station, label, months}}."""
     wx = {}
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        fetched = list(ex.map(_one, AGENCIES.items()))
     for nid, label, station, got in fetched:
         if not got:
             continue
@@ -148,21 +284,111 @@ def load_weather():
                     except ValueError:
                         pass
         wx[nid] = {"station": station, "label": label, "months": dict(bym)}
-    CACHE.write_text(json.dumps(wx), encoding="utf-8")
     return wx
 
 
-def main() -> None:
-    say("fetching monthly weather...")
-    wx = load_weather()
-    say(f"stations with data: {len(wx)}")
+def refresh(allow_partial: bool = False) -> None:
+    """Re-fetch NOAA and REPLACE the pin, reporting exactly what moved.
 
-    # ---- monthly DR ridership -------------------------------------------
-    upt = defaultdict(float)
+    Deliberately does not regenerate h3_weather.json: a refresh changes the
+    evidence, and rewriting the conclusion in the same breath is how a changed
+    sample gets to look like a stable result.
+    """
+    old_pin, old_obs = ({}, {})
+    if PINNED.exists():
+        old_pin, old_obs = load_pinned()
+
+    say("re-fetching monthly weather from NOAA (this is the only path that hits the network)...")
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        fetched = list(ex.map(_one, AGENCIES.items()))
+    new_obs = shape(fetched)
+    if not new_obs:
+        die("re-fetch returned nothing for every station; pin left untouched")
+
+    # The failure that actually corrupted this analysis once: a station's fetch
+    # raises, it is quietly dropped, and the smaller sample becomes the input of
+    # record. It does not get to be quiet twice.
+    missing = [nid for nid in AGENCIES if nid not in new_obs]
+    if missing and not allow_partial:
+        die(
+            f"{len(missing)} of {len(AGENCIES)} declared stations returned nothing: "
+            + ", ".join(f"{AGENCIES[n][0]} ({AGENCIES[n][1]})" for n in missing)
+            + ". This is exactly how the sample silently shrank from 1,994 "
+            "observations to 1,886 before it was pinned. The pin was NOT written. "
+            "Re-run when the source is healthy, or pass --allow-partial to pin the "
+            "short set deliberately and record the loss in it."
+        )
+
+    old_digest = old_pin.get("observations_sha256", "(none)")
+    new_digest = observations_digest(new_obs)
+    say("\n=== REFRESH DELTA ===")
+    say(f"  stations:       {len(old_obs)} -> {len(new_obs)} (declared: {len(AGENCIES)})")
+    for nid in sorted(set(old_obs) | set(new_obs)):
+        was = set(old_obs.get(nid, {}).get("months", {}))
+        now = set(new_obs.get(nid, {}).get("months", {}))
+        if was == now:
+            continue
+        label = AGENCIES.get(nid, (nid, ""))[0]
+        say(
+            f"  {label[:34]:<36} months {len(was):>3} -> {len(now):>3}"
+            f"   +{len(now - was)} / -{len(was - now)}"
+        )
+    say(f"  observations sha256: {old_digest[:16]}... -> {new_digest[:16]}...")
+
+    write_pin(
+        new_obs,
+        {
+            "source": SOURCE,
+            "retrieved_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "stations_requested": len(AGENCIES),
+            "stations_missing": [AGENCIES[n][1] for n in missing],
+            "years": [YEARS[0], YEARS[-1]],
+            "years_excluded": [2020, 2021],
+            "source_stability": SOURCE_STABILITY,
+            "supersedes_observations_sha256": old_digest,
+            "provenance": "fetched by research/h3_weather.py --refresh",
+        },
+    )
+    if new_digest == old_digest:
+        say(f"\nwrote {PINNED.name} -- the pinned sample is UNCHANGED (identical hash);")
+        say("only the retrieval timestamp moved. The artifact still reproduces.")
+        return
+    say(f"\nwrote {PINNED.name} -- the pinned sample has CHANGED.")
+    say("Nothing else was written. To regenerate the result on the new sample:")
+    say("  py -3 research/h3_weather.py")
+    say("Commit the pin and the artifact together, or the artifact stops being reproducible.")
+
+
+# --------------------------------------------------------------------------
+# the analysis
+# --------------------------------------------------------------------------
+def load_monthly_dr() -> tuple[dict, dict]:
+    """Monthly DR ridership for the studied agencies, from the governed table."""
+    if not MONTHLY.exists():
+        die(
+            f"NTD monthly ridership table missing: {MONTHLY}. It is 70 MB and lives "
+            "in the gitignored raw zone, so a fresh checkout does not have it. "
+            f"Re-acquire it through the governed estate ({MONTHLY_CATALOG_RECORD}) "
+            "before running this analysis -- there is no partial-data fallback."
+        )
+    digest = hashlib.sha256(MONTHLY.read_bytes()).hexdigest()
+    if digest != MONTHLY_SHA256:
+        die(
+            f"NTD monthly table is not the pinned one: {digest[:16]}... != "
+            f"{MONTHLY_SHA256[:16]}.... The committed result describes the pinned "
+            "table; re-pin deliberately rather than reporting numbers from a "
+            "different input."
+        )
+
     import csv
 
+    upt: dict = defaultdict(float)
+    rows_read = rows_matched = 0
     with open(MONTHLY, newline="", encoding="utf-8-sig") as fh:
         for row in csv.DictReader(fh):
+            rows_read += 1
             if row["Mode"] != "DR" or row["NTD ID"] not in AGENCIES:
                 continue
             y, m = parse_month(row["Date"])
@@ -170,19 +396,34 @@ def main() -> None:
                 continue
             v = row["UPT"].strip().replace(",", "")
             if v:
+                rows_matched += 1
                 upt[(row["NTD ID"], y, m)] += float(v)
+    return upt, {
+        "sha256": digest,
+        "rows_read": rows_read,
+        "rows_matched_dr_studied_agencies_in_years": rows_matched,
+    }
 
+
+def compute(pin: dict, wx: dict) -> dict:
+    say(f"stations in pinned set: {len(wx)}")
+
+    upt, monthly_meta = load_monthly_dr()
     say(f"agency-months of DR ridership: {len(upt)}")
 
-    # ---- build within-agency, within-calendar-month anomalies -------------
     series = defaultdict(list)
     for (nid, y, m), v in upt.items():
         if v > 0:
             series[nid].append((y, m, v))
 
+    dropped_no_weather = dropped_short = dropped_no_tavg = 0
     rows = []
     for nid, obs in series.items():
-        if nid not in wx or len(obs) < 48:
+        if nid not in wx:
+            dropped_no_weather += 1
+            continue
+        if len(obs) < 48:
+            dropped_short += 1
             continue
         w = wx[nid]["months"]
         # agency's own log-mean for each calendar month
@@ -203,6 +444,7 @@ def main() -> None:
             ym = f"{y}-{m:02d}"
             d = w.get(ym)
             if not d or "TAVG" not in d:
+                dropped_no_tavg += 1
                 continue
             rec = {
                 "nid": nid,
@@ -268,9 +510,78 @@ def main() -> None:
     res["n_positive_tavg"] = pos
     res["n_negative_snow"] = negsnow
 
-    (HERE / "h3_weather.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
-    say("\nwrote research/h3_weather.json")
+    # Everything below is a property of the inputs, not of the run: no wall clock,
+    # no machine identity, nothing that would make a rerun differ from this file.
+    res["provenance"] = {
+        "reproduce": "py -3 research/h3_weather.py",
+        "drift_check": "py -3 research/h3_weather.py --verify",
+        "refresh": "py -3 research/h3_weather.py --refresh  (replaces the pinned sample)",
+        "weather_observations": {
+            "pin_file": "research/h3_weather_observations.json",
+            "observations_sha256": pin["observations_sha256"],
+            "retrieved_at": pin.get("retrieved_at"),
+            "revalidated_at": pin.get("revalidated_at"),
+            "source": pin.get("source", SOURCE),
+            "source_stability": pin.get("source_stability", SOURCE_STABILITY),
+            "stations_pinned": len(wx),
+            "station_months_pinned": sum(len(v["months"]) for v in wx.values()),
+        },
+        "ridership_input": {
+            "path": "data/raw/public/" + MONTHLY.name,
+            "catalog_record": MONTHLY_CATALOG_RECORD,
+            **monthly_meta,
+        },
+        "sample_construction": {
+            "agencies_declared": len(AGENCIES),
+            "agencies_with_dr_ridership": len(series),
+            "agencies_dropped_no_pinned_weather": dropped_no_weather,
+            "agencies_dropped_under_48_months": dropped_short,
+            "agency_months_dr_before_join": len(upt),
+            "agency_months_dropped_no_tavg": dropped_no_tavg,
+            "agency_months_joined": len(rows),
+            "agency_months_dropped_incomplete_weather": len(rows) - len(full),
+            "agency_months_analysed": len(full),
+            "agencies_in_per_agency_table": len(peragency),
+            "per_agency_min_months": 36,
+            "years_excluded": [2020, 2021],
+        },
+        "environment": {
+            "python": ">=3.10",
+            "third_party_dependencies": "none -- standard library only",
+        },
+    }
+    return res
+
+
+def main(argv: list[str]) -> None:
+    if "--refresh" in argv:
+        refresh(allow_partial="--allow-partial" in argv)
+        return
+
+    say("loading pinned monthly weather (no network on this path)...")
+    pin, wx = load_pinned()
+    res = compute(pin, wx)
+    text = json.dumps(res, indent=2)
+
+    if "--verify" in argv:
+        if not ARTIFACT.exists():
+            die(f"{ARTIFACT.name} does not exist, so there is nothing to verify against")
+        committed = json.loads(ARTIFACT.read_text(encoding="utf-8"))
+        if committed == res:
+            say(f"\nVERIFIED: {ARTIFACT.name} reproduces exactly from the pinned sample.")
+            return
+        say(f"\nDRIFT: {ARTIFACT.name} does NOT reproduce from the pinned sample.")
+        for k in ("n_obs", "n_agencies"):
+            say(f"  {k}: committed {committed.get(k)}  recomputed {res.get(k)}")
+        changed = sorted(
+            k for k in set(committed) | set(res) if committed.get(k) != res.get(k)
+        )
+        say(f"  differing top-level keys: {changed}")
+        raise SystemExit(1)
+
+    ARTIFACT.write_text(text, encoding="utf-8")
+    say(f"\nwrote research/{ARTIFACT.name}")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

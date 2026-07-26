@@ -1,0 +1,164 @@
+id: MX-CONF-GOVERNANCE-HOLE-012
+status: completed
+dispatched_date: "2026-07-26"
+completed_date: "2026-07-26"
+adr: none — this packet writes no new mechanism. It repairs one conformance test
+  under the EXISTING governance (ADR-0053, blueprint 17) and pins the inputs of one
+  existing research script. Nothing here needs an architectural decision record;
+  saying it does would be padding.
+objective: >
+  Close two defects from MILEXIUM_INTERNAL_AUDIT_2026-07-26.md. (1) The legacy
+  data-governance existence test accepted a manifest whose every recorded path was
+  gitignored, so a manifest pointing at nothing could still be certified -- the
+  auditor pointed the Chicago manifest at a nonexistent ignored directory and the
+  targeted test passed. Make it impossible to pass vacuously WITHOUT reintroducing
+  the CI-portability failure the previous repair was written to avoid. (2) The H3
+  weather research fetched a live external source with an unpinned, gitignored
+  cache, so the committed artifact could not be regenerated from the committed
+  code. Pin the observation set, make refresh explicit, and record what the source
+  actually does rather than what it plausibly does.
+owned_paths:
+  - conformance/property-tests/test_realdata_governance.py
+  - research/**                          # h3_weather.py, the new pin, the deleted cache
+  - .gitignore
+  - workstreams/packets/MX-CONF-GOVERNANCE-HOLE-012.yaml
+read_only_dependencies:
+  - packages/estate/manifest.py     (load_manifest — imported, NOT modified)
+  - data/catalog/realdata-*.manifest.json  (read; temporarily mutated for the
+    adversarial probes and restored byte-identical — `git status` clean after each.
+    This packet does NOT own them and did not repair their content)
+  - data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv
+    (governed input; sha256-verified on every run, never written)
+  - data/catalog/ntd-monthly-ridership-all-modes.acquired.json (cited as the
+    acquisition record for that input)
+normative_contracts:
+  - ADR-0053 (every real dataset in the repository declares its rights)
+  - blueprint/17 (governed estate; raw zones stay local, the catalog travels with
+    the code as the governance record)
+  - "repo standing rule: a test that cannot fail is worse than no test. EIGHT
+    vacuous tests were caught this month; defect 1 was the eighth."
+required_outputs:
+  - conformance/property-tests/test_realdata_governance.py — existence check that
+    cannot pass vacuously and still passes on a clean checkout
+  - research/h3_weather_observations.json — the pinned, content-hashed observation
+    set, COMMITTED (150 KB)
+  - research/h3_weather.py — reproduces from the pin with no network; --verify
+    drift check; --refresh as a separate, explicit, loudly-reported action
+  - research/h3_weather.json — regenerated; every pre-existing key byte-identical,
+    provenance block added
+acceptance_commands:
+  - "py -3 -m pytest conformance/property-tests/test_realdata_governance.py -q  # 17 passed (was 16: +1 plumbing guard)"
+  - "py -3 -m pytest conformance/property-tests/test_realdata_governance.py conformance/property-tests/test_us_opendata_manifests.py -q  # 48 passed — the neighbouring manifest suite is untouched and unweakened"
+  - "py -3 research/h3_weather.py --verify  # VERIFIED: reproduces exactly from the pinned sample"
+  - "py -3 -m pytest conformance/property-tests/ -q -k 'estate or manifest or panel'  # 233 passed in 4m17s — the estate/manifest/panel neighbourhood is green"
+  - "py -3 -m pytest conformance/ -q  # 2,680 collected; see notes — the full run did not finish inside this packet's window"
+security_and_privacy_invariants:
+  - "No secret read, printed or written. NOAA_CDO_TOKEN is reached only through
+    lib.env() on the --refresh fallback path, which never prints it; the live
+    refresh actually ran was unauthenticated NCEI. CENSUS_API_KEY untouched. .env
+    was never opened by this packet."
+  - "No raw data committed. The one new committed file is a 150 KB JSON of monthly
+    public NOAA weather aggregates for 25 airport stations — no personal data, no
+    rights encumbrance (US federal public domain)."
+  - "The 70 MB governed NTD input stays gitignored and is now hash-verified rather
+    than assumed; a checkout without it stops with an instruction instead of
+    analysing a smaller sample."
+failure_injections:
+  - "PROBE (the auditor's, defect 1): Chicago manifest repointed at
+    realdata/panels/definitely_nonexistent_monthly/ — gitignored by the committed
+    rule `realdata/panels/*_monthly/`, and nonexistent. BEFORE: passed (0 paths
+    checked). AFTER: FAILS, `CASE fictional-in-a-materialised-zone`, naming the
+    three sibling ignored panels present in the same zone as the evidence."
+  - "M3: recorded path covered by NO ignore rule and absent → FAILS on a clean
+    checkout too (`CASE unexplained-absence`). This is the branch that keeps the
+    clean-CI mode from being decorative."
+  - "M4: a git-TRACKED recorded path deleted → FAILS (`CASE tracked-but-missing`).
+    The behaviour the previous repair had is preserved, not traded away."
+  - "M5: fictional path laundered by appending a rule to .git/info/exclude → FAILS
+    (`CASE uncommitted-excuse`). A local exclude cannot buy a governance record an
+    alibi CI cannot see."
+  - "M6: the ignore-rule lookup reverted to the Windows `--stdin` text-mode form
+    (the bug this fix hit in draft) → the new plumbing guard FAILS, naming 5 of 6
+    lost paths. Without that guard the whole 'explained absence' branch would have
+    gone silently dead — a ninth vacuous test, in the fix for the eighth."
+  - "MUT-A: one TAVG reading edited in the pin without updating its hash → FATAL,
+    exit 2. MUT-B: pin deleted → FATAL, exit 2, no fetch attempted. MUT-C: artifact
+    edited to n_obs 1886 → --verify exits 1 naming the differing key. MUT-D: the
+    governed NTD input's sha256 no longer the pinned one → FATAL, exit 2."
+  - "MUT-E: urllib.request.urlopen replaced with a raising stub for a default run →
+    still VERIFIED, exit 0. The default path provably does not touch the network."
+  - "MUT-F: one declared station made to return nothing during --refresh → refuses
+    to write the pin (exit 2) and leaves it byte-unchanged; with --allow-partial it
+    writes, records stations_missing, and changes the digest. MUT-F3 then ran the
+    analysis on that short pin: 1,886 observations across 19 agencies — the audit's
+    rerun numbers, reproduced exactly."
+compatibility_matrix:
+  - "Dev machine with the ignored estate materialised: 17 passed. Every recorded
+    path verified by presence."
+  - "Clean checkout (real `git clone` into a scratch dir, no ignored bytes at all):
+    17 passed, with three manifests printing NO PATH VERIFIED IN THIS CHECKOUT
+    rather than passing silently."
+  - "research reproduction: h3_weather.json regenerates byte-identically on rerun;
+    every key that existed before this packet is unchanged."
+evidence_to_emit:
+  - "Defect 1: three of the five legacy manifests (chicago-tnp, mta-afc, nyc-tlc)
+    record NO git-tracked path at all, so under the previous repair their existence
+    test asserted literally nothing. That is what made the auditor's probe pass."
+  - "Defect 1 fix: per-path classification with a named failing case. Tracked ->
+    must exist. Neither tracked nor ignored -> must exist. Ignored and present ->
+    verified. Ignored and absent -> the absence must be explained by a COMMITTED
+    ignore rule, anchored to an existing tracked ancestor directory, and unopposed
+    by any sibling ignored path present in the same zone."
+  - "Defect 2 root cause, corrected against evidence: the audit attributed the
+    1,994 -> 1,886 sample loss to a mutable upstream, and the first draft of this
+    packet wrote that down as fact. A full live re-fetch at 2026-07-26T09:01:15Z
+    returned a byte-identical observation set (25 stations, 3,300 station-months,
+    sha256 e735059a...). Every agency contributes exactly 108 complete
+    agency-months; 1,994 - 1,886 = 108 and 20 - 19 = 1. The rerun lost ONE station
+    whole. Replaying the fetch with GHCND:USW00094728 (MTA NYCT) failing reproduces
+    1,886 / 19 exactly. The cause was a silent partial fetch that the old code
+    cached, not an upstream revision."
+  - "Committed the pinned set (150 KB) and deleted the 172 KB gitignored cache.
+    Evidence a published conclusion rests on belongs in git; a result nobody can
+    regenerate costs more than the bytes."
+  - "Status: Demonstrated. The governance test is Demonstrated against six controlled
+    mutations on two checkout shapes; the research artifact is Demonstrated
+    reproducible from committed inputs on this machine. Neither is Validated —
+    nothing here has been exercised by an operator or a second machine, and the
+    clean-checkout mode still cannot verify bytes it does not have."
+upstream_blockers: []
+downstream_consumers:
+  - "Audit item P1 (legacy governance tests permit false records) — the existence
+    half is closed; the rights half is NOT (see notes)."
+  - "Audit item P2 (research not fully reproducible) — closed for h3_weather only."
+  - "Any future CI 'hermetic lane' (audit P2, second item): the existence test now
+    behaves correctly under a clean checkout and says so out loud, so it can be run
+    there without either lying or failing for portability reasons."
+notes: >
+  WHAT WAS DELIBERATELY NOT CLOSED, and why. (a) The rights half of audit P1. The
+  auditor also replaced the Chicago rights field with a fabricated sentence
+  containing the word "commercial" and the test passed. That test is in this
+  packet's owned file, and it was left alone on purpose: the honest fix is a
+  captured licence URL, terms hash and acquisition timestamp IN THE MANIFESTS,
+  which this packet does not own, and the reachable alternative — a keyword
+  whitelist like the stricter one in test_us_opendata_manifests.py — would fail all
+  five legacy manifests I cannot repair, or, tuned not to, would just move the
+  fabrication one word over. A shallow check here would have become the ninth
+  vacuous test. It is named as an open hole instead. (b) On a checkout that never
+  fetched the ignored estate, a manifest naming only ignored, nonexistent
+  directories still passes; the test now prints NO PATH VERIFIED IN THIS CHECKOUT
+  for it. Closing that needs committed per-file inventories (name, size, sha256) in
+  the catalog — again manifest content, not test logic. (c) research/h3b_seasonality
+  and h4_census_unmet_need share the unpinned-cache shape (acs_urban_area_disability
+  .json is still an ignored API cache); the audit found they reproduce, so they were
+  left alone rather than swept. (d) TEST COUNT HONESTY: the full `packages/
+  conformance/` run this packet's changes should be measured against did not
+  complete — conformance/ alone now collects 2,680 tests and two other agents were
+  landing code in packages/canonical/** and docs/** throughout, so a whole-suite
+  number taken here would have measured their work in flight, not this change. What
+  was measured is stated above and is scoped to the change: the edited file (17),
+  the neighbouring manifest suite (48 together), and the estate/manifest/panel
+  selection (233). This packet touches exactly one test file, plus research/ (which
+  no test reads — verified by grep) and .gitignore (which no test parses — likewise
+  verified), so that is the blast radius. Do NOT edit the five legacy manifests,
+  packages/, docs/, CI, any ADR, or git from this packet.

@@ -123,5 +123,55 @@
     }
   },
   "n_positive_tavg": 9,
-  "n_negative_snow": 9
+  "n_negative_snow": 9,
+  "provenance": {
+    "reproduce": "py -3 research/h3_weather.py",
+    "drift_check": "py -3 research/h3_weather.py --verify",
+    "refresh": "py -3 research/h3_weather.py --refresh  (replaces the pinned sample)",
+    "weather_observations": {
+      "pin_file": "research/h3_weather_observations.json",
+      "observations_sha256": "e735059a15789871cdeedb3c9a103fb299b31ed38c0b44a2289099b5df9e623c",
+      "retrieved_at": null,
+      "revalidated_at": "2026-07-26T09:01:15Z",
+      "source": "NOAA NCEI global-summary-of-the-month (GSOM), TAVG/PRCP/SNOW, standard units",
+      "source_stability": {
+        "revisable_in_principle": true,
+        "revisability_note": "GSOM publishes late reports and QC revisions, so a --refresh is allowed to return a different sample. That is why the analysed set is pinned rather than re-derived.",
+        "observed_discrepancy": "The 2026-07-26 audit rerun produced 1,886 complete agency-months across 19 agencies against the published 1,994 across 20.",
+        "controlled_refetch": "2026-07-26T09:01:15Z: a full re-fetch of the identical request (25 stations, 2015-2025, TAVG/PRCP/SNOW, standard units) returned an observation set byte-identical to the pinned one -- 25 stations, 3,300 station-months, sha256 e735059a15789871....",
+        "attribution": "NOT an upstream revision. Every agency contributes exactly 108 complete agency-months; 1,994 - 1,886 = 108 and 20 - 19 = 1, so the rerun lost one station whole. The pre-pin code dropped any station whose fetch raised, kept the rest, and cached the incomplete set -- one transient HTTP failure silently redefined the sample and froze it.",
+        "guard": "--refresh refuses to write a pin missing any declared station; --allow-partial overrides it and records the loss in the pin."
+      },
+      "stations_pinned": 25,
+      "station_months_pinned": 3300
+    },
+    "ridership_input": {
+      "path": "data/raw/public/ntd-monthly-ridership-all-modes.529952083544f257.csv",
+      "catalog_record": "data/catalog/ntd-monthly-ridership-all-modes.acquired.json",
+      "sha256": "529952083544f257a8dd27d034f5481309f3d604c4dd3999d635ea71a148bb66",
+      "rows_read": 368937,
+      "rows_matched_dr_studied_agencies_in_years": 3189
+    },
+    "sample_construction": {
+      "agencies_declared": 25,
+      "agencies_with_dr_ridership": 21,
+      "agencies_dropped_no_pinned_weather": 0,
+      "agencies_dropped_under_48_months": 0,
+      "agency_months_dr_before_join": 2208,
+      "agency_months_dropped_no_tavg": 0,
+      "agency_months_joined": 2208,
+      "agency_months_dropped_incomplete_weather": 214,
+      "agency_months_analysed": 1994,
+      "agencies_in_per_agency_table": 18,
+      "per_agency_min_months": 36,
+      "years_excluded": [
+        2020,
+        2021
+      ]
+    },
+    "environment": {
+      "python": ">=3.10",
+      "third_party_dependencies": "none -- standard library only"
+    }
+  }
 }
