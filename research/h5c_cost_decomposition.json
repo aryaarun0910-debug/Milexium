@@ -1,0 +1,135 @@
+{
+  "cross_section_2024": {
+    "n": 1631,
+    "var_log_cpt": 0.36351594009845306,
+    "var_log_cpv": 0.24702292932769065,
+    "var_log_tpv": 0.22223293725061719,
+    "minus2cov": -0.10573992647985477,
+    "share_cpv": 0.6795380947002986,
+    "share_tpv": 0.6113430326890991,
+    "corr_cpv_tpv": 0.2256504279515255
+  },
+  "aggregate_change": {
+    "cost per trip  (nominal)": {
+      "2015": 29.21772356906129,
+      "2024": 51.8123141104591,
+      "pct_change": 0.7733179653093598
+    },
+    "cost per trip  (2024 $)": {
+      "2015": 38.669287387213856,
+      "2024": 51.8123141104591,
+      "pct_change": 0.3398828272069745
+    },
+    "cost per hour  (nominal)": {
+      "2015": 61.985568588982154,
+      "2024": 98.2396374912741,
+      "pct_change": 0.5848791860358291
+    },
+    "cost per hour  (2024 $)": {
+      "2015": 82.0371155871065,
+      "2024": 98.2396374912741,
+      "pct_change": 0.19750233523220184
+    },
+    "trips per hour": {
+      "2015": 2.1215057512084483,
+      "2024": 1.8960673573049873,
+      "pct_change": -0.10626339041270438
+    }
+  },
+  "decomposition_real": {
+    "dlog_cpt": 0.29258216775665713,
+    "dlog_cpv": 0.1802380003905532,
+    "dlog_tpv": -0.11234416736610409,
+    "share_from_cost_per_hour": 0.6160252409520001,
+    "share_from_productivity": 0.3839747590480005
+  },
+  "per_agency_median_change": {
+    "real cost/trip": {
+      "median": 0.35483629181847487,
+      "p25": 0.07278197420589005,
+      "p75": 0.8090231234640404
+    },
+    "real cost/hour": {
+      "median": 0.1674860447966371,
+      "p25": -0.0497860626363128,
+      "p75": 0.46755810570925116
+    },
+    "trips/hour": {
+      "median": -0.12704632693164053,
+      "p25": -0.3030584172774457,
+      "p75": 0.055663006056261066
+    }
+  },
+  "fraction_productivity_fell": 0.6811808118081181,
+  "fraction_real_cost_per_hour_rose": 0.6981549815498155,
+  "by_year": {
+    "2015": {
+      "n": 1580,
+      "agg_trips_per_hour": 2.1536257723501397,
+      "median_trips_per_hour": 2.4415789645134014,
+      "agg_real_cost_per_hour": 81.28445652310374
+    },
+    "2016": {
+      "n": 1631,
+      "agg_trips_per_hour": 2.0711543044847516,
+      "median_trips_per_hour": 2.416243654822335,
+      "agg_real_cost_per_hour": 79.61076432729134
+    },
+    "2017": {
+      "n": 1638,
+      "agg_trips_per_hour": 2.039283280005526,
+      "median_trips_per_hour": 2.3008003599501095,
+      "agg_real_cost_per_hour": 81.04293912091025
+    },
+    "2018": {
+      "n": 1631,
+      "agg_trips_per_hour": 2.00278432060524,
+      "median_trips_per_hour": 2.302012847965739,
+      "agg_real_cost_per_hour": 81.455442465539
+    },
+    "2019": {
+      "n": 1621,
+      "agg_trips_per_hour": 1.9904027372525166,
+      "median_trips_per_hour": 2.273534132754225,
+      "agg_real_cost_per_hour": 85.80430504679178
+    },
+    "2020": {
+      "n": 1564,
+      "agg_trips_per_hour": 1.8134392755531186,
+      "median_trips_per_hour": 2.0636502676836352,
+      "agg_real_cost_per_hour": 98.2415193790336
+    },
+    "2021": {
+      "n": 1465,
+      "agg_trips_per_hour": 1.6559459194987,
+      "median_trips_per_hour": 1.8366693354683747,
+      "agg_real_cost_per_hour": 104.26400261600357
+    },
+    "2022": {
+      "n": 1562,
+      "agg_trips_per_hour": 1.8530458515025936,
+      "median_trips_per_hour": 2.0066524827721617,
+      "agg_real_cost_per_hour": 99.91742664510804
+    },
+    "2023": {
+      "n": 1603,
+      "agg_trips_per_hour": 1.9229764128255842,
+      "median_trips_per_hour": 2.0913087588772403,
+      "agg_real_cost_per_hour": 100.81504011099435
+    },
+    "2024": {
+      "n": 1631,
+      "agg_trips_per_hour": 1.9260686425766058,
+      "median_trips_per_hour": 2.106292187136318,
+      "agg_real_cost_per_hour": 97.42586099053611
+    }
+  },
+  "precovid_2015_2019": {
+    "n": 1453,
+    "dlog_cpt": 0.12297439690598373,
+    "dlog_cpv": 0.05210367555257946,
+    "dlog_tpv": -0.07087072135340426,
+    "share_from_cost_per_hour": 0.4236953127114233,
+    "share_from_productivity": 0.5763046872885766
+  }
+}

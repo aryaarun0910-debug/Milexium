@@ -74,3 +74,11 @@ Thumbs.db
 .vscode/
 .idea/
 outreach/drafts/
+
+# R&D derived panels and API caches (MX-RND-HYPOTHESIS-MINING-011).
+# Regenerate with research/build_dr_panel.py; the hypothesis RESULT jsons are
+# committed, the 15MB intermediate panel and the NOAA/ACS caches are not.
+research/dr_panel.json
+research/noaa_gsom_cache.json
+research/acs_urban_area_disability.json
+research/__pycache__/

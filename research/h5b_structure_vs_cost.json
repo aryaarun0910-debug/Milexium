@@ -1,0 +1,39 @@
+{
+  "deadhead": {
+    "n": 405,
+    "pearson_dh_logcpt": 0.01652112633660777,
+    "spearman_dh_cpt": 0.02133662475869017,
+    "spearman_dh_tpv": 0.08023236030240889,
+    "spearman_dh_cpv": 0.08519733740288804,
+    "ols_slope_log": 0.08015591035877227,
+    "ols_r2": 0.00027294761543017465
+  },
+  "contracting": {
+    "taxi_tnc_share_of_dr_upt": {
+      "n": 1322,
+      "pearson": -0.025123398539867257,
+      "spearman": -0.021949271326138768,
+      "median_change_increasers": 0.1965887624167579,
+      "n_increasers": 18,
+      "median_change_stable": 0.30226159828977345,
+      "n_stable": 1217,
+      "median_change_decreasers": 0.31143729146391197,
+      "n_decreasers": 47
+    },
+    "pt_share_of_dr_upt": {
+      "n": 1322,
+      "pearson": 0.0012122439804049673,
+      "spearman": -0.008398964248491556,
+      "median_change_increasers": 0.311700396402882,
+      "n_increasers": 81,
+      "median_change_stable": 0.30100029059530065,
+      "n_stable": 1149,
+      "median_change_decreasers": 0.2560179031102746,
+      "n_decreasers": 38
+    }
+  },
+  "scale": {
+    "n": 1631,
+    "spearman_logupt_cpt": 0.059324077584274
+  }
+}

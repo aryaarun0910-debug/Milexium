@@ -1,0 +1,168 @@
+{
+  "weblinks_feed_presence_by_mode": {
+    "FB": {
+      "rows": 41,
+      "with_feed": 40
+    },
+    "MB": {
+      "rows": 1205,
+      "with_feed": 1188
+    },
+    "SR": {
+      "rows": 26,
+      "with_feed": 26
+    },
+    "TB": {
+      "rows": 4,
+      "with_feed": 4
+    },
+    "CB": {
+      "rows": 153,
+      "with_feed": 152
+    },
+    "RB": {
+      "rows": 23,
+      "with_feed": 23
+    },
+    "LR": {
+      "rows": 23,
+      "with_feed": 23
+    },
+    "YR": {
+      "rows": 6,
+      "with_feed": 6
+    },
+    "MG": {
+      "rows": 6,
+      "with_feed": 6
+    },
+    "CR": {
+      "rows": 29,
+      "with_feed": 29
+    },
+    "AR": {
+      "rows": 1,
+      "with_feed": 1
+    },
+    "TR": {
+      "rows": 2,
+      "with_feed": 2
+    },
+    "HR": {
+      "rows": 16,
+      "with_feed": 16
+    },
+    "IP": {
+      "rows": 3,
+      "with_feed": 3
+    },
+    "CC": {
+      "rows": 1,
+      "with_feed": 1
+    }
+  },
+  "n_scheduled_ca": 101,
+  "n_operated_ca_dr_2024": 65,
+  "n_matched": 9,
+  "pairs": [
+    {
+      "agency": "Long Beach Transit",
+      "ntd_id": "90023",
+      "sched_share": 0.027,
+      "oper_share": 0.24742785445420326,
+      "ratio": 9.163994609414935,
+      "sched_dh_hours": 456.23,
+      "sched_rev_hours": 13408.48,
+      "oper_dh_hours": 4930.0,
+      "oper_rev_hours": 14995.0
+    },
+    {
+      "agency": "Victor Valley Transit Authority",
+      "ntd_id": "90148",
+      "sched_share": 0.0224,
+      "oper_share": 0.20794196464824188,
+      "ratio": 9.283123421796512,
+      "sched_dh_hours": 34.33,
+      "sched_rev_hours": 1077.88,
+      "oper_dh_hours": 15364.0,
+      "oper_rev_hours": 58522.0
+    },
+    {
+      "agency": "Riverside Transit Agency",
+      "ntd_id": "90031",
+      "sched_share": 0.0254,
+      "oper_share": 0.20453211160187648,
+      "ratio": 8.052445338656554,
+      "sched_dh_hours": 404.27,
+      "sched_rev_hours": 13246.02,
+      "oper_dh_hours": 37277.0,
+      "oper_rev_hours": 144978.0
+    },
+    {
+      "agency": "Gold Coast Transit District",
+      "ntd_id": "90035",
+      "sched_share": 0.0644,
+      "oper_share": 0.18725633344873782,
+      "ratio": 2.9077070411294694,
+      "sched_dh_hours": 63.3,
+      "sched_rev_hours": 789.23,
+      "oper_dh_hours": 12440.0,
+      "oper_rev_hours": 53993.0
+    },
+    {
+      "agency": "Orange County Transportation Authority",
+      "ntd_id": "90036",
+      "sched_share": 0.0573,
+      "oper_share": 0.15832763135328762,
+      "ratio": 2.7631349276315467,
+      "sched_dh_hours": 674.77,
+      "sched_rev_hours": 9365.83,
+      "oper_dh_hours": 89549.0,
+      "oper_rev_hours": 643324.0
+    },
+    {
+      "agency": "Monterey-Salinas Transit",
+      "ntd_id": "90062",
+      "sched_share": 0.0864,
+      "oper_share": 0.14262758432689135,
+      "ratio": 1.6507822260056868,
+      "sched_dh_hours": 230.42,
+      "sched_rev_hours": 1648.95,
+      "oper_dh_hours": 9941.0,
+      "oper_rev_hours": 69368.0
+    },
+    {
+      "agency": "Sonoma-Marin Area Rail Transit District",
+      "ntd_id": "90299",
+      "sched_share": 0.225,
+      "oper_share": 0.09982713915298184,
+      "ratio": 0.44367617401325266,
+      "sched_dh_hours": 31.71,
+      "sched_rev_hours": 109.21,
+      "oper_dh_hours": 231.0,
+      "oper_rev_hours": 2083.0
+    },
+    {
+      "agency": "Yolo County Transportation District",
+      "ntd_id": "90090",
+      "sched_share": 0.2854,
+      "oper_share": 0.06365841824357109,
+      "ratio": 0.22304981865301715,
+      "sched_dh_hours": 409.17,
+      "sched_rev_hours": 905.2,
+      "oper_dh_hours": 2624.0,
+      "oper_rev_hours": 38596.0
+    },
+    {
+      "agency": "Ventura County Transportation Commission",
+      "ntd_id": "90164",
+      "sched_share": 0.2209,
+      "oper_share": 0.052794476519254806,
+      "ratio": 0.23899717754302763,
+      "sched_dh_hours": 192.93,
+      "sched_rev_hours": 515.0,
+      "oper_dh_hours": 887.0,
+      "oper_rev_hours": 15914.0
+    }
+  ]
+}
