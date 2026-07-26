@@ -1,0 +1,317 @@
+id: MX-ARCH-PROHIBITIONS-016
+status: completed
+completed_date: "2026-07-26"
+dispatched_date: "2026-07-26"
+adr: null   # ADRs are the orchestrator's to write; this packet was told to write none
+result: >
+  141 new tests across 4 files, 0 skipped. All five layer prohibitions and the
+  dependency direction are now asserted against the AST or against the live
+  model objects rather than stated in prose. 34 violating cases were constructed
+  against the real tree and every one came back RED, plus 9 more fed to the
+  walkers directly and 6 honest-code controls that must stay GREEN. One mutation
+  came back GREEN and the MUTATION was wrong, not the test -- recorded below as
+  FINDING 4 and now an assertion in its own right.
+  Three prohibitions are FULLY enforced (Metis, forge isolation, dependency
+  direction); two are PARTIAL with the uncovered half named in the docstring
+  (Themis, Argus). Four findings, none fixed: this packet owned tests only.
+
+objective: >
+  ADR-0076 renamed the repository into five authority layers, each with a stated
+  prohibition, and recorded plainly in its own Honest Limitations that "the layer
+  prohibitions are documented, not all enforced". In this codebase a rule in
+  prose is a rule that decays -- most recently "append-only", which turned out to
+  be a coding convention a direct SQL UPDATE walked straight through (ADR-0063 ->
+  ADR-0074). Turn the prohibition table into tests, and write Argus's BEFORE
+  Argus exists.
+
+owned_paths:
+  - aletheia/conformance/property-tests/test_dependency_direction.py   # 24 tests
+  - aletheia/conformance/property-tests/test_layer_metis.py            # 22 tests
+  - aletheia/conformance/property-tests/test_layer_themis.py           # 78 tests
+  - aletheia/conformance/property-tests/test_layer_argus.py            # 17 tests
+  - forge/knowledge/workstreams/packets/MX-ARCH-PROHIBITIONS-016.yaml
+
+read_only_dependencies:
+  - README.md                                                       # the prohibition table
+  - forge/knowledge/architecture/decisions/0076-authority-rename-and-data-merge.md
+  - aletheia/conformance/property-tests/test_pack_third_party_verification.py  # the AST model copied
+  - aletheia/conformance/property-tests/test_ontology_v1.py         # what Themis already covers, not repeated
+  - themis/**, metis/**, aletheia/**, argus/**, talos/**            # READ ONLY -- not one line modified
+
+normative_contracts:
+  - ADR-0076   # the authority boundaries and the direction
+  - ADR-0074   # why a prose rule is not a rule here
+  - ADR-0028   # the formal provers' independence, which FINDING 3 turns on
+  - ADR-0034   # Program D owns drift; metis reads it read-only
+  - ADR-0041, ADR-0048   # promotion is an audited decision, not a serving-path act
+
+problem: >
+  Five prohibitions and one dependency direction, all documented. Two were said
+  to "already hold": Aletheia's is genuinely AST-tested (the standalone verifier),
+  and Metis's held by construction with nothing checking it. Themis's and Argus's
+  had no test at all, and ADR-0076 named Argus's as the one most likely to be
+  violated "because that is where an LLM will eventually sit". Nothing anywhere
+  asserted the direction itself -- the rule that protects all the others.
+
+what_was_built:
+  dependency_direction: >
+    An AST walk over every module in the five layers, one permitted-target set per
+    layer, failing with the file, the line, the import statement and the rule
+    broken. Exemption is OPT-IN: a module in no declared exemption is product code
+    and is policed, so a new tree is bound by the direction from its first commit.
+    That default was chosen deliberately mid-packet -- see mid_flight_change.
+  metis: >
+    The persistence surface of Themis is DERIVED from Themis (a module counts if
+    it defines a writer method or imports a driver) rather than hand-listed, and
+    the derivation is checked in both directions so it can neither collapse to
+    empty nor swell to everything. Metis is then held to: no persistence import,
+    no driver, no writer call, no file opened for writing, no authorisation
+    module, and an allow list of the exact six Themis modules it reads.
+  themis: >
+    Not a repeat of test_ontology_v1's instance refusals. One level up: every
+    provenance field stays mandatory, every model carrying a number can say where
+    it came from (itself or through EVERY record that embeds it), no degree of
+    belief is defaulted into a number, and the imputation and repair refusals are
+    exercised across their whole cross product rather than at one corner. The
+    model survey is DISCOVERED from themis/ontology/*.py rather than listed --
+    a fixed list would have silently missed themis/ontology/episode.py, which
+    landed mid-packet, and a generalisation that does not bind models nobody has
+    written yet is not a generalisation. 21 models across 10 modules, 6 of them
+    carrying a number.
+  argus: >
+    Every value the API renders must be an expression rooted in something the
+    function was handed -- no string literal, no float, no f-string. Plus four
+    forward guards for the layer that had not arrived: no text generator, no model
+    or solver of its own, no numeric library, no unseeded randomness, no vocabulary
+    of its own, and the operator-facing column and PII lists must be the Themis
+    objects by IDENTITY, not a copy that agrees today. The three import bans are
+    SEPARATE tests, weakest one labelled as such, so the hard rule about language
+    models cannot be relaxed by arguing about pandas.
+
+findings:
+  - id: FINDING 1
+    severity: material
+    where: aletheia/verify/formal.py
+    what: >
+      A SHIPPING module loads and EXECUTES Python out of forge/ --
+      forge/knowledge/architecture/formal/{state_machine_smt,hash_chain_smt}.py, by
+      file path, at module import time. "Nothing may import forge" is enforced
+      against the `import` statement, and a dynamic load is not one, so an AST
+      import walk is blind to it. This is the same shape as ADR-0074's defect: the
+      rule held for the mechanism anyone thought to check.
+    mitigations_that_are_real: >
+      aletheia/verify/__init__.py does NOT import `formal`, so `import
+      aletheia.verify` does not drag forge in; and the loaded modules are z3
+      provers whose independence from themis is the point of ADR-0028.
+    handled_how: >
+      NOT fixed -- this packet owns tests. Pinned in
+      test_no_layer_loads_and_executes_python_from_forge_beyond_the_two_known_cases,
+      which fails on a THIRD such module and ALSO fails if one of the two is fixed
+      without updating the list, so the grandfather clause cannot outlive its case.
+      The second known case is aletheia/conformance/property-tests/test_panel_findings.py
+      (the test tree loading forge/business/outreach scripts) -- same mechanism,
+      much less severe.
+  - id: FINDING 2
+    severity: material
+    where: metis/forecast/runtime.py:27, metis/forecast/serve_drift.py:76
+    what: >
+      The README, ADR-0076 and this packet's own brief all state that Metis imports
+      only entities, ids, time and vocab from Themis. That is not what the tree
+      says. Metis also imports themis.core.drift (pure statistics -- harmless) and
+      themis.core.model_registry, which defines register() and promote() and whose
+      module also carries PersistentModelRegistry over a real CoreDatabase. Metis
+      calls exactly one method on it -- champion(task), a read -- so the
+      prohibition survives on discipline rather than on structure in that one
+      place.
+    handled_how: >
+      Pinned as the single allowed exception, with two tests holding it to account:
+      Metis may name only ModelRegistry from that module (never
+      PersistentModelRegistry or CoreDatabase), and may call neither register nor
+      promote -- with those two names derived from the live class so the check
+      cannot go stale. test_the_recorded_finding_is_still_the_finding fails if
+      Program E removes the import, so the exception cannot outlive its cause.
+  - id: FINDING 3
+    severity: minor, but the table is wrong
+    where: talos/contracts/generate.py, talos/tools/ (4 modules), aletheia/benchmarks/ (21 sites)
+    what: >
+      "talos -> nothing" and "aletheia -> themis" are both inaccurate as written.
+      talos/contracts/generate.py imports argus.api.app to emit its OpenAPI
+      document; 4 talos modules import themis (6 sites) across contracts/ and
+      tools/; aletheia/benchmarks/ imports metis in 21 places. The load-bearing half of the direction is clean:
+      themis imports nothing above it, metis reaches nothing above it, the aletheia
+      evidence library (evidence/verify/replay) reaches only themis, argus reaches
+      only down, and no `import forge` exists anywhere.
+    handled_how: >
+      Carved out by name with the reason written beside each entry, and
+      test_the_carve_out_is_load_bearing_and_not_decorative asserts the carve-out
+      is actually carrying violations -- if it ever stops, it is dead weight and
+      the test says to delete it.
+  - id: FINDING 4
+    severity: minor, and a documentation defect
+    where: themis/ontology/provenance.py -- IdentityResolution
+    what: >
+      DEFAULT_MATCH_THRESHOLD (0.95) is NOT enforced at construction. It lives in
+      would_resolve(), which proposes. The constructor enforces only that the
+      resolution is the UNIQUE STRONGEST candidate and that it names the rule it
+      was made under. So a 0.61-vs-0.39 merge IS recordable, while the class
+      docstring reads as though it is impossible ("this class does none of them").
+      That design is defensible -- a dispatcher who phones the rider has evidence
+      the scorer cannot see, and a hard gate would refuse the one match anybody is
+      confident about -- but the prose overstates it.
+    how_it_was_found: >
+      By a mutation that came back GREEN. The parametrised refusal test asserted
+      that resolving to a 0.61 top candidate raises ForcedMatchError; it did not.
+      Per the packet's instruction, the MUTATION was checked before the code:
+      the mutation was wrong. The case is now
+      test_the_match_threshold_is_advisory_and_the_recorded_rule_is_what_binds,
+      which asserts the real behaviour in both directions and fails if either side
+      of it changes.
+
+mid_flight_change:
+  argus_command_centre: >
+    argus/command_centre/ (3,023 lines: attribution, picture, render) landed from a
+    concurrent packet while this one was being written. The first design of
+    test_every_module_is_classified DEMANDED that every tree be declared shipping
+    or non-shipping, and it went red on the new directory -- for a reason that had
+    nothing to do with the authority direction. Changed to a FAIL-SAFE default:
+    exemption is opt-in, everything else is policed. The command centre is
+    therefore bound by the direction from its first commit and passes, and the
+    anti-inheritance property (a new tree cannot silently acquire the exemption)
+    is preserved and asserted directly.
+
+  themis_ontology_episode: >
+    themis/ontology/episode.py (1,227 lines) landed from another concurrent packet.
+    Its `ForeclosedOpportunity` carries a `weight` -- a capacity-attribution share
+    wired from metis.decide.exposure -- and REQUIRES a `basis` naming the producing
+    procedure, its version and whether its enumeration was exhaustive. That is
+    provenance in exactly the sense this packet's generalisation means, written
+    with no reference to it. `basis` was added to PROVENANCE_FIELDS and the module
+    passes. A generalisation independently satisfied by a module written after it
+    is the best evidence available that the generalisation is the right one.
+
+    It is also the reason the Themis survey is discovered rather than listed: the
+    fixed list this packet started with would have skipped 1,227 lines and 6 models
+    without saying so.
+
+  argus_command_centre_attribution: >
+    Its attribution.py independently implements the RUNTIME half of Argus's
+    prohibition -- a Figure cannot be constructed without a Source, over a closed
+    origin set, with attribution following the weakest input. That is stronger than
+    anything here for values that pass through it. The two are complements: theirs
+    binds values that opted into Figure, at run time; this packet's binds the API
+    and SDK surfaces structurally whether or not the author opted in. No test here
+    is pinned to command_centre internals -- it is under active construction and a
+    conformance file naming its types would break on every rename for no gain.
+
+failure_injections:
+  # Every one constructed for real and confirmed RED, then reverted. Source files
+  # were never edited: probes were NEW throwaway modules inside the tree, or
+  # in-memory mutations of the live model objects.
+  dependency_direction:
+    - "metis/forecast/*.py importing argus.sdk -> RED, names file, line, statement and the metis rule"
+    - "themis/canonical/*.py importing aletheia.verify -> RED on the shipping rule AND on the themis keystone test"
+    - "themis/canonical/*.py importing forge.knowledge.research -> RED on all three (shipping, themis, forge)"
+    - "the same import placed inside `def build(): if: try:` -> RED, line 4 -- the walker is not reading the header block"
+    - "a docstring naming argus/talos/forge plus `COMMENT = 'argus'` -> GREEN (correct: prose is not an edge)"
+    - "a new argus/ui/ tree -> POLICED by default (the fail-safe), not exempted"
+    - "argus/sdk/*.py doing spec_from_file_location on a forge path -> RED as a third forge executor"
+    - "a forge path read with .read_text() and no loader -> GREEN (correct: a citation is not a dependency)"
+    - "spec_from_file_location on a talos path -> GREEN (correct: the target is not forge)"
+  metis:
+    - "from themis.canonical.storage import SqliteCanonicalStore -> RED"
+    - "import sqlite3 -> RED (the channel a Themis-module deny list cannot see)"
+    - "from themis.core.model_registry import PersistentModelRegistry -> RED"
+    - "from themis.canonical.state_machine import next_state -> RED (authorisation)"
+    - "from themis.canonical.events import compute_hash -> RED (a non-writer, not on the allow list)"
+    - "from themis.connect.adapter import SourceAdapter -> RED on the allow list ONLY, isolating it from the deny list"
+    - "store.append_event(...) on a duck-typed argument with no import -> RED"
+    - "registry.promote('model-1') -> RED"
+    - "open(Path('out.json'), 'w') -> RED"
+    - "list.append / set.add / dict.update / str.replace -> GREEN (correct: a rule that fired here would be deleted)"
+    - "WRITER_DEFINITIONS and DRIVERS emptied -> RED, naming all 9 stores it stopped classifying"
+  themis:
+    - "SnapshotFact.quality given a default -> RED"
+    - "MatchCandidate.probability defaulted to 1.0 -> RED"
+    - "a new ontology model with a probability, no source, embedded nowhere -> RED"
+    - "the same model embedded in a receipt-stamped record -> GREEN (correct: traceable through its holder)"
+    - "... and additionally in one careless container -> RED (traceability through holders is ALL, not ANY)"
+    - "MatchCandidate unfrozen and opened to extra fields -> RED"
+    - "source_record_id made required (the optional/required split moves) -> RED"
+    - "the model survey narrowed to one module -> RED"
+    - "UNCERTAIN_VALUE_FIELDS pointed at a name nothing uses -> RED"
+    - "resolving to a unique top candidate at 0.61 -> GREEN, and the MUTATION was wrong (FINDING 4)"
+  argus:
+    - "RowValidation(reason='most likely a capacity constraint') -> RED"
+    - "RowValidation(confidence=0.87) -> RED on both the traceability and the claim rule"
+    - "RowValidation(failed_field=f'{column} looks wrong') -> RED"
+    - "import anthropic in argus/api -> RED, with the message demanding the traceability rule be extended first"
+    - "import xgboost -> RED on the model/solver rule only"
+    - "import pandas -> RED on the numeric-library rule only (the weakest of the three, and it says so)"
+    - "class DenialReason(str, Enum) in argus -> RED"
+    - "random.shuffle(rows) -> RED; random.Random(SEED).shuffle(rows) -> GREEN (correct: the seeded form is in use today)"
+    - "an SDK method returning 'vehicle capacity exhausted' / 0.9 / an f-string / a bare 1 -> RED (4 of them)"
+    - "canonical_columns replaced with an EQUAL but non-identical tuple -> RED (`is`, not `==`, is what catches the copy)"
+    - "a new unclassified *Response model in argus/api/app.py -> RED"
+    - "honest pass-through: len(x) == 0, `None if q is None else q.reason`, a comprehension over an input, an imported constant -> GREEN"
+
+anti_vacuity_measures:
+  - "Every file asserts the population it walked. 225 modules, 80+ shipping, 10+ ontology models, 20+ response fields, 8+ claim arguments, 8+ SDK returns -- floors, not counts, so deleting a module does not fail the suite spuriously but a moved root does."
+  - "Every 'the offender list is empty' rule has a paired test that feeds the SAME checker a violating case, because a checker that never returns anything satisfies every such assertion."
+  - "Every over-approximating detector is shown BOTH sides. The forge-executor detector must fire on a dynamic load and must NOT fire on a citation; the write-call detector must fire on store.append_event and must NOT fire on list.append; the randomness detector must fire on random.shuffle and must NOT fire on random.Random(SEED).shuffle. A permanent red gets deleted, and deleting it would be the right call."
+  - "The would_resolve property test counts both branches (>=2 resolved, >=4 refused). A threshold of 0.0 or 1.0 would make one branch unreachable and the assertion would still be green."
+  - "Every cross-product refusal has a positive control. Without it, a validator that refused EVERY repair would satisfy all 32 refusals and the package would have silently lost the ability to record a legitimate unit normalisation."
+  - "The Themis persistence surface is DERIVED from Themis and checked in both directions -- a known-writer list it must contain and a known-types list it must not -- so it can neither collapse to nothing nor swell to everything."
+  - "Grandfather clauses are pinned in BOTH directions: the forge-executor set fails on a third entry AND on a removed one; the Metis finding fails if the import it records disappears."
+
+status_honesty:
+  fully_enforced:
+    - "Metis: alters no canonical state, authorises no operation. 8 independent checks, 11 probes."
+    - "forge isolation: no import anywhere; the dynamic-load channel pinned to its 2 known cases."
+    - "dependency direction: asserted against the AST for every module in the five layers."
+  partially_enforced:
+    - >
+      Themis: an inference that DECLARES itself cannot be stored as an observation.
+      An inference that LIES cannot be caught -- the value is a float and Python
+      cannot tell a measured 12.0 from a guessed one. Stated in the module
+      docstring in exactly those words. The honest claim is that Themis makes an
+      honest ingest impossible to get wrong, and does not make a dishonest one
+      impossible.
+    - >
+      Argus: the API response surface, the SDK return surface and four whole-layer
+      guards. NOT covered: the demo's narrative prose (composed by f-string from
+      measured counts -- traceable, but not in a structure a test can follow), the
+      generated TypeScript SDK (gated by test_api_contract_drift.py), and
+      argus/command_centre internals (its own packet's, and its own types').
+  already_enforced_elsewhere_and_not_duplicated:
+    - "Aletheia: test_pack_third_party_verification.py asserts the standalone verifier's independence against its own AST. This packet copied its approach and added nothing to it."
+    - "Talos: the OpenAPI contract-drift gate (test_api_contract_drift.py) plus the TS SDK drift gate. Talos's prohibition is about shipping an incompatible change, and it is the one prohibition that already had a mechanism."
+  status_label: >
+    Demonstrated at most. These are structural tests over this repository's own
+    source; they say nothing about operator data, of which there is none. Nothing
+    here is Validated.
+
+acceptance_commands:
+  - "py -3 -m pytest aletheia/conformance/property-tests/test_dependency_direction.py aletheia/conformance/property-tests/test_layer_metis.py aletheia/conformance/property-tests/test_layer_themis.py aletheia/conformance/property-tests/test_layer_argus.py -q   # 141 passed, 0 skipped"
+  - "py -3 -m pytest -q   # full suite"
+
+forbidden_interface_changes:
+  - "NO source file under themis/ metis/ aletheia/ argus/ talos/ was modified. Verified with git status after every probe."
+  - "No ADR written. No git add/commit/push."
+  - "No prohibition that is currently violated by real code was fixed. Four findings recorded above; all four are for their owning packet."
+
+notes: >
+  BASELINE NOTE for the integrator. The full suite before this packet was
+  **1 failed, 2687 passed, 1 skipped** -- not the 2688/1 the brief states. The
+  failure is
+  aletheia/conformance/property-tests/test_decision_snapshot.py::test_the_packet_vignette_is_representable_end_to_end,
+  a `CHECK constraint failed: (alternatives_provenance = 'enumerated') =
+  (alternatives_json <> '[]')` raised from themis/ontology/store.py:516. That is a
+  concurrent packet's in-flight work on themis/ontology (store.py, actions.py,
+  vocab.py, __init__.py and a new episode.py are all modified in the working tree)
+  and is outside this packet's owned paths. It was present before this packet
+  wrote a line and is untouched by it.
+
+  Three other trees moved under this packet while it ran: themis/ontology/
+  (episode.py added), talos/contracts/ (operator_contract.py,
+  validate_operator_export.py added) and argus/command_centre/ (5 modules added).
+  All three are covered by the new direction test and all three pass it.

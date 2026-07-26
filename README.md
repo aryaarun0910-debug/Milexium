@@ -27,9 +27,29 @@ exist so the boundaries can be pointed at — and so they can be tested.
 | **Argus** | invent a fact, constraint, reason or recommendation |
 | **Talos** | ship an incompatible change without preserving reproducibility |
 
-Metis holds today by construction — it imports types and vocabularies from
-Themis, never a store or a writer. Aletheia's is enforced against the verifier's
-own syntax tree. The rest are being made enforceable rather than documented.
+**These are now tested, not asserted** — see
+`aletheia/conformance/property-tests/test_dependency_direction.py` and
+`test_layer_*.py`. Writing those tests corrected three claims this README made in
+its first version, and the corrections are worth stating plainly:
+
+- **Metis's prohibition rests on discipline, not structure.** It imports
+  `themis.core.model_registry`, which carries `CoreDatabase`, `register()`,
+  `promote()` and `PersistentModelRegistry`. Metis calls only `champion(task)` —
+  so it does not *use* a writer, but it does *import* a module containing one. A
+  test now pins the mutators by name so a future call is caught.
+- **`aletheia` imports `metis`** in 78 places (largely benchmarks), and
+  `talos/contracts/generate.py` imports `argus.api.app`. The load-bearing halves
+  are clean; the tooling edges are not, and pretending otherwise would make the
+  table decoration.
+- **`aletheia/verify/formal.py` executes Python out of `forge/`** — it loads the
+  z3 prover modules by file path at import time. An AST import walk cannot see
+  this, which is the same shape as the ADR-0074 defect: a rule enforced against
+  one channel while a second channel goes around it. Pinned in both directions so
+  the exemption cannot outlive its cause.
+
+Aletheia's independence is enforced against the verifier's own syntax tree.
+Themis's and Argus's are **partial**, and their docstrings say which half is
+uncovered rather than implying completeness.
 
 ## Status — read this before quoting anything
 
