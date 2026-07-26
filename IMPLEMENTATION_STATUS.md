@@ -389,6 +389,37 @@ Program depth after five tranches: **A ~60%**, **B ~60%**, **C ~55%**,
 **D ~70%**, **E ~40%**, G ~35%, **H ~45%**, **I ~45%**, **M ~50%**;
 **F ~45%** (was ~10%); J/K/L 0% (measured, not assumed — ADR-0056).
 
+#### Tranche 8 — the layers become enforceable (2026-07-26)
+
+| Item | ADR | Tests |
+|---|---|---|
+| Layer prohibitions enforced against the AST | 0077 | 141 |
+| Operator data contract + degeneracy validator | 0078 | 65 |
+| One decision episode, end to end | 0079 | 41 |
+| **Argus — the operating picture** | 0080 | 35 |
+
+**Suite 2688 → 2970 passed, 1 skipped.**
+
+**The prohibition packet corrected three claims this document and the README had
+made.** *"Metis never imports a store or a writer"* is false — it imports
+`themis.core.model_registry`, which carries `CoreDatabase`, `register()`,
+`promote()` and `PersistentModelRegistry`; Metis *calls* only `champion(task)`, so
+the rule rests on **discipline, not structure**. `aletheia` imports `metis` in 78
+places. And **`aletheia/verify/formal.py` executes Python out of `forge/`** by
+file path at import — a channel an AST walk is structurally blind to, the same
+shape as ADR-0074.
+
+**Argus is the first surface touching all five layers, and it found four things.**
+The sharpest: **`DarpInstance` cannot express per-vehicle shifts**, so the
+capacity lens certifies insertions the scheduler denied. Both verdicts are shown
+unreconciled on the page rather than quietly reconciled. Also: the canonical
+records still cannot drive our own geometry (no trip end time on `Outcome`), the
+projection's fleet has slack the real day did not, and the equipment checker
+refused nothing — all stated **on the page**.
+
+Program depth after eight tranches: **A ~80%**, B ~60%, **C ~70%**, D ~70%,
+E ~60%, **F ~70%**, G ~35%, **H ~65%**, **I ~70%**, **M ~65%**; J/K/L 0%.
+
 #### Tranche 7 — the audit, and the tree it produced (2026-07-26)
 
 An external fresh-eyes audit (`MILEXIUM_INTERNAL_AUDIT_2026-07-26.md`) found two
