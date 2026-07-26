@@ -60,6 +60,19 @@ its first real data.
 
 ## Honest limitations
 
+- ⚠️ **UPDATE 2026-07-26 — this measures FIXED ROUTE, not demand-response.**
+  Later R&D (`research/h1_deadhead_gap.py`) established that **no US
+  demand-response service publishes GTFS**: `DR` appears **zero times** in the
+  1,539-row NTD GTFS weblinks register, and only **3 of 4,283** Cal-ITP routes
+  carry `route_type=715`. So the scheduled deadhead derived here and the NTD
+  demand-response deadhead figure are **not two measurements of the same
+  service** — the comparison is not merely unstable, it is *undefined*. Forced
+  across 9 name-matched California agencies the operated/scheduled ratio spans
+  0.22×–9.28× and correlates at r = −0.930, which decomposes entirely into agency
+  scale. The `NOT_COMPARABLE_TO` warning already in
+  `tools/derive_scheduled_deadhead.py` is now backed by measurement rather than
+  caution. The data and the derivation remain sound; **the cross-mode comparison
+  must never be made.**
 - **Scheduled, not operated.** Stated above; it is the whole point and the most
   likely thing for a future reader to forget.
 - **California only.** ~200 operators, one state, not a national panel. The

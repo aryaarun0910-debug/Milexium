@@ -8,6 +8,34 @@ serves, and its rules are binding — in particular *"send ~10-15/day, not a bul
 blast"*, because each organisation is a one-shot and there are only ~109 US
 agencies in the target profile.
 
+## ⚠️ STOP — the deadhead hook is diagnostically dead (2026-07-26)
+
+**`build_peer_insight.py` and `generate_v3_emails.py` lead with an agency's
+national deadhead rank. That metric does not identify an expensive agency.**
+
+Measured twice, independently:
+
+- Spearman **+0.024** between deadhead share and cost per trip across 406
+  operators (ADR-0058), against **+0.738** for cost per *hour*.
+- Pearson **+0.017**, OLS **R² = 0.0003**, n=405, with cost-per-trip quintile
+  medians flat at **$53.10 / $48.30 / $52.21 / $53.10 / $55.00**
+  (`research/h5b_structure_vs_cost.py`).
+
+The *arithmetic* saving from cutting deadhead is still real. The **diagnostic**
+claim — that a high deadhead rank means an agency has a cost problem — is false,
+and every v3 agency email is built on it.
+
+**What replaces it:** occupancy. Ride-sharing collapsed **−10.0%** 2015→2024
+(1.213 → 1.092 passenger miles per vehicle mile) while trips got *shorter*, not
+longer; 66.8% of agencies lost occupancy and recovery has stalled
+(`research/h5e_ridesharing.py`). Occupancy is what a scheduling optimiser
+actually sets, which makes it both the better diagnosis and the one our product
+speaks to. **Scope it to large operators** — the passenger-miles filers are a
+non-random 26% of agencies by count, though 66% by trips.
+
+Do not send another deadhead-ranked agency email until the peer engine is
+rebuilt on occupancy.
+
 ## The one rule that matters most
 
 **Never send to a shared inbox when a named human is available.** The first
