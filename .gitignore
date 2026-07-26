@@ -96,3 +96,15 @@ forge/research/__pycache__/
 # regenerate for free from AST in ~1 minute (0 tokens); the committed record
 # lives in aletheia/artifacts/knowledge-graph/<date>/.
 graphify-out/
+
+# Obsidian drops a config folder into any directory opened as a vault.
+.obsidian/
+
+# Generated operating artifacts. argus.command_centre and argus.demo rebuild
+# these in ~2.5s each; the committed record is the ADR, not the output.
+aletheia/artifacts/command-centre/
+aletheia/artifacts/demo-walkthrough/
+
+# Website dependencies and build output.
+milexium-website/**/node_modules/
+milexium-website/**/dist/

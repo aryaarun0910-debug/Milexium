@@ -80,7 +80,11 @@ The initial product must fit around the incumbent workflow and make decisions,
 overrides, denials, and performance evidence reviewable.
 
 **How do you/will you make money?**
-`[ARYA/CHRIS: pricing model not yet locked — per-vehicle/month SaaS is the obvious default for this market (matches how Ecolane/TripSpark are typically priced), but confirm before submitting. Do not leave this blank; YC penalizes vagueness on monetization more than an imperfect-but-stated model.]`
+Per-vehicle-per-month SaaS, billed on vehicles in maximum service. That is how the incumbents in this market are already bought (Ecolane, TripSpark, RouteMatch), so it needs no procurement education, and it scales with the thing the buyer already budgets for rather than with our own cost. At a plausible $40–80 per vehicle per month against the 1,920 NTD-reporting demand-response agencies, the addressable line is a low-hundreds-of-millions annual market — a fraction of the $7.06B they already spend operating the service.
+
+We would expect the first several agencies to be paid pilots rather than list-price contracts, priced to cover integration rather than to make margin, because the thing we need from them — consented operational data against which the evidence layer can be checked — is worth more than the licence fee.
+
+One deliberate constraint on the model: **we do not price on savings.** Shared-savings and outcome-based pricing are common in this sector and we cannot support them honestly, because our own analysis cannot separate avoidable cost from structural cost in an operator's numbers. Charging on a figure our engineering refuses to print would be incoherent. `[ARYA/CHRIS: confirm the per-vehicle range before submitting — the model is defensible, the specific numbers are an estimate.]`
 
 **Market size — how big is this?**
 Bottom-up, not top-down: $7.06B in annual US demand-response operating expense across 1,920 NTD-reporting agencies in 2024, 139.7M annual trips [forge/business/ntd/market_sizing.md, pulled directly from FTA filings]. The reason this is a market now rather than a permanent condition is the direction of travel: on the balanced 1,606-agency panel, the real cost of a demand-response trip rose **34% above inflation** between 2015 and 2024 while agencies carried fewer riders per hour [forge/business/outreach/panel_findings.json]. That is a budget line growing faster than the funding behind it, at operators who are statutorily obliged to keep serving.
@@ -132,4 +136,10 @@ Paratransit and NEMT are the beachhead because they're compliance-heavy and stat
 `[ARYA/CHRIS: fill in]`
 
 **Anything else we should know?**
-`[ARYA/CHRIS: optional — a good use of this slot, if true, is a one-line status update on outreach replies/calls booked, since "traction since we wrote the main answers" is a legitimate thing to add here right before submission]`
+Two things, both checkable.
+
+The first is that everything above is reproducible. `py -3 -m pytest` runs 2,970 tests; `py -3 -m argus.command_centre` builds the operating picture in 2.4 seconds; the evidence pack's verifier runs in an interpreter that cannot import our code. If any claim in this application is wrong, it is wrong in a way you can demonstrate rather than argue about — which is deliberate, because it is the same property we are selling.
+
+The second is that we deleted our own best-sounding number. Our original pitch led on empty vehicle-hours and carried a headline opportunity figure. We tested whether an agency's deadhead share predicts what its trips cost, found it does not (R² 0.0003 across 405 operators), and removed the figure and the calculator that generated it rather than restating it more carefully. We would rather show you that than a number we could not defend under a question.
+
+`[ARYA/CHRIS: if outreach produces a call or a data commitment before you submit, this is the right slot for a one-line update — "traction since we wrote the main answers" is legitimate here.]`
