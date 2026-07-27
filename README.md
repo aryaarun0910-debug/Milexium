@@ -135,5 +135,5 @@ coverage guarantee under measured drift. It ends by verifying itself.
 - [Competitive positioning](forge/knowledge/docs/COMPETITIVE_POSITIONING.md)
 
 The public website and `milexium.com` infrastructure are owned by Chris and live
-outside this repository. This repository is the product, data, modelling and
+outside this repository on a self hosted server. This repository is the product, data, modelling and
 technical-evidence workspace.
