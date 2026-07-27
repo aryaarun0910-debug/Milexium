@@ -1,0 +1,262 @@
+<meta charset="utf-8">
+<title>Milexium — the transport operating intelligence</title>
+<style>
+  :root{
+    --bg:#04070f; --panel:#070c18; --box:#0a1122; --line:#152238;
+    --ink:#dbe6f5; --mut:#6b7f9c;
+    --themis:#00d9ff;   /* cyan   — governed reality */
+    --metis:#c76bff;    /* violet — intelligence     */
+    --aletheia:#3dffa8; /* mint   — evidence         */
+    --argus:#ffb340;    /* amber  — surface          */
+    --talos:#6c8cff;    /* indigo — delivery         */
+    --edge:#ff4d8d;     /* pink   — edge / silicon   */
+    --agent:#7dfaff;    /* ice    — agent workers    */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:
+    radial-gradient(1400px 700px at 18% -10%, #0b1730 0%, transparent 60%),
+    radial-gradient(1100px 600px at 92% 110%, #0d1226 0%, transparent 62%), var(--bg);
+    color:var(--ink);font:11.5px/1.5 "SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+    -webkit-font-smoothing:antialiased}
+  .page{width:1920px;height:716px;padding:20px 32px;display:grid;
+    grid-template-rows:auto 1fr auto auto;position:relative}
+
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:1px solid var(--line);padding-bottom:12px}
+  .hd .b{font-size:22px;letter-spacing:.02em}
+  .hd .b span{color:var(--mut)} .hd .b b{color:#fff;font-weight:600}
+  .hd .meta{display:flex;gap:46px;font-size:9.5px;letter-spacing:.15em;color:var(--mut)}
+  .hd .meta div b{display:block;color:var(--themis);font-weight:400;margin-bottom:3px}
+
+  .flow{display:grid;grid-template-columns:.92fr 92px 1.06fr 92px 1fr 92px 1fr;
+    align-items:start;padding-top:18px}
+  .stage h2{font-size:13.5px;letter-spacing:.2em;margin:0 0 11px;font-weight:500;color:var(--c)}
+  .stage h2::before{content:"●";font-size:7px;vertical-align:3px;margin-right:8px}
+
+  .panel{border:1px solid var(--line);background:var(--panel);padding:13px 13px 15px;
+    box-shadow:0 0 0 1px rgba(0,217,255,.03), 0 18px 40px -28px rgba(0,180,255,.5)}
+  .panel .cap{font-size:12.5px;color:#fff;letter-spacing:.03em;margin-bottom:3px;text-align:center}
+  .panel .cap i{font-style:normal;color:var(--c)}
+  .panel .sub{font-size:8.5px;letter-spacing:.16em;color:var(--mut);text-align:center;margin-bottom:11px}
+
+  .cell{border:1px solid var(--line);background:var(--box);padding:6px 10px;margin-bottom:6px;
+    font-size:10px;letter-spacing:.1em;display:flex;justify-content:space-between;gap:9px}
+  .cell u{text-decoration:none;color:var(--mut);font-size:8.5px;letter-spacing:.05em}
+  .cell.k{border-color:var(--c);color:var(--c);
+    box-shadow:0 0 12px -3px var(--c), inset 0 0 22px -18px var(--c)}
+  .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+  .row .cell{margin:0;justify-content:center}
+  .dots{text-align:center;color:var(--mut);letter-spacing:.4em;padding:2px 0 0}
+  .down{text-align:center;font-size:15px;padding:7px 0 6px;line-height:1;color:var(--c)}
+
+  .arr{align-self:center;text-align:center;padding-top:52px}
+  .arr .lbl{font-size:8.5px;letter-spacing:.14em;color:var(--mut);margin-bottom:8px;line-height:1.5}
+  .arr .bar{height:22px;position:relative;
+    background:linear-gradient(90deg,transparent 0%,var(--f) 100%);opacity:.85}
+  .arr .bar::after{content:"";position:absolute;right:-11px;top:-5px;border-left:12px solid var(--t);
+    border-top:16px solid transparent;border-bottom:16px solid transparent}
+
+  .rail{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .rail h5{font-size:9.5px;letter-spacing:.18em;margin:0 0 7px;font-weight:500;text-align:center;color:var(--c)}
+  .rail ul{margin:0;padding:0;list-style:none;font-size:9px;color:var(--mut);line-height:1.8;text-align:center}
+  .rail li::before{content:"· "}
+
+  /* agent band */
+  .agents{margin-top:16px;border:1px solid #1b2f4a;background:linear-gradient(90deg,#060d1c,#0a1428 60%,#060d1c);
+    padding:12px 16px 14px;box-shadow:0 0 44px -30px var(--agent)}
+  .agents .t{display:flex;align-items:baseline;gap:14px;margin-bottom:10px}
+  .agents .t h5{margin:0;font-size:11px;letter-spacing:.2em;color:var(--agent);font-weight:500}
+  .agents .t span{font-size:9px;letter-spacing:.13em;color:var(--mut)}
+  .aw{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+  .w{border:1px solid #23405f;background:#081327;padding:7px 10px;position:relative}
+  .w b{display:block;font-size:9.5px;letter-spacing:.13em;color:var(--agent);font-weight:400;margin-bottom:3px}
+  .w p{margin:0;font-size:9px;color:var(--mut);line-height:1.55}
+  .w::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--agent);opacity:.55}
+
+  .ft{display:flex;justify-content:space-between;align-items:flex-end;
+    border-top:1px solid var(--line);padding-top:11px;margin-top:14px;
+    font-size:9.5px;letter-spacing:.11em;color:var(--mut)}
+  .ft b{color:var(--ink);font-weight:500}
+  .mark{width:18px;height:18px;border:1.5px solid var(--themis);border-radius:50%;
+    box-shadow:0 0 12px -2px var(--themis)}
+
+  .stage,.arr,.agents,.ft{opacity:0;transform:translateY(8px);
+    transition:opacity .55s ease,transform .55s ease}
+  .stage.vis,.arr.vis,.agents.vis,.ft.vis{opacity:1;transform:none}
+  .cell,.cap,.sub,.row,.dots,.rail>div,.w{opacity:0;transition:opacity .4s ease}
+  .cell.vis,.cap.vis,.sub.vis,.row.vis,.dots.vis,.rail>div.vis,.w.vis{opacity:1}
+</style>
+
+<div class="page">
+  <div class="hd">
+    <div class="b"><span>Milexium</span> <b>Transport Operating Intelligence</b></div>
+    <div class="meta">
+      <div><b>EDGE → CORE</b>SILICON TO EVIDENCE</div>
+      <div><b>ANY OPERATOR</b>ANY DISPATCH SYSTEM</div>
+      <div><b>MLX</b>DECISIONS THAT SURVIVE AUDIT</div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <!-- EDGE -->
+    <div class="stage" style="--c:var(--edge)">
+      <h2>EDGE</h2>
+      <div class="panel" style="--c:var(--edge)">
+        <div class="cap"><i>◆</i> On-vehicle</div>
+        <div class="sub">SILICON · SIGNALLING · TELEMETRY</div>
+        <div class="cell k">FPGA COMPUTE <u>on-board inference</u></div>
+        <div class="cell">LoRa UPLINK <u>sub-GHz · low power</u></div>
+        <div class="cell">AVL / MDT <u>position · state</u></div>
+        <div class="cell">SECUREMENT SENSE <u>wheelchair bay</u></div>
+        <div class="cell">STORE &amp; FORWARD <u>survives blackspots</u></div>
+        <div class="cell">EDGE PRE-FILTER <u>bandwidth ÷ 40</u></div>
+        <div class="dots">· · ·</div>
+      </div>
+      <div class="rail">
+        <div>
+          <h5 style="--c:var(--edge)">WHY SILICON</h5>
+          <ul>
+            <li>Route feasibility at the vehicle</li>
+            <li>No round-trip to decide</li>
+            <li>Deterministic latency budget</li>
+          </ul>
+        </div>
+        <div>
+          <h5 style="--c:var(--edge)">WHY LoRa</h5>
+          <ul>
+            <li>Rural coverage without cellular</li>
+            <li>Years on a battery</li>
+            <li>Cheap per vehicle at fleet scale</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="arr" style="--f:rgba(255,77,141,.7);--t:var(--edge)">
+      <div class="lbl">TELEMETRY<br>UPLINK</div><div class="bar"></div>
+    </div>
+
+    <!-- GOVERN & DECIDE -->
+    <div class="stage" style="--c:var(--themis)">
+      <h2>GOVERN &amp; DECIDE</h2>
+      <div class="panel" style="--c:var(--themis)">
+        <div class="cap"><i>◆</i> Themis <i style="color:var(--metis)">◆</i> Metis</div>
+        <div class="sub">GOVERNED REALITY · BOUNDED INTELLIGENCE</div>
+        <div class="row">
+          <div class="cell">INGEST</div><div class="cell">REPAIR</div><div class="cell">QUARANTINE</div>
+        </div>
+        <div class="cell k">PII GATE <u>FAILS CLOSED, FIRST</u></div>
+        <div class="cell">ONTOLOGY <u>28 objects · 23 links</u></div>
+        <div class="cell">CANONICAL RECORD <u>hash-chained</u></div>
+        <div class="cell">DECISION SNAPSHOT <u>point-in-time</u></div>
+        <div class="cell" style="border-color:#3d2a5c;color:var(--metis)">FORECAST <u>conformal intervals</u></div>
+        <div class="cell" style="border-color:#3d2a5c;color:var(--metis)">SOLVER PORTFOLIO <u>CP-SAT · 0.00% gap</u></div>
+        <div class="cell" style="border-color:#3d2a5c;color:var(--metis)">CAPACITY VALUE <u>what this forecloses</u></div>
+      </div>
+    </div>
+
+    <div class="arr" style="--f:rgba(0,217,255,.7);--t:var(--themis)">
+      <div class="lbl">SNAPSHOT<br>+ REASONS</div><div class="bar"></div>
+    </div>
+
+    <!-- PROVE -->
+    <div class="stage" style="--c:var(--aletheia)">
+      <h2>PROVE</h2>
+      <div class="panel" style="--c:var(--aletheia)">
+        <div class="cap"><i>◆</i> Aletheia</div>
+        <div class="sub">REPRODUCIBLE EVIDENCE</div>
+        <div class="row">
+          <div class="cell">DERIVE</div><div class="cell">VERIFY</div><div class="cell">REPLAY</div>
+        </div>
+        <div class="cell k">RE-DERIVE → COMPARE → ATTEST</div>
+        <div class="cell" style="border-color:#5c2a2a;color:#ff6b6b">MISMATCH → REFUSE</div>
+      </div>
+      <div class="down">↓</div>
+      <div class="panel" style="--c:var(--aletheia)">
+        <div class="cap">EVIDENCE PACK</div>
+        <div class="cell">DECISION EPISODE <u>state → action → outcome</u></div>
+        <div class="cell">REASON CODES <u>binding constraint</u></div>
+        <div class="cell">STANDALONE VERIFIER <u>cannot import us</u></div>
+        <div class="cell">PROVENANCE <u>every value sourced</u></div>
+      </div>
+    </div>
+
+    <div class="arr" style="--f:rgba(61,255,168,.7);--t:var(--aletheia)">
+      <div class="lbl">SIGNED<br>EVIDENCE</div><div class="bar"></div>
+    </div>
+
+    <!-- OPERATE -->
+    <div class="stage" style="--c:var(--argus)">
+      <h2>OPERATE</h2>
+      <div class="panel" style="--c:var(--argus)">
+        <div class="cap">Argus</div>
+        <div class="sub">OPERATIONAL SURFACE</div>
+        <div class="cell">COMMAND CENTRE <u>47 sourced figures</u></div>
+        <div class="cell">REJECTED ALTERNATIVES <u>+ why each failed</u></div>
+        <div class="cell">HUMAN AUTHORISATION <u>approve · override</u></div>
+        <div class="cell">HTTP API · SDK <u>contract-gated</u></div>
+        <div class="cell" style="border-color:#2d3f6b;color:var(--talos)">WRITE-BACK <u>into the dispatch system</u></div>
+        <div class="cell k">OUTCOME → BACK TO THEMIS</div>
+      </div>
+      <div class="rail">
+        <div>
+          <h5 style="--c:var(--argus)">REFUSALS</h5>
+          <ul>
+            <li>No savings without a cost split</li>
+            <li>Interval withdraws under drift</li>
+            <li>Denial reason stays unknown</li>
+          </ul>
+        </div>
+        <div>
+          <h5 style="--c:var(--talos)">TALOS</h5>
+          <ul>
+            <li>Append-only at the database</li>
+            <li>Contract drift gates</li>
+            <li>2,970 tests · 80 ADRs</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENT WORKER POOL -->
+  <div class="agents">
+    <div class="t">
+      <h5>AGENT WORKERS</h5>
+      <span>BOUND TO THE ONTOLOGY · EACH ONE MAY EMIT ONLY SOURCED FIGURES · NONE MAY ALTER CANONICAL STATE</span>
+    </div>
+    <div class="aw">
+      <div class="w"><b>INTAKE</b><p>Reads a new operator export, proposes field mappings, flags what it could not map</p></div>
+      <div class="w"><b>DISPATCH</b><p>Watches the board, surfaces the run about to breach its window</p></div>
+      <div class="w"><b>CAPACITY</b><p>Answers why a zone is at risk at 14:00, from the ontology not from memory</p></div>
+      <div class="w"><b>APPEALS</b><p>Assembles the denial record a rider or advocate has asked for</p></div>
+      <div class="w"><b>COMPLIANCE</b><p>Maps operations to 49 CFR §37 and names what would fail a review</p></div>
+      <div class="w"><b>FLEET</b><p>Reads edge telemetry, proposes repositioning before the gap opens</p></div>
+    </div>
+  </div>
+
+  <div class="ft">
+    <div class="mark"></div>
+    <div><b>Themis</b> governs what is true · <b>Metis</b> proposes · <b>Aletheia</b> proves · <b>Argus</b> presents · <b>Talos</b> delivers</div>
+    <div>ARCHITECTURE · EDGE SILICON AND AGENT LAYER IN DESIGN</div>
+  </div>
+</div>
+
+<script>
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const show = el => el && el.classList.add('vis');
+(async () => {
+  const stages=[...document.querySelectorAll('.stage')], arrows=[...document.querySelectorAll('.arr')];
+  for(let i=0;i<stages.length;i++){
+    show(stages[i]); await wait(380);
+    for(const e of stages[i].querySelectorAll('.cap,.sub')){show(e);await wait(120);}
+    for(const e of stages[i].querySelectorAll('.row,.cell,.dots')){show(e);await wait(190);}
+    for(const e of stages[i].querySelectorAll('.rail>div')){show(e);await wait(260);}
+    if(arrows[i]){await wait(200);show(arrows[i]);await wait(480);}
+  }
+  await wait(400);
+  const band=document.querySelector('.agents'); show(band); await wait(420);
+  for(const w of band.querySelectorAll('.w')){show(w);await wait(260);}
+  await wait(700); show(document.querySelector('.ft'));
+})();
+</script>

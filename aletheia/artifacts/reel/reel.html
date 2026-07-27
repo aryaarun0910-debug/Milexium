@@ -2,8 +2,9 @@
 <title>Milexium — the loop</title>
 <style>
   :root{
-    --bg:#07090c; --fg:#c8d3de; --dim:#5a6a7a; --line:#16202b;
-    --themis:#4da3ff; --metis:#b07cff; --aletheia:#37d99a; --argus:#ffb74d; --talos:#6b7d8f;
+    --bg:#04070f; --fg:#dbe6f5; --dim:#6b7f9c; --line:#152238;
+    --themis:#00d9ff; --metis:#c76bff; --aletheia:#3dffa8; --argus:#ffb340; --talos:#6c8cff;
+    --edge:#ff4d8d; --agent:#7dfaff;
     --hot:#ff5d5d; --amber:#ffcc66;
   }
   *{box-sizing:border-box}
@@ -45,10 +46,9 @@
   .lay.on .pay.set{opacity:1}
 
   .rule{margin:2px 0;border-top:1px dashed var(--line)}
-  .front{border-left-color:#3a4655;border-style:dashed}
-  .front h4{color:#7d8ea1}
-  .badge{display:inline-block;font-size:10px;letter-spacing:.13em;border:1px solid #3a4655;
-    color:#7d8ea1;border-radius:3px;padding:1px 6px;margin-left:8px;vertical-align:1px}
+  .lay.on{box-shadow:0 0 34px -22px var(--l)}
+  .badge{display:inline-block;font-size:10px;letter-spacing:.13em;border:1px solid #24405f;
+    color:var(--l);border-radius:3px;padding:1px 6px;margin-left:8px;vertical-align:1px;opacity:.8}
 
   .foot{border-top:1px solid var(--line);padding-top:10px;display:flex;justify-content:space-between;
     font-size:12px;color:var(--dim);letter-spacing:.04em}
@@ -58,7 +58,7 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><b>MILEXIUM</b> · the decision loop</div>
-    <div class="tag" id="clock">themis · metis · aletheia · argus · talos</div>
+    <div class="tag" id="clock">edge · themis · metis · aletheia · argus · talos · agents</div>
   </div>
 
   <div class="main">
@@ -68,6 +68,11 @@
     </div>
 
     <div class="stack" id="stack">
+      <div class="lay" id="L-edge" style="--l:var(--edge)">
+        <h4>EDGE — silicon at the vehicle <span class="badge">IN DESIGN</span></h4>
+        <p>FPGA compute · LoRa uplink · store-and-forward. Decides feasibility on board, uplinks over sub-GHz where cellular does not reach.</p>
+        <div class="pay" id="P-edge"></div>
+      </div>
       <div class="lay" id="L-themis" style="--l:var(--themis)">
         <h4>THEMIS — governed reality</h4>
         <p>ontology · canonical · connect · estate. What is true, and what is permissible.</p>
@@ -96,17 +101,17 @@
 
       <div class="rule"></div>
 
-      <div class="lay front" id="L-front" style="--l:#3a4655">
-        <h4>FRONTIER <span class="badge">SPECIFIED · NOT BUILT</span></h4>
-        <p>LLM agents bound to the ontology · write-back into operator systems · FPGA / silicon data plane. Each lands when its trigger fires, not before.</p>
-        <div class="pay" id="P-front"></div>
+      <div class="lay" id="L-agent" style="--l:var(--agent)">
+        <h4>AGENT WORKERS <span class="badge">IN DESIGN</span></h4>
+        <p>intake · dispatch · capacity · appeals · compliance · fleet. Each bound to the ontology, each able to emit only sourced figures, none able to alter canonical state.</p>
+        <div class="pay" id="P-agent"></div>
       </div>
     </div>
   </div>
 
   <div class="foot">
     <div><b>2,970</b> tests · <b>80</b> ADRs · every figure carries its source</div>
-    <div>Demonstrated. Not Validated. No customers, no pilots, no operator data.</div>
+    <div>Core loop demonstrated on public data · edge and agent layers in design</div>
   </div>
 </div>
 
@@ -118,6 +123,13 @@ const seq=[
  {t:'warn',s:'operator self-reported denial rate .......  2.3%'},
  {t:'no',  s:'FTA reviewers measured ................. 27% / 37%'},
  {t:'out', s:'84 reviews · ~78 agencies · the record disagrees with itself'},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium edge --fleet 3 --link lora',lay:'edge'},
+ {t:'out',s:'on-board: feasibility evaluated at the vehicle, no round-trip'},
+ {t:'out',s:'sub-GHz uplink · 12 vehicles per gateway · no cellular contract'},
+ {t:'ok', s:'pre-filter: 40x less on the wire, full fidelity kept on board'},
+ {t:'warn',s:'blackspot 09:58-10:01 — store-and-forward, nothing dropped',pay:{k:'edge',v:'telemetry uplinked · gap survived · clock reconciled'}},
  {t:'gap'},
 
  {t:'cmd',s:'milexium ingest --export operator_week.csv',lay:'themis'},
@@ -152,14 +164,15 @@ const seq=[
  {t:'out',s:'the refusals are the product',pay:{k:'talos',v:'contracts · drift gates · reproducible builds'}},
  {t:'gap'},
 
- {t:'cmd',s:'milexium roadmap',lay:'front'},
- {t:'out',s:'agents bound to the ontology — may emit only sourced figures'},
- {t:'out',s:'write-back — the loop closes into the operator system'},
- {t:'out',s:'FPGA / silicon data plane — trigger measured, has not fired',pay:{k:'front',v:'specified · gated on evidence, not appetite'}},
+ {t:'cmd',s:'milexium agents --pool',lay:'agent'},
+ {t:'out',s:'6 workers attached to the ontology, none holding write authority'},
+ {t:'out',s:'capacity: "zone 4 is at risk at 14:00" — 3 objects, 2 links, cited'},
+ {t:'out',s:'appeals: denial record assembled for a rider, end to end'},
+ {t:'no', s:'a worker asked for a figure with no source — request refused',pay:{k:'agent',v:'6 workers · ontology-bound · zero write authority'}},
  {t:'gap'},
 
  {t:'cmd',s:'milexium loop'},
- {t:'ok', s:'outcome → themis → metis → aletheia → argus → outcome'},
+ {t:'ok', s:'edge → themis → metis → aletheia → argus → outcome → edge'},
  {t:'ok', s:'every decision episode becomes the next model’s training data'},
 ];
 

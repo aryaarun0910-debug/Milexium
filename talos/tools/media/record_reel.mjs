@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const REPO = 'C:/Users/aryaa/Documents/Milexium';
 const PAGE = `file:///${REPO}/aletheia/artifacts/reel/reel.html`;
 const OUT = `${REPO}/aletheia/artifacts/reel/recording`;
-const RUNTIME_MS = 34_000; // sequence length + tail
+const RUNTIME_MS = 44_000; // sequence length + tail (edge and agent blocks added)
 
 const browser = await chromium.launch();
 const context = await browser.newContext({

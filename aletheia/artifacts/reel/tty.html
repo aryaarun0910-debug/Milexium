@@ -1,0 +1,342 @@
+<meta charset="utf-8">
+<title>Milexium — MINGW64</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#000;font-family:"DejaVu Sans Mono",Consolas,"Lucida Console",monospace}
+  .win{width:1920px;height:1080px;display:flex;flex-direction:column;background:#04070f;border:1px solid #232a36}
+  /* OS-neutral chrome: reads as "a terminal" on any machine, and as product
+     rather than somebody's desktop. Swap in MinTTY furniture only if the
+     audience is specifically Windows engineers. */
+  .bar{height:38px;flex:0 0 38px;background:#0a0f18;border-bottom:1px solid #16202e;
+    display:flex;align-items:center;padding:0 15px;gap:8px;position:relative}
+  .bar .d{width:11px;height:11px;border-radius:50%;background:#1e2c3d}
+  .bar .ttl{position:absolute;left:0;right:0;text-align:center;color:#5d708c;
+    font-size:12.5px;letter-spacing:.13em;pointer-events:none}
+  .scr{flex:1;padding:11px 18px 0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start}
+  .cur{animation:bl 1.05s step-end infinite}
+  @keyframes bl{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+  pre{margin:0;font-size:15px;line-height:1.42;color:#dbe6f5;white-space:pre;-webkit-font-smoothing:antialiased}
+  pre>div{min-height:1.42em}
+  .grn{color:#3dffa8} .cyn{color:#00d9ff} .vio{color:#c76bff} .amb{color:#ffb340}
+  .pnk{color:#ff4d8d} .ice{color:#7dfaff} .ind{color:#6c8cff} .red{color:#ff5d5d}
+  .wht{color:#fff}    .dim{color:#5d708c} .box{color:#3b5678} .ylw{color:#ffcc66}
+  .bld{font-weight:700}
+  .cur{background:#dbe6f5;color:#04070f}
+</style>
+
+<div class="win">
+  <div class="bar">
+    <div class="d"></div><div class="d"></div><div class="d"></div>
+    <div class="ttl">milexium — bash</div>
+  </div>
+  <div class="scr"><pre id="t"></pre></div>
+</div>
+
+<script>
+const W = 38, GUT = 12, NC = 4;
+const TOTAL = NC*W + (NC-1)*GUT;          // 188 columns
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const sp  = n => ' '.repeat(Math.max(0,n));
+
+// line builder that tracks true printable width
+function L(){
+  const p=[]; let n=0;
+  return {
+    add(t,c){ if(t==='')return this; p.push(c?`<span class="${c}">${esc(t)}</span>`:esc(t)); n+=t.length; return this; },
+    raw(h,w){ p.push(h); n+=w; return this; },
+    pad(to){ if(to>n){ p.push(sp(to-n)); n=to; } return this; },
+    get w(){ return n; },
+    out(){ return p.join(''); }
+  };
+}
+const centre = (t,w) => { const l=Math.floor((w-t.length)/2); return [l, w-t.length-l]; };
+
+// ---- a box column: returns array of line-builders, each exactly W wide
+function box(title, cls, cap, sub, rows){
+  const out=[], inner = W-4;
+  let h = L().add('┌─ ','box').add(title, cls+' bld').add(' ','box');
+  h.add('─'.repeat(W-h.w-1),'box').add('┐','box'); out.push(h);
+
+  for (const [txt, c] of [[cap,'wht'],[sub,'dim']]){
+    const [a,b] = centre(txt, inner);
+    out.push(L().add('│ ','box').pad(2+a).add(txt,c).pad(2+inner).add(' │','box'));
+  }
+  out.push(L().add('│ ','box').add('·'.repeat(inner),'box').add(' │','box'));
+
+  for (const r of rows){
+    if (!r){ out.push(L().add('│ ','box').pad(2+inner).add(' │','box')); continue; }
+    let [lab, note, c] = r;
+    if (lab.length + note.length + 2 > inner) note = note.slice(0, Math.max(0, inner-lab.length-2));
+    out.push(L().add('│ ','box').add(lab, c||'').pad(2+inner-note.length).add(note,'dim').pad(2+inner).add(' │','box'));
+  }
+  out.push(L().add('└'+'─'.repeat(W-2)+'┘','box'));
+  return out;
+}
+
+const cols = [
+  box('EDGE','pnk','On-vehicle','SILICON · SIGNALLING · TELEMETRY',[
+    ['FPGA COMPUTE','on-board inference','pnk'],
+    ['LoRa UPLINK','sub-GHz · low power'],
+    ['AVL / MDT','position · state'],
+    ['SECUREMENT SENSE','wheelchair bay'],
+    ['STORE & FORWARD','survives gaps'],
+    ['EDGE PRE-FILTER','bandwidth / 40'],
+  ]),
+  box('GOVERN & DECIDE','cyn','Themis · Metis','GOVERNED REALITY · BOUNDED INTEL',[
+    ['INGEST · REPAIR · QUARANTINE',''],
+    ['PII GATE','FAILS CLOSED','cyn'],
+    ['ONTOLOGY','28 obj · 23 links'],
+    ['CANONICAL RECORD','hash-chained'],
+    ['DECISION SNAPSHOT','point-in-time'],
+    ['FORECAST','conformal','vio'],
+    ['SOLVER PORTFOLIO','0.00% gap','vio'],
+  ]),
+  box('PROVE','grn','Aletheia','REPRODUCIBLE EVIDENCE',[
+    ['DERIVE · VERIFY · REPLAY',''],
+    ['RE-DERIVE → ATTEST','','grn'],
+    ['MISMATCH → REFUSE','','red'],
+    null,
+    ['DECISION EPISODE','state→action'],
+    ['REASON CODES','what bound'],
+    ['STANDALONE VERIFIER','cannot import'],
+  ]),
+  box('OPERATE','amb','Argus','OPERATIONAL SURFACE',[
+    ['COMMAND CENTRE','47 sourced figs'],
+    ['REJECTED ALTS','+ why each failed'],
+    ['HUMAN AUTH','approve · override'],
+    ['HTTP API · SDK','contract-gated'],
+    ['WRITE-BACK','into dispatch','ind'],
+    null,
+    ['OUTCOME → THEMIS','','amb'],
+  ]),
+];
+
+// gutter: two label rows then the arrow, centred in GUT
+const GLAB = [['TELEMETRY','SNAPSHOT','SIGNED'], ['UPLINK','+ REASONS','EVIDENCE']];
+const GCOL = ['pnk','cyn','grn'];
+function gutter(i, c){
+  const g = L();
+  if (i===5 || i===6){
+    const t = GLAB[i-5][c], [a] = centre(t, GUT);
+    return g.pad(a).add(t,'dim').pad(GUT);
+  }
+  if (i===7){ const [a]=centre('───▶',GUT); return g.pad(a).add('───▶',GCOL[c]).pad(GUT); }
+  return g.pad(GUT);
+}
+
+const out = [];
+const prompt = () => L().add('Host@MILEXIUM','grn bld').add(':','dim')
+  .add('~/milexium','amb bld').add(' (','cyn').add('main','cyn bld').add(')','cyn');
+const cmd = t => { const l = L().add('$ ','grn bld').add(t,'wht'); l.cmdText = t; return l; };
+
+// ---- work indicators. A spinner resolves into its finished line, so the frame
+// that lands is the result, not the animation.
+const SPIN = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+const spin = (label, ms, done) => ({ spinner:{label, ms}, done });
+const bar  = (label, ms, done) => ({ progress:{label, ms}, done });
+const okline = (t, c) => L().add('  ','').add('✓ ','grn').add(t, c||'grn');
+
+// ---- boot. The rings are not decoration: the layer prohibitions are enforced
+// by an AST check in the suite, so ring 2 genuinely cannot write to ring 0.
+const bootline = (t, name, desc, status) => {
+  const l = L().add('  [ ','box').add(t.padStart(5),'dim').add(' ] ','box');
+  if (!name) return l.add(desc,'dim');
+  l.add(name.padEnd(12), name.startsWith('ring 0')?'cyn':name.startsWith('ring 1')?'vio':name.startsWith('ring 2')?'amb':'ind');
+  l.add(desc,'dim').pad(l.w + Math.max(1, 44-desc.length)).add(status,'grn');
+  return l;
+};
+out.push(prompt());
+out.push(cmd('mlx boot'));
+out.push(spin('initialising rings', 1300,
+  L().add('  milexium kernel 0.4.1','wht').add(' — transport decision runtime','dim')));
+out.push(bootline('0.004','ring 0','themis    governed reality','mounted'));
+out.push(bootline('0.011','ring 1','metis     bounded intelligence','mounted'));
+out.push(bootline('0.019','ring 1','aletheia  reproducible evidence','mounted'));
+out.push(bootline('0.026','ring 2','argus     operational surface','mounted'));
+out.push(bootline('0.031','talos','contracts, drift gates','mounted'));
+out.push(L().add('  [ ','box').add('0.038','dim').add(' ] ','box').add('drivers: gtfs · gtfs-rt · ntd · tides · tlc · cad/avl','dim'));
+out.push(bootline('0.044',null,'ontology 28 objects, 23 links, hash-chained journal'));
+out.push(L().add('  [ ','box').add('0.052','dim').add(' ] ','box').add('pii gate armed — fails closed, ahead of all validation','red'));
+out.push(L().add('  [ ','box').add('0.061','dim').add(' ] ','box').add('ring enforcement active: ring 2 may not write to ring 0','cyn'));
+out.push(L().add('  ready.','grn bld'));
+out.push(L());
+// The hook: the regulator's own numbers, before we show anything of ours.
+out.push(prompt());
+out.push(cmd('milexium why --agency memphis --year 2019'));
+out.push(spin('reading FTA ADA paratransit compliance review, 2020', 1900,
+  L().add('  ','').add('MATA self-reported denial rate','dim').pad(52).add('2.3%','ylw')));
+out.push(L().add('  ','').add('FTA reviewers measured, 74 observed requests','dim').pad(52).add('27%','red bld'));
+out.push(L().add('  ','').add('second sample, 46 requests','dim').pad(52).add('37%','red bld'));
+out.push(L().add('  ','').add('84 reviews · ~78 agencies · the record disagrees with itself','dim'));
+out.push(L());
+out.push(prompt());
+out.push(cmd('milexium ingest --export operator_week.csv'));
+out.push(bar('reading operator_week.csv', 1900,
+  L().add('  ','').add('PII gate: 4 rows quarantined ahead of all validation','red')));
+out.push(L().add('  ','').add('15 imported · 9 quarantined · 153 semantic-loss records kept','grn'));
+out.push(L().add('  ','').add('snapshot @ 10:02:00Z sealed — receipt-monotonic, hash-chained','dim'));
+out.push(L());
+out.push(prompt());
+out.push(cmd('milexium decide --from-snapshot && milexium prove --action a7f3'));
+out.push(spin('CP-SAT portfolio · searching, bound computed not borrowed', 2400,
+  L().add('  ','').add('a3-18  300.48318   published 300.48   gap 0.00%','grn')));
+out.push(L().add('  ','').add('1 request denied — NO_ACCESSIBLE_CAPACITY','ylw'));
+out.push(spin('re-deriving information set from primitive rows', 1700,
+  okline('76 checks · 0 mismatches · verifier cannot import milexium')));
+out.push(L());
+// The board, then the denial. A successful assignment demonstrates nothing an
+// incumbent cannot also show; a denial with its rejected alternatives and its
+// binding constraint is the entire thesis, and it ties straight back to the
+// Memphis finding at the top of this session.
+const PW = 100;
+const panel = (title, rows) => {
+  out.push(L().add(' ┌─ ','box').add(title,'wht bld')
+    .add(' '+'─'.repeat(PW-5-title.length),'box').add('┐','box'));
+  for (const r of rows) out.push(r.pad(PW-1).add(' │','box'));
+  out.push(L().add(' └'+'─'.repeat(PW-2)+'┘','box'));
+};
+const trip = (id, t, kind, purpose, veh, st, ok) => L().add(' │  ','box')
+  .add(id.padEnd(13),'wht').add(t.padEnd(7),'dim')
+  .add(kind.padEnd(12), kind==='wheelchair'?'amb':'dim')
+  .add(purpose.padEnd(16),'dim').add(veh.padEnd(11),'ind')
+  .add(ok?'✓ ':'✗ ', ok?'grn':'red').add(st, ok?'grn':'red');
+
+out.push(prompt());
+out.push(cmd('milexium board --zone 4 --window 13:00-15:00'));
+panel('DISPATCH BOARD · Tue 12 Aug · zone 4', [
+  trip('TRP-847291','13:45','wheelchair','dialysis','vehicle_a','assigned',1),
+  trip('TRP-847304','13:50','ambulatory','adult day care','vehicle_a','assigned',1),
+  trip('TRP-847318','14:05','wheelchair','clinic','vehicle_c','assigned',1),
+  trip('TRP-847322','14:10','ambulatory','pharmacy','vehicle_b','assigned',1),
+  trip('TRP-847339','14:20','wheelchair','dialysis','—','denied',0),
+]);
+out.push(L().add('    3 vehicles · 2 securement positions each · 1 ambulatory-only','dim'));
+out.push(L());
+
+out.push(prompt());
+out.push(cmd('milexium why --request TRP-847339'));
+out.push(L().add('  TRP-847339','wht bld').add('   wheelchair · dialysis · recurring Mon/Wed/Fri','dim'));
+const alt = (veh, code, why) => L().add('    ','')
+  .add(veh.padEnd(14),'wht').add(code.padEnd(26),'red').add(why,'dim');
+out.push(alt('vehicle_a','NO_ACCESSIBLE_CAPACITY','both positions held 13:45 → 14:40'));
+out.push(alt('vehicle_b','NO_ACCESSIBLE_CAPACITY','ambulatory only, no ramp'));
+out.push(alt('vehicle_c','PICKUP_WINDOW','earliest 15:02, request 14:20  (+42 min)'));
+out.push(alt('pool 847318','MAX_RIDE_TIME','would put TRP-847318 at 71 min'));
+out.push(L().add('    ','').add('binding constraint: ','dim').add('accessible capacity, not time','amb bld'));
+out.push(okline('denial recorded · rider notified · enters the ADA denial log'));
+out.push(L().add('    ','').add('this is the number Memphis reported as 2.3%','dim'));
+out.push(L());
+// Refusals sit mid-roll, not last: they prove discipline, but the architecture
+// is what should be on screen when the recording holds.
+out.push(prompt());
+out.push(cmd('milexium refuse --list'));
+out.push(L().add('  ','').add('savings envelope    — withheld: no operator cost split','red'));
+out.push(L().add('  ','').add('coverage guarantee  — withdrawn: drift breaks exchangeability','red'));
+out.push(L().add('  ','').add('denial reason       — left unknown rather than inferred','red'));
+out.push(L());
+out.push(prompt());
+out.push(cmd('milexium system --render --edge --agents'));
+out.push(L());
+
+const H = Math.max(...cols.map(c=>c.length));
+for (let i=0;i<H;i++){
+  const line = L().pad(1);
+  for (let c=0;c<NC;c++){
+    const b = cols[c][i];
+    if (b) line.raw(b.out(), b.w); else line.pad(line.w + W);
+    if (c<NC-1){ const g = gutter(i,c); line.raw(g.out(), g.w); }
+  }
+  out.push(line);
+}
+out.push(L());
+
+// agent band
+const AW = TOTAL;
+const bh = L().add(' ┌─ ','box').add('AGENT WORKERS','ice bld').add(' ','box');
+bh.add('─'.repeat(AW+1-bh.w-1),'box').add('┐','box'); out.push(bh);
+const note = 'bound to the ontology · each may emit only sourced figures · none may alter canonical state';
+out.push(L().add(' │ ','box').add(note,'dim').pad(AW-1).add(' │','box'));
+const wk = [['INTAKE','maps a new export, flags what it could not map'],
+            ['DISPATCH','surfaces the run about to breach its window'],
+            ['CAPACITY','why zone 4 is at risk at 14:00, cited'],
+            ['APPEALS','assembles the denial record for a rider'],
+            ['COMPLIANCE','maps ops to 49 CFR §37, names what fails'],
+            ['FLEET','reads telemetry, repositions before the gap']];
+const half = Math.floor((AW-4)/2);
+for (let i=0;i<3;i++){
+  const line = L().add(' │ ','box');
+  for (const [n,d] of [wk[i], wk[i+3]]){
+    const base = line.w;
+    line.add('▸ ','ice').add(n,'ice bld').pad(base+13).add(d,'dim').pad(base+half);
+  }
+  out.push(line.pad(AW-1).add(' │','box'));
+}
+out.push(L().add(' └'+'─'.repeat(AW-2)+'┘','box'));
+out.push(L());
+const tail = '2,905 tests · 80 ADRs · edge + agents in design';
+out.push(L().pad(1).add('themis','cyn').add(' governs · ','dim').add('metis','vio').add(' proposes · ','dim')
+  .add('aletheia','grn').add(' proves · ','dim').add('argus','amb').add(' presents · ','dim')
+  .add('talos','ind').add(' delivers','dim')
+  .pad(AW+1-tail.length).add(tail,'dim'));
+out.push(L());
+out.push(prompt());
+out.push(L().add('$ ','grn bld').raw('<span class="cur wht">▌</span>',1));
+
+// ---- player. Terminals print, they do not fade: every line lands whole, and
+// commands are typed. `?still=1` renders the finished frame for a screenshot.
+const T = document.getElementById('t');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+if (new URLSearchParams(location.search).has('still')) {
+  T.innerHTML = out.map(l => (l.done || l).out()).join('\n');
+} else {
+  (async () => {
+    const scr = T.parentElement;
+    for (const l of out) {
+      const div = document.createElement('div');
+      T.appendChild(div);
+      if (l.spinner) {
+        const { label, ms } = l.spinner;
+        const t0 = performance.now();
+        for (let f = 0; performance.now() - t0 < ms; f++) {
+          const el = ((performance.now() - t0) / 1000).toFixed(1);
+          div.innerHTML = '  <span class="cyn">' + SPIN[f % SPIN.length] + '</span> '
+            + '<span class="dim">' + esc(label) + '</span> '
+            + '<span class="box">' + esc(el) + 's</span>';
+          await wait(80);
+        }
+        div.innerHTML = l.done.out();
+        await wait(240);
+      } else if (l.progress) {
+        const { label, ms } = l.progress;
+        const t0 = performance.now(); const WID = 34;
+        for (;;) {
+          const p = Math.min(1, (performance.now() - t0) / ms);
+          const n = Math.round(p * WID);
+          div.innerHTML = '  <span class="dim">' + esc(label) + '</span>  '
+            + '<span class="box">[</span><span class="cyn">' + '━'.repeat(n) + '</span>'
+            + '<span class="box">' + '─'.repeat(WID - n) + ']</span> '
+            + '<span class="wht">' + String(Math.round(p * 100)).padStart(3) + '%</span>';
+          if (p >= 1) break;
+          await wait(60);
+        }
+        await wait(200);
+        div.innerHTML = l.done.out();
+        await wait(240);
+      } else if (l.cmdText) {
+        for (let i = 1; i <= l.cmdText.length; i++) {
+          div.innerHTML = '<span class="grn bld">$ </span><span class="wht">'
+            + esc(l.cmdText.slice(0, i)) + '</span><span class="cur wht">▌</span>';
+          await wait(45);
+        }
+        div.innerHTML = l.out();
+        await wait(460);
+      } else {
+        div.innerHTML = l.out() || '&nbsp;';
+        await wait(l.w === 0 ? 110 : l.w > 100 ? 95 : 260);
+      }
+      scr.scrollTop = scr.scrollHeight;
+    }
+  })();
+}
+</script>
