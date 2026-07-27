@@ -1,0 +1,187 @@
+<meta charset="utf-8">
+<title>Milexium — the loop</title>
+<style>
+  :root{
+    --bg:#07090c; --fg:#c8d3de; --dim:#5a6a7a; --line:#16202b;
+    --themis:#4da3ff; --metis:#b07cff; --aletheia:#37d99a; --argus:#ffb74d; --talos:#6b7d8f;
+    --hot:#ff5d5d; --amber:#ffcc66;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font:15px/1.55 "SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;overflow:hidden}
+  .wrap{height:100vh;display:grid;grid-template-rows:auto 1fr auto;padding:26px 34px;gap:16px}
+
+  .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .brand{font-size:19px;letter-spacing:.16em;color:#fff}
+  .brand b{font-weight:600}
+  .tag{color:var(--dim);font-size:12.5px;letter-spacing:.05em}
+
+  .main{display:grid;grid-template-columns:1.05fr .95fr;gap:26px;min-height:0}
+
+  /* terminal */
+  .term{background:#04060a;border:1px solid var(--line);border-radius:7px;padding:16px 18px;
+    overflow:hidden;position:relative;min-height:0}
+  .term .bar{display:flex;gap:6px;margin-bottom:12px}
+  .term .bar i{width:10px;height:10px;border-radius:50%;background:#243040;display:block}
+  .ln{white-space:pre-wrap;opacity:0;animation:in .01s forwards}
+  @keyframes in{to{opacity:1}}
+  .cmd{color:#fff} .cmd::before{content:"$ ";color:var(--aletheia)}
+  .out{color:var(--dim)}
+  .ok{color:var(--aletheia)} .warn{color:var(--amber)} .no{color:var(--hot)}
+  .k{color:#fff}
+
+  /* layer stack */
+  .stack{display:flex;flex-direction:column;gap:9px;min-height:0}
+  .lay{border:1px solid var(--line);border-left:3px solid var(--l);border-radius:6px;
+    padding:9px 13px;background:#080b10;opacity:.32;transition:opacity .45s, background .45s, transform .45s}
+  .lay.on{opacity:1;background:#0c1219;transform:translateX(5px)}
+  .lay h4{margin:0 0 2px;font-size:13.5px;letter-spacing:.11em;color:var(--l)}
+  .lay p{margin:0;font-size:11.5px;color:var(--dim);line-height:1.45}
+  /* the payload persists once written — the stack accumulates what each layer
+     contributed, so by the end the whole loop is visible at once rather than
+     only the layer currently lit. */
+  .lay .pay{font-size:11px;color:var(--l);opacity:0;transition:opacity .45s;margin-top:3px}
+  .lay .pay.set{opacity:.62}
+  .lay.on .pay.set{opacity:1}
+
+  .rule{margin:2px 0;border-top:1px dashed var(--line)}
+  .front{border-left-color:#3a4655;border-style:dashed}
+  .front h4{color:#7d8ea1}
+  .badge{display:inline-block;font-size:10px;letter-spacing:.13em;border:1px solid #3a4655;
+    color:#7d8ea1;border-radius:3px;padding:1px 6px;margin-left:8px;vertical-align:1px}
+
+  .foot{border-top:1px solid var(--line);padding-top:10px;display:flex;justify-content:space-between;
+    font-size:12px;color:var(--dim);letter-spacing:.04em}
+  .foot b{color:var(--fg);font-weight:500}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><b>MILEXIUM</b> · the decision loop</div>
+    <div class="tag" id="clock">themis · metis · aletheia · argus · talos</div>
+  </div>
+
+  <div class="main">
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div id="t"></div>
+    </div>
+
+    <div class="stack" id="stack">
+      <div class="lay" id="L-themis" style="--l:var(--themis)">
+        <h4>THEMIS — governed reality</h4>
+        <p>ontology · canonical · connect · estate. What is true, and what is permissible.</p>
+        <div class="pay" id="P-themis"></div>
+      </div>
+      <div class="lay" id="L-metis" style="--l:var(--metis)">
+        <h4>METIS — bounded intelligence</h4>
+        <p>forecast · decide. Proposes. Imports types from Themis, never a writer.</p>
+        <div class="pay" id="P-metis"></div>
+      </div>
+      <div class="lay" id="L-aletheia" style="--l:var(--aletheia)">
+        <h4>ALETHEIA — reproducible evidence</h4>
+        <p>evidence · verify · replay. Proves why the decision was made.</p>
+        <div class="pay" id="P-aletheia"></div>
+      </div>
+      <div class="lay" id="L-argus" style="--l:var(--argus)">
+        <h4>ARGUS — operational surface</h4>
+        <p>api · sdk · command centre. Renders authority. Never manufactures it.</p>
+        <div class="pay" id="P-argus"></div>
+      </div>
+      <div class="lay" id="L-talos" style="--l:var(--talos)">
+        <h4>TALOS — dependable delivery</h4>
+        <p>infra · contracts · tools. Underneath all of it.</p>
+        <div class="pay" id="P-talos"></div>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="lay front" id="L-front" style="--l:#3a4655">
+        <h4>FRONTIER <span class="badge">SPECIFIED · NOT BUILT</span></h4>
+        <p>LLM agents bound to the ontology · write-back into operator systems · FPGA / silicon data plane. Each lands when its trigger fires, not before.</p>
+        <div class="pay" id="P-front"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div><b>2,970</b> tests · <b>80</b> ADRs · every figure carries its source</div>
+    <div>Demonstrated. Not Validated. No customers, no pilots, no operator data.</div>
+  </div>
+</div>
+
+<script>
+const T=document.getElementById('t');
+const seq=[
+ {t:'cmd',s:'milexium why --agency memphis --year 2019'},
+ {t:'out',s:'reading FTA ADA compliance review 2020 ...'},
+ {t:'warn',s:'operator self-reported denial rate .......  2.3%'},
+ {t:'no',  s:'FTA reviewers measured ................. 27% / 37%'},
+ {t:'out', s:'84 reviews · ~78 agencies · the record disagrees with itself'},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium ingest --export operator_week.csv',lay:'themis'},
+ {t:'no', s:'PII gate: 4 rows quarantined ahead of all validation'},
+ {t:'ok', s:'15 imported · 9 quarantined · 153 semantic-loss records kept'},
+ {t:'out',s:'snapshot @ 10:02:00Z sealed — receipt-monotonic, hash-chained',pay:{k:'themis',v:'snapshot 10:02 · 15 requests · 3 vehicles'}},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium decide --from-snapshot',lay:'metis'},
+ {t:'out',s:'CP-SAT portfolio · bound computed, not borrowed'},
+ {t:'ok', s:'a3-18  300.48318   published 300.48   gap 0.00%'},
+ {t:'out',s:'accessible vehicle expected free 10:41'},
+ {t:'warn',s:'1 request denied — NO_ACCESSIBLE_CAPACITY',pay:{k:'metis',v:'4 assigned · 1 denied · 2 pooling futures foreclosed'}},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium prove --action a7f3',lay:'aletheia'},
+ {t:'out',s:'re-deriving information set from primitive rows ...'},
+ {t:'ok', s:'76 checks · 0 mismatches · chain verified'},
+ {t:'ok', s:'verifier ran in an interpreter that cannot import milexium',pay:{k:'aletheia',v:'episode reconstructed · leakage probe clean'}},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium show',lay:'argus'},
+ {t:'out',s:'47 figures · 14 themis · 13 metis · 5 aletheia · 9 declared'},
+ {t:'ok', s:'every number carries layer + call site + what was read'},
+ {t:'no', s:'7 refusals rendered — including a forecast that would not serve',pay:{k:'argus',v:'operating picture · 2.4s · sources on every value'}},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium refuse --list',lay:'talos'},
+ {t:'no', s:'savings envelope    — withheld: no operator cost split'},
+ {t:'no', s:'coverage guarantee  — withdrawn: drift breaks exchangeability'},
+ {t:'no', s:'denial reason       — left unknown rather than inferred'},
+ {t:'out',s:'the refusals are the product',pay:{k:'talos',v:'contracts · drift gates · reproducible builds'}},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium roadmap',lay:'front'},
+ {t:'out',s:'agents bound to the ontology — may emit only sourced figures'},
+ {t:'out',s:'write-back — the loop closes into the operator system'},
+ {t:'out',s:'FPGA / silicon data plane — trigger measured, has not fired',pay:{k:'front',v:'specified · gated on evidence, not appetite'}},
+ {t:'gap'},
+
+ {t:'cmd',s:'milexium loop'},
+ {t:'ok', s:'outcome → themis → metis → aletheia → argus → outcome'},
+ {t:'ok', s:'every decision episode becomes the next model’s training data'},
+];
+
+const CLS={cmd:'cmd',out:'out',ok:'ok',warn:'warn',no:'no'};
+let i=0, y=0;
+function step(){
+  if(i>=seq.length) return;
+  const e=seq[i++];
+  if(e.t==='gap'){ const d=document.createElement('div'); d.className='ln'; d.innerHTML='&nbsp;'; T.appendChild(d); }
+  else{
+    const d=document.createElement('div'); d.className='ln '+CLS[e.t]; d.textContent=e.s; T.appendChild(d);
+  }
+  if(e.lay){
+    document.querySelectorAll('.lay').forEach(n=>n.classList.remove('on'));
+    const n=document.getElementById('L-'+e.lay); if(n) n.classList.add('on');
+  }
+  if(e.pay){ const p=document.getElementById('P-'+e.pay.k); if(p){ p.textContent='▸ '+e.pay.v; p.classList.add('set'); } }
+  // keep the tail visible
+  const box=T.parentElement;
+  box.scrollTop=box.scrollHeight;
+  const delay = e.t==='cmd' ? 620 : e.t==='gap' ? 260 : 470;
+  setTimeout(step, delay);
+}
+setTimeout(step, 700);
+</script>

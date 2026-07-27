@@ -108,3 +108,8 @@ aletheia/artifacts/demo-walkthrough/
 # Website dependencies and build output.
 milexium-website/**/node_modules/
 milexium-website/**/dist/
+
+# Rendered video. Regenerates from the committed sources in ~1 min:
+#   node talos/tools/media/record_reel.mjs
+#   node talos/tools/media/record_demo.mjs
+aletheia/artifacts/reel/recording/
