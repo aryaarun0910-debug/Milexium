@@ -1,0 +1,88 @@
+# Intelligence-layer source index
+
+Primary links used for the 72-project research radar. Repository descriptions and release claims were checked against public project pages in July 2026.
+
+## Adaptive memory and test-time learning
+
+- [TTT-LM](https://github.com/test-time-training/ttt-lm-jax)
+- [In-Place TTT](https://github.com/ByteDance-Seed/In-Place-TTT)
+- [TTRL](https://github.com/PRIME-RL/TTRL)
+- [TTT-Discover](https://github.com/test-time-training/discover)
+- [MemoryLLM / M+](https://github.com/wangyu-ustc/MemoryLLM)
+- [MLP Memory](https://github.com/LUMIA-Group/MLPMemory)
+- [MemoryDecoder](https://github.com/LUMIA-Group/MemoryDecoder)
+- [Mem-alpha](https://github.com/wangyu-ustc/Mem-alpha)
+- [FreqKV](https://github.com/LUMIA-Group/FreqKV)
+- [VQKV](https://github.com/LUMIA-Group/VQKV)
+- [Doc-to-LoRA](https://github.com/SakanaAI/doc-to-lora)
+- [PENCIL](https://github.com/chr26195/pencil)
+## Reasoning, reinforcement learning and agent training
+
+- [Open-R1](https://github.com/huggingface/open-r1)
+- [Open-Reasoner-Zero](https://github.com/Open-Reasoner-Zero/Open-Reasoner-Zero)
+- [TinyZero](https://github.com/Jiayi-Pan/TinyZero)
+- [veRL](https://github.com/volcengine/verl)
+- [rLLM](https://github.com/rllm-org/rllm)
+- [OpenRLHF](https://github.com/OpenRLHF/OpenRLHF)
+- [Atropos](https://github.com/NousResearch/atropos)
+- [SWE-RL](https://github.com/facebookresearch/swe-rl)
+- [Open-AgentRL](https://github.com/Gen-Verse/Open-AgentRL)
+- [OpenEnv](https://github.com/meta-pytorch/OpenEnv)
+- [Agent World Model](https://github.com/Snowflake-Labs/agent-world-model)
+- [Agent0](https://github.com/aiming-lab/Agent0)
+## Self-improving software and autonomous research
+
+- [SICA](https://github.com/MaximeRobeyns/self_improving_coding_agent)
+- [Darwin Gödel Machine](https://github.com/jennyzzt/dgm)
+- [OpenEvolve](https://github.com/algorithmicsuperintelligence/openevolve)
+- [ShinkaEvolve](https://github.com/SakanaAI/ShinkaEvolve)
+- [autoresearch](https://github.com/karpathy/autoresearch)
+- [AI Scientist v2](https://github.com/SakanaAI/AI-Scientist-v2)
+- [Panda](https://github.com/allenai/panda)
+- [OpenAGS](https://github.com/openags/auto-research-ui)
+- [AFlow](https://github.com/FoundationAgents/AFlow)
+- [Tencent SelfEvolvingAgent](https://github.com/Tencent/SelfEvolvingAgent)
+- [Agent Laboratory](https://github.com/SamuelSchmidgall/AgentLaboratory)
+- [DeepScientist](https://github.com/ResearAI/DeepScientist)
+## Formal reasoning and machine-assisted discovery
+
+- [Lean 4](https://github.com/leanprover/lean4)
+- [mathlib4](https://github.com/leanprover-community/mathlib4)
+- [LeanDojo v2](https://github.com/lean-dojo/LeanDojo-v2)
+- [LeanCopilot](https://github.com/lean-dojo/LeanCopilot)
+- [Pantograph](https://github.com/leanprover/Pantograph)
+- [Goedel-Prover](https://github.com/Goedel-LM/Goedel-Prover)
+- [DeepSeek-Prover V1.5](https://github.com/deepseek-ai/DeepSeek-Prover-V1.5)
+- [LeanProgress](https://github.com/lean-dojo/LeanProgress)
+- [LLM-SR](https://github.com/deep-symbolic-mathematics/LLM-SR)
+- [LLM-SRBench](https://github.com/deep-symbolic-mathematics/llm-srbench)
+- [SR4MDL](https://github.com/tsinghua-fib-lab/SR4MDL)
+- [TorchLean](https://github.com/lean-dojo/TorchLean)
+## AI for science and differentiable simulation
+
+- [MatterGen](https://github.com/microsoft/mattergen)
+- [Boltz](https://github.com/jwohlwend/boltz)
+- [Chai-1](https://github.com/chaidiscovery/chai-lab)
+- [OpenFold](https://github.com/aqlaboratory/openfold)
+- [DiffDock](https://github.com/gcorso/DiffDock)
+- [RFdiffusion](https://github.com/RosettaCommons/RFdiffusion)
+- [MACE](https://github.com/ACEsuit/mace)
+- [Open Catalyst Project](https://github.com/Open-Catalyst-Project/ocp)
+- [NeuralGCM](https://github.com/google-research/neuralgcm)
+- [GraphCast](https://github.com/google-deepmind/graphcast)
+- [FourCastNet](https://github.com/NVlabs/FourCastNet)
+- [JAX-MD](https://github.com/jax-md/jax-md)
+## World models, embodied intelligence and robotics
+
+- [V-JEPA 2](https://github.com/facebookresearch/vjepa2)
+- [DreamerV3](https://github.com/danijar/dreamerv3)
+- [TD-MPC2](https://github.com/nicklashansen/tdmpc2)
+- [OpenVLA](https://github.com/openvla/openvla)
+- [LeRobot](https://github.com/huggingface/lerobot)
+- [Octo](https://github.com/octo-models/octo)
+- [Open X-Embodiment](https://github.com/google-deepmind/open_x_embodiment)
+- [Diffusion Policy](https://github.com/real-stanford/diffusion_policy)
+- [ManiSkill](https://github.com/haosulab/ManiSkill)
+- [Genesis](https://github.com/Genesis-Embodied-AI/genesis-world)
+- [Isaac Lab](https://github.com/isaac-sim/IsaacLab)
+- [Habitat-Lab](https://github.com/facebookresearch/habitat-lab)

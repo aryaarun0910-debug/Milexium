@@ -1,0 +1,214 @@
+version: "1.0"
+name: milexium-expansion
+spec_root: "C:\\Users\\aryaa\\Documents\\Milexium Expansion plan"
+implementation_root: "C:\\Users\\aryaa\\Documents\\Milexium"
+
+required_reading:
+  - README.md
+  - blueprint/01-north-star-and-boundaries.md
+  - blueprint/18-software-to-silicon-intelligence-architecture.md
+  - blueprint/20-dossier-coverage-ledger.md
+  - blueprint/14-execution-roadmap.md
+  - blueprint/19-agent-swarm-execution-system.md
+  - blueprint/10-security-privacy-and-ai-governance.md
+  - blueprint/15-risks-and-falsification.md
+
+global_invariants:
+  - canonical_state_is_authoritative
+  - derived_indexes_are_rebuildable
+  - generators_and_verifiers_are_independent
+  - bitemporal_replay_preserves_information_cutoff
+  - tenant_isolation_is_adversarially_tested
+  - hard_constraints_do_not_depend_on_similarity
+  - claims_use_exists_specified_demonstrated_validated_production
+  - every_artifact_has_version_lineage_and_rollback
+
+workstreams:
+  A_canonical:
+    document: blueprint/04-milexiumdb-canonical-state.md
+    roadmap_section: "Program A"
+    dependencies: []
+    outputs:
+      - canonical schemas
+      - state machines
+      - temporal semantics
+      - policy and metric vocabularies
+      - formal invariants
+
+  B_connect:
+    document: blueprint/03-connect-and-standards.md
+    roadmap_section: "Program B"
+    dependencies: [A_canonical]
+    outputs:
+      - adapter SDK
+      - standards adapters
+      - reconciliation and semantic-loss reports
+      - adapter conformance corpus
+
+  C_state_storage:
+    documents:
+      - blueprint/04-milexiumdb-canonical-state.md
+      - blueprint/16-semantic-state-and-turbovec.md
+      - blueprint/17-data-and-storage-readiness.md
+    roadmap_section: "Program C"
+    dependencies: [A_canonical]
+    outputs:
+      - PostgreSQL/PostGIS state
+      - event and outbox system
+      - artifact manifests
+      - semantic index adapters
+      - recovery and reconciliation
+
+  D_core_memory:
+    documents:
+      - blueprint/05-core-model-runtime-and-forecast.md
+      - blueprint/16-semantic-state-and-turbovec.md
+    roadmap_section: "Program D"
+    dependencies: [A_canonical, C_state_storage]
+    outputs:
+      - task and model registry
+      - feature contracts
+      - adaptive memory tiers
+      - parameter-delta registry
+      - calibration and drift services
+
+  E_forecast:
+    documents:
+      - blueprint/05-core-model-runtime-and-forecast.md
+      - blueprint/09-benchmark-data-and-research.md
+    roadmap_section: "Program E"
+    dependencies: [A_canonical, C_state_storage, D_core_memory]
+    outputs:
+      - forecasting baselines and challengers
+      - uncertainty and conformal calibration
+      - hierarchical and survival models
+      - graph spectral and state-space models
+
+  F_decide:
+    document: blueprint/06-decide-policy-and-optimisation.md
+    roadmap_section: "Program F"
+    dependencies: [A_canonical, C_state_storage]
+    outputs:
+      - Decision IR
+      - solver portfolio
+      - independent feasibility format
+      - robust and multi-objective optimization
+      - learning-guided search
+
+  G_verify:
+    documents:
+      - blueprint/07-explain-replay-and-evidence.md
+      - blueprint/10-security-privacy-and-ai-governance.md
+      - blueprint/18-software-to-silicon-intelligence-architecture.md
+    roadmap_section: "Program G"
+    dependencies: [A_canonical]
+    outputs:
+      - verifier API
+      - formal specifications
+      - counterexample generators
+      - proof and certificate formats
+      - translation validation
+
+  H_simulation:
+    documents:
+      - blueprint/07-explain-replay-and-evidence.md
+      - blueprint/09-benchmark-data-and-research.md
+      - blueprint/18-software-to-silicon-intelligence-architecture.md
+    roadmap_section: "Program H"
+    dependencies: [A_canonical, C_state_storage, E_forecast, F_decide, G_verify]
+    outputs:
+      - replay modes
+      - discrete-event digital twins
+      - disruption worlds
+      - latent world models
+      - causal evaluation
+
+  I_evidence_experience:
+    document: blueprint/07-explain-replay-and-evidence.md
+    roadmap_section: "Program I"
+    dependencies: [A_canonical, C_state_storage, G_verify]
+    outputs:
+      - Evidence IR
+      - Experience IR
+      - provenance slices
+      - precedent retrieval
+      - machine-verifiable exports
+
+  J_forge_fabric:
+    documents:
+      - blueprint/18-software-to-silicon-intelligence-architecture.md
+      - blueprint/19-agent-swarm-execution-system.md
+    roadmap_section: "Program J"
+    dependencies: [G_verify, H_simulation, I_evidence_experience]
+    outputs:
+      - environment ABI
+      - experiment DAG
+      - RL and evolutionary backends
+      - hidden evaluator partitions
+      - artifact promotion lifecycle
+
+  K_runtime:
+    documents:
+      - blueprint/18-software-to-silicon-intelligence-architecture.md
+      - blueprint/20-dossier-coverage-ledger.md
+    roadmap_section: "Program K"
+    dependencies: [G_verify]
+    outputs:
+      - Execution IR
+      - profiler and cost model
+      - CPU and GPU kernels
+      - compiler lowerings
+      - FPGA DPU and silicon contracts
+
+  L_private_edge:
+    document: blueprint/10-security-privacy-and-ai-governance.md
+    roadmap_section: "Program L"
+    dependencies: [A_canonical, G_verify, K_runtime]
+    outputs:
+      - confidential deployment
+      - attestation
+      - memory-safe edge runtime
+      - privacy-preserving computation adapters
+      - offline signed bundles
+
+  M_api_ecosystem:
+    documents:
+      - blueprint/08-sdk-api-and-developer-experience.md
+      - blueprint/12-open-core-business-and-defensibility.md
+      - blueprint/13-go-to-market-and-ecosystem.md
+    roadmap_section: "Program M"
+    dependencies:
+      - A_canonical
+      - B_connect
+      - C_state_storage
+      - D_core_memory
+      - E_forecast
+      - F_decide
+      - G_verify
+      - H_simulation
+      - I_evidence_experience
+      - J_forge_fabric
+      - K_runtime
+      - L_private_edge
+    outputs:
+      - SDKs CLI and APIs
+      - plugin certification
+      - operator workflows
+      - deployment packages
+      - procurement and evidence packs
+
+independent_control_workstreams:
+  reliability_adversarial:
+    may_modify_production_code: false
+    targets: [A_canonical, B_connect, C_state_storage, D_core_memory, E_forecast, F_decide, G_verify, H_simulation, I_evidence_experience, J_forge_fabric, K_runtime, L_private_edge, M_api_ecosystem]
+  integration:
+    may_approve_contract_exceptions: true
+    responsibilities:
+      - contract compatibility
+      - merge trains
+      - release evidence
+      - rollback validation
+
+work_packet_template: blueprint/19-agent-swarm-execution-system.md
+dossier_coverage: blueprint/20-dossier-coverage-ledger.md
+source_index: blueprint/SOURCES.md
